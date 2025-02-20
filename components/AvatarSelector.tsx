@@ -13,15 +13,16 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { supabaseClient } from "@lib/supabaseClient";
-import { useThemeMode } from "./ThemeProvider"; // 🔹 Importation du mode dark/light
+import { useThemeMode } from "./ThemeProvider";
 
-// ✅ Définition du type des props
 interface AvatarSelectorProps {
+  connectedAvatars: { id: number; url: string }[];
   onSelect: (avatarId: number | null) => void;
   onClose: () => void;
 }
 
 export default function AvatarSelector({
+  connectedAvatars,
   onSelect,
   onClose,
 }: AvatarSelectorProps) {
@@ -30,8 +31,8 @@ export default function AvatarSelector({
   >([]);
   const [selectedAvatar, setSelectedAvatar] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const theme = useTheme(); // 🎨 Récupération du thème actuel
-  const { toggleTheme } = useThemeMode(); // 🌗 Gestion du mode sombre
+  const theme = useTheme();
+  const { toggleTheme } = useThemeMode();
 
   useEffect(() => {
     const fetchAvatars = async () => {
@@ -44,7 +45,6 @@ export default function AvatarSelector({
       if (error) {
         console.error("❌ Erreur lors de la récupération des avatars :", error);
       } else {
-        console.log("✅ Avatars récupérés :", data);
         setAvatars(data || []);
       }
       setLoading(false);
@@ -52,6 +52,18 @@ export default function AvatarSelector({
 
     fetchAvatars();
   }, []);
+
+  const handleAvatarClick = (avatarId: number, isUsed: boolean) => {
+    if (!isUsed) {
+      setSelectedAvatar(avatarId); // ✅ Sélectionne l'avatar si disponible
+    }
+  };
+
+  const handleValidate = () => {
+    if (selectedAvatar !== null) {
+      onSelect(selectedAvatar); // ✅ Déclenche la sélection validée
+    }
+  };
 
   return (
     <Box
@@ -77,41 +89,40 @@ export default function AvatarSelector({
         <CircularProgress />
       ) : (
         <Grid container spacing={2} justifyContent="center">
-          {avatars.map((avatar) => (
-            <Grid item key={avatar.idavatar}>
-              <Avatar
-                src={avatar.url}
-                alt={avatar.nom}
-                sx={{
-                  width: 64,
-                  height: 64,
-                  cursor: "pointer",
-                  border:
-                    selectedAvatar === avatar.idavatar
-                      ? `3px solid ${theme.palette.primary.main}`
-                      : "none",
-                  transition: "0.2s",
-                  "&:hover": {
-                    transform: "scale(1.1)",
-                    boxShadow: `0px 0px 10px ${theme.palette.primary.light}`,
-                  },
-                }}
-                onClick={() => setSelectedAvatar(avatar.idavatar)}
-              />
-              <Typography variant="caption">{avatar.nom}</Typography>
-            </Grid>
-          ))}
+          {avatars.map((avatar) => {
+            const isUsed = connectedAvatars.some(
+              (a) => a.id === avatar.idavatar
+            );
+
+            return (
+              <Grid item key={`avatar-${avatar.idavatar}`}>
+                <Avatar
+                  src={avatar.url}
+                  alt={avatar.nom}
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    opacity: isUsed ? 0.4 : 1,
+                    cursor: isUsed ? "not-allowed" : "pointer",
+                    border:
+                      selectedAvatar === avatar.idavatar
+                        ? "2px solid #1976d2"
+                        : "none",
+                    transition: "all 0.2s ease",
+                  }}
+                  onClick={() => handleAvatarClick(avatar.idavatar, isUsed)}
+                />
+                <Typography variant="caption">{avatar.nom}</Typography>
+              </Grid>
+            );
+          })}
         </Grid>
       )}
 
       <Button
         variant="contained"
         color="primary"
-        onClick={() => {
-          if (selectedAvatar !== null) {
-            onSelect(selectedAvatar);
-          }
-        }}
+        onClick={handleValidate}
         disabled={selectedAvatar === null}
         sx={{ mt: 2 }}
       >
