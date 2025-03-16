@@ -38,7 +38,6 @@ export const CallDataProvider = ({ children }: { children: ReactNode }) => {
   // 📝 Appels
   const { calls, fetchCalls, selectedCall, selectCall, idCallActivite } =
     useCalls();
-  console.log("idCallActivite", idCallActivite);
 
   // 📌 Post-its
   const {

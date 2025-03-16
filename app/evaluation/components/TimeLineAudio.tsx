@@ -1,16 +1,54 @@
 import { Box, Slider, Tooltip } from "@mui/material";
 import { TimeLineAudioProps, TimelineMarker } from "@/types/types";
+import { Postit } from "@/types/types"; // ✅ Ajoute ceci
+import { useCallData } from "@/context/CallDataContext";
 
 const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
   duration,
   currentTime,
   markers,
   onSeek,
+  handlePostitClick,
 }) => {
   const handleSeek = (_event: Event, newValue: number | number[]) => {
     if (typeof newValue === "number") {
       onSeek(newValue);
     }
+  };
+  const appelPostits = useCallData().appelPostits; // ✅ Récupère les post-its
+
+  const handleMarkerClick = (
+    event: React.MouseEvent<HTMLElement>,
+    marker: TimelineMarker
+  ) => {
+    event.stopPropagation();
+
+    // 🔍 Trouve le post-it correspondant dans `appelPostits`
+    const matchingPostit = appelPostits.find((p) => p.id === marker.id);
+
+    if (!matchingPostit) {
+      console.warn("⚠ Aucun post-it trouvé pour cet ID:", marker.id);
+      return;
+    }
+
+    // ✅ Utilise les vraies données du post-it
+    const postit: Postit = {
+      id: matchingPostit.id,
+      timestamp: matchingPostit.timestamp,
+      word: matchingPostit.word,
+      wordid: matchingPostit.wordid,
+      text: matchingPostit.text || "",
+      iddomaine: matchingPostit.iddomaine,
+      sujet: matchingPostit.sujet,
+      pratique: matchingPostit.pratique,
+      callid: matchingPostit.callid, // ✅ Ici on récupère le vrai `callid`
+    };
+
+    // 📌 Affiche le post-it
+    handlePostitClick(event, postit);
+
+    // 🎯 Aligne l'audio avec le post-it
+    onSeek(marker.time);
   };
 
   return (
@@ -40,7 +78,7 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
               backgroundColor: "red",
               cursor: "pointer",
             }}
-            onClick={() => onSeek(marker.time)}
+            onClick={(e) => handleMarkerClick(e, marker)}
           />
         </Tooltip>
       ))}

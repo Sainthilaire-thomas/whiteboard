@@ -108,15 +108,8 @@ export const ConseillerProvider = ({ children }: { children: ReactNode }) => {
   // ✅ Charger le conseiller associé à l'activité en cours
   useEffect(() => {
     if (!idCallActivite || conseillers.length === 0) {
-      console.log(
-        "⏳ Attente du chargement des conseillers avant d'exécuter fetchConseillerForActivity..."
-      );
       return;
     }
-
-    console.log(
-      `🔍 Recherche du conseiller pour l'activité ID: ${idCallActivite}`
-    );
 
     const fetchConseillerForActivity = async () => {
       const { data, error } = await supabaseClient
@@ -132,8 +125,6 @@ export const ConseillerProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (data && data.idconseiller) {
-        console.log(`✅ Conseiller trouvé: ${data.idconseiller}`);
-
         // Vérifier si le conseiller est dans la liste des conseillers après le chargement
         const conseiller = conseillers.find(
           (c) => c.idconseiller === data.idconseiller

@@ -7,12 +7,13 @@ import {
   IconButton,
   FormControlLabel,
   Switch,
+  Popover,
 } from "@mui/material";
 import AddPostitButton from "./AddPostitButton";
 import { Word } from "@/types/types";
 import { useAudio } from "@/hooks/CallDataContext/useAudio"; // Utilisation du hook
 import TimelineAudio from "./TimeLineAudio";
-
+import Postit from "./Postit";
 interface TranscriptProps {
   callId: number;
 }
@@ -44,6 +45,23 @@ const Transcript = ({ callId }: TranscriptProps) => {
   } = useAudio();
 
   const [highlightTurnOne, setHighlightTurnOne] = useState(false);
+
+  // ✅ Gestion du Popover (affichage du Post-it)
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedPostit, setSelectedPostit] = useState<Postit | null>(null);
+
+  const handlePostitClick = (
+    event: React.MouseEvent<HTMLElement>,
+    postit: Postit
+  ) => {
+    setSelectedPostit(postit);
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClosePopover = () => {
+    setSelectedPostit(null);
+    setAnchorEl(null);
+  };
 
   // ✅ 1️⃣ Charger la transcription uniquement si elle n'est pas déjà récupérée
   useEffect(() => {
@@ -194,10 +212,31 @@ const Transcript = ({ callId }: TranscriptProps) => {
             currentTime={playerRef.current?.currentTime || 0} // Temps de lecture actuel
             markers={postitMarkers} // Marqueurs issus des post-its
             onSeek={setTime} // ✅ Met à jour le player audio quand on clique sur la timeline
+            handlePostitClick={handlePostitClick} // ✅ Gestion du clic sur un marqueur
           />
         </Box>
       )}
-
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={handleClosePopover}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "center",
+        }}
+        transformOrigin={{
+          vertical: "bottom",
+          horizontal: "center",
+        }}
+      >
+        {selectedPostit && (
+          <Postit
+            postit={selectedPostit}
+            isSelected={true}
+            onDoubleClick={handleClosePopover}
+          />
+        )}
+      </Popover>
       <Paper sx={{ padding: 2, maxHeight: "400px", overflowY: "auto" }}>
         <Box>
           {transcription?.words && transcription.words.length > 0 ? (

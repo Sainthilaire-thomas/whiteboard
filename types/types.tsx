@@ -567,6 +567,10 @@ export interface TimeLineAudioProps {
   currentTime: number; // Temps de lecture actuel en secondes
   markers: TimelineMarker[]; // Liste des marqueurs sur la timeline
   onSeek: (time: number) => void; // Fonction pour déplacer la lecture
+  handlePostitClick: (
+    event: React.MouseEvent<HTMLElement>,
+    postit: Postit
+  ) => void; // ✅ Ajouté
 }
 
 // 🔹 Structure d'un Quiz
