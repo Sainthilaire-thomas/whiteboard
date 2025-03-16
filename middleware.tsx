@@ -10,7 +10,6 @@ export async function middleware(req: NextRequest) {
   // ✅ Vérifier si les cookies existent
   const accessToken = (await cookieStore).get("sb-access-token");
   if (!accessToken) {
-    console.log("🛑 Pas de token d'accès, suppression forcée des cookies.");
     res.cookies.delete("sb-refresh-token");
     return res;
   }

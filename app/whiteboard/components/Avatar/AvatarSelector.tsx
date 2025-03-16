@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { supabaseClient } from "@lib/supabaseClient";
-import { useThemeMode } from "./ThemeProvider";
+import { useThemeMode } from "../../../components/common/Theme/ThemeProvider";
 
 interface AvatarSelectorProps {
   connectedAvatars: { id: number; url: string }[];
@@ -36,7 +36,6 @@ export default function AvatarSelector({
 
   useEffect(() => {
     const fetchAvatars = async () => {
-      console.log("🔍 Récupération des avatars...");
       const { data, error } = await supabaseClient
         .from("avatars")
         .select("*")

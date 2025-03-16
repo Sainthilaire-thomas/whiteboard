@@ -17,14 +17,12 @@ export async function loginAction(formData: FormData) {
     email,
     password,
   });
-  console.log("Session après connexion :", data.session);
 
   if (error) {
     console.error("Erreur de connexion :", error.message);
     throw new Error("Identifiants incorrects. Veuillez réessayer.");
   }
 
-  console.log("✅ Connexion réussie, session reçue :", data.session);
   // ✅ Redirection après succès
   redirect("/whiteboard");
 }

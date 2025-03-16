@@ -35,6 +35,24 @@ export default function CustomThemeProvider({
         palette: {
           mode,
         },
+        components: {
+          MuiTooltip: {
+            styleOverrides: {
+              tooltip: {
+                backgroundColor: "black", // 🎨 Change la couleur de fond
+                color: "white", // 🖋 Change la couleur du texte
+                fontSize: "14px", // 🔠 Ajuste la taille du texte
+                borderRadius: "4px", // 🔳 Ajoute un arrondi
+                padding: "8px",
+                maxWidth: "200px", // 📏 Ajuste la largeur max du Tooltip
+                textAlign: "center",
+              },
+              arrow: {
+                color: "black", // 🎯 Change aussi la couleur de la flèche du Tooltip
+              },
+            },
+          },
+        },
       }),
     [mode]
   );

@@ -9,7 +9,7 @@ export default function DebugSession() {
   useEffect(() => {
     const fetchSession = async () => {
       const { data } = await supabaseClient.auth.getSession();
-      console.log("Session récupérée :", data);
+
       setSession(data.session);
     };
 
@@ -17,7 +17,6 @@ export default function DebugSession() {
 
     const { data: listener } = supabaseClient.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Événement de session :", event, session);
         setSession(session);
       }
     );
