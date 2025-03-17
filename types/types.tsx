@@ -55,11 +55,12 @@ export interface Postit {
   callid: number;
   wordid: number;
   word: string;
-  timestamp: number;
   text: string;
   iddomaine: number | null;
-  sujet: string;
+  sujet: string; // ✅ Sujet en texte
+  idsujet: number | null; // ✅ ID du sujet (ajouté)
   pratique: string;
+  timestamp: number;
 }
 
 export interface UsePostitsResult {
@@ -70,11 +71,13 @@ export interface UsePostitsResult {
   addPostit: (
     wordid: number,
     word: string,
-    timestamp: number,
-    metadata?: { sujet?: string; pratique?: string; domaine?: string } // ✅ Correction ici
-  ) => Promise<void>;
-  updatePostit: (id: number, field: string, value: any) => Promise<void>;
-  deletePostit: (postitId: number) => Promise<void>;
+    timestamp: number
+  ) => Promise<number | null>;
+  updatePostit: (
+    id: number,
+    updatedFields: Record<string, any>
+  ) => Promise<void>; // ✅ Assure que `updatedFields` est un objet
+  deletePostit: (id: number) => Promise<void>;
 }
 
 // 🔹 Entreprises
@@ -281,7 +284,10 @@ export interface CallDataContextType {
     timestamp: number,
     metadata?: { sujet?: string; pratique?: string; domaine?: string } // ✅ Correction ici
   ) => Promise<void>;
-  updatePostit: (id: number, field: string, value: any) => Promise<void>;
+  updatePostit: (
+    id: number,
+    updatedFields: Record<string, any>
+  ) => Promise<void>;
   deletePostit: (postitId: number) => Promise<void>;
   transcription: Transcription | null;
   fetchTranscription: (callId: number) => Promise<void>;

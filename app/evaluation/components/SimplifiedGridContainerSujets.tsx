@@ -25,10 +25,6 @@ const SimplifiedGridContainerSujets: React.FC<
 
   useEffect(() => {
     if (currentActivityId) {
-      console.log(
-        "📌 Chargement des sujets liés à l'activité:",
-        currentActivityId
-      );
       fetchSujetsForActivite(currentActivityId);
     }
   }, [currentActivityId, fetchSujetsForActivite]);
@@ -48,10 +44,6 @@ const SimplifiedGridContainerSujets: React.FC<
     );
   }
 
-  // ✅ Debugging logs
-  console.log("📌 categoriesSujets:", categories);
-  console.log("📌 sujets reçus (items):", items);
-
   // ✅ Filtrer les catégories contenant au moins un sujet (évite d'afficher des colonnes vides)
   const filteredCategories = categories.filter((category) =>
     items.some(
@@ -60,8 +52,6 @@ const SimplifiedGridContainerSujets: React.FC<
         category[columnConfig.categoryIdKey]
     )
   );
-
-  console.log("📌 Catégories filtrées pour affichage:", filteredCategories);
 
   return (
     <Grid

@@ -8,6 +8,7 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { useAppContext } from "@/context/AppContext";
 import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
 import { Pratique, Category } from "@/types/types";
+import { Postit as PostitType } from "@/types/types";
 
 interface GridContainerPratiquesEvalProps {
   categories: Category[];
@@ -19,6 +20,8 @@ interface GridContainerPratiquesEvalProps {
     itemNameKey: keyof Pratique;
   };
   onPratiqueClick: (pratique: Pratique) => void;
+  selectedPostit: PostitType | null;
+  setSelectedPostit: (postit: PostitType) => void;
 }
 
 const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
@@ -26,6 +29,8 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
   items,
   columnConfig,
   onPratiqueClick,
+  selectedPostit,
+  setSelectedPostit,
 }) => {
   const [localItems, setLocalItems] = useState<Pratique[]>(items);
 
@@ -72,6 +77,8 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
 
   // ✅ Gestion du clic sur une pratique (toggle + mise à jour Supabase)
   const handleItemClick = async (selectedItem: Pratique) => {
+    console.log("🎯 Pratique cliquée:", selectedItem.nompratique);
+
     handleSelectPratique(selectedItem);
     setIdPratique(selectedItem.idpratique);
 
@@ -84,6 +91,20 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
 
     setLocalItems(updatedItems);
     onPratiqueClick(selectedItem);
+
+    // ✅ Mise à jour du Post-it actif
+    if (selectedPostit) {
+      console.log("✅ Avant mise à jour du post-it actif:", selectedPostit);
+
+      setSelectedPostit({
+        ...selectedPostit,
+        pratique: selectedItem.nompratique, // ✅ Associe la pratique
+      });
+
+      console.log("🔄 Après mise à jour du post-it actif:", {
+        pratique: selectedItem.nompratique,
+      });
+    }
 
     if (!currentActivityId) {
       alert("Veuillez créer une activité d'abord !");
@@ -165,11 +186,6 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
         // 🔍 Filtrer les pratiques appartenant à cette catégorie
         const pratiquesFiltrees = localItems.filter(
           (item) => item[columnConfig.categoryIdKey] === category.id
-        );
-
-        console.log(
-          "📌 `highlightedPractices` mis à jour :",
-          highlightedPractices
         );
 
         return (

@@ -1,313 +1,229 @@
-// 📜 components/evaluation/Postit.tsx
 "use client";
 
-import { useState, useCallback, memo, useEffect } from "react";
-import { supabaseClient } from "@/lib/supabaseClient"; // Assurez-vous que `supabaseClient` est correctement configuré
-
+import { useState, useEffect, memo } from "react";
+import { supabaseClient } from "@/lib/supabaseClient";
 import {
   Box,
   Paper,
   TextField,
   IconButton,
-  Collapse,
   Typography,
   Button,
-  Dialog,
   DialogActions,
   DialogContent,
-  DialogContentText,
   DialogTitle,
+  Tabs,
+  Tab,
+  Modal,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import DeleteIcon from "@mui/icons-material/Delete";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import TimestampInput from "./TimestampInput";
-import EvalContainer from "./Evalcontainer";
 import { useCallData } from "@/context/CallDataContext";
 import { useAppContext } from "@/context/AppContext";
-import { Postit as PostitType } from "@/types/types"; // Importation du type Postit
+import { useFilteredDomains } from "@/hooks/AppContext/useFilteredDomains";
+import GridContainerSujetsEval from "./GridContainerSujetsEval";
+import GridContainerPratiquesEval from "./GridContainerPratiquesEval";
+import { columnConfigSujets, columnConfigPratiques } from "@/config/gridConfig";
+import { Postit as PostitType } from "@/types/types";
 
 interface PostitProps {
   postit: PostitType;
   isSelected: boolean;
-  onDoubleClick: () => void;
+  onClose: () => void;
 }
 
-const Postit = ({ postit, isSelected, onDoubleClick }: PostitProps) => {
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [openAffectDialog, setOpenAffectDialog] = useState(false);
-  const [localPostit, setLocalPostit] = useState<PostitType>({
-    id: postit.id,
-    word: postit.word || "",
-    timestamp: postit.timestamp || 0,
-    text: postit.text || "",
-    iddomaine: postit.iddomaine || null, // S'assurer que ce soit un nombre ou null
-    sujet: postit.sujet || "Non assigné",
-    pratique: postit.pratique || "Non assigné",
-    callid: postit.callid, // Ajouter la propriété callid
-    wordid: postit.wordid, // Ajouter la propriété wordid
-  });
-
+const Postit = ({ postit, isSelected, onClose }: PostitProps) => {
   const { deletePostit, updatePostit } = useCallData();
-  const { selectedPratique, selectedSujet, domains } = useAppContext();
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isAssigned, setIsAssigned] = useState(false);
-  const [shouldReassign, setShouldReassign] = useState(false);
+  const {
+    selectedEntreprise,
+    selectedDomain,
+    selectDomain,
+    categoriesSujets,
+    sujetsData,
+    categoriesPratiques,
+    pratiques,
+  } = useAppContext();
 
-  const toggleExpand = useCallback(() => setIsExpanded((prev) => !prev), []);
-  const toggleDeleteDialog = useCallback(
-    () => setOpenDeleteDialog((prev) => !prev),
-    []
-  );
-  const toggleAffectDialog = useCallback(
-    () => setOpenAffectDialog((prev) => !prev),
-    []
-  );
+  // 🔹 Récupération des domaines liés à l'entreprise
+  const { filteredDomains } = useFilteredDomains(selectedEntreprise);
 
-  const handleFieldChange = useCallback(
-    (field: keyof PostitType, value: string | number | null) => {
-      if (field === "iddomaine" && value === "Non assigné") {
-        value = null; // Assure-toi que iddomaine est soit un nombre soit null
-      }
+  const [localPostit, setLocalPostit] = useState<PostitType>({ ...postit });
 
-      setLocalPostit((prev) => ({
-        ...prev,
-        [field]: value,
-      }));
-      updatePostit(postit.id, field, value);
-    },
-    [postit.id, updatePostit]
-  );
-
-  const handleSave = useCallback(async () => {
-    const { id, word, timestamp, text } = localPostit;
-    const { error } = await supabaseClient
-      .from("postit")
-      .update({ word, timestamp, text })
-      .eq("id", id);
-
-    if (error) {
-      console.error("Erreur lors de la sauvegarde du post-it:", error);
-    } else {
-      console.log("Post-it sauvegardé avec succès");
-    }
+  useEffect(() => {
+    console.log("📝 Mise à jour du Post-it:", localPostit);
   }, [localPostit]);
 
-  const handleDelete = useCallback(() => {
-    deletePostit(postit.id);
-    setOpenDeleteDialog(false);
-  }, [deletePostit, postit.id]);
-
-  const handleTimestampChange = (newTimestamp: string) => {
-    const [minutes, seconds] = newTimestamp.split(":").map(Number);
-    const totalSeconds = minutes * 60 + seconds;
-    handleFieldChange("timestamp", totalSeconds);
-  };
+  // 🟢 Initialisation du domaine si non défini
+  useEffect(() => {
+    if (!localPostit.iddomaine && selectedDomain) {
+      setLocalPostit((prev) => ({
+        ...prev,
+        iddomaine: selectedDomain ? Number(selectedDomain) : null, // ✅ Converti en number
+      }));
+    }
+  }, [selectedDomain]);
 
   useEffect(() => {
-    if (isSelected && shouldReassign) {
-      setLocalPostit((prevPostit) => ({
-        ...prevPostit,
-        sujet: selectedSujet ? selectedSujet.nomsujet : "Non assigné",
-        pratique: selectedPratique
-          ? selectedPratique.nompratique
-          : "Non assigné",
-        // Assigner l'ID du domaine à iddomaine, et le nom du domaine à domaine
-        iddomaine: selectedSujet ? selectedSujet.iddomaine : null, // ID du domaine, pas le nom
-        domaine: selectedSujet
-          ? domains.find((d) => d.iddomaine === selectedSujet.iddomaine)
-              ?.nomdomaine || "Non assigné"
-          : "Non assigné", // Affichage du nom du domaine
-      }));
-      setShouldReassign(false); // Désactive la réassignation
-    }
-  }, [isSelected, shouldReassign, selectedSujet, selectedPratique, domains]);
-
-  // Lors de la réinitialisation des champs
-  const resetFieldsOnSelect = () => {
-    setIsAssigned(false); // Marquer comme non assigné
     setLocalPostit((prev) => ({
       ...prev,
-      sujet: "Non assigné",
-      pratique: "Non assigné",
-      domaine: "Non assigné", // Affichage du nom du domaine
-      iddomaine: null, // ID du domaine (null si non assigné)
+      sujet: postit.sujet || "", // ✅ Vérifie qu'on a bien un sujet
+      idsujet: postit.idsujet || null, // ✅ Vérifie qu'on a bien un ID de sujet
     }));
+  }, [postit]);
+
+  // 🔹 Sauvegarde du post-it
+
+  const handleSave = async () => {
+    console.log("💾 Sauvegarde du Post-it:", {
+      id: localPostit.id,
+      text: localPostit.text,
+      sujet: localPostit.sujet,
+      idsujet: localPostit.idsujet,
+      iddomaine: localPostit.iddomaine,
+      pratique: localPostit.pratique, // ✅ Ajoute la pratique
+    });
+
+    await updatePostit(localPostit.id, {
+      text: localPostit.text,
+      sujet: localPostit.sujet,
+      idsujet: localPostit.idsujet,
+      iddomaine: localPostit.iddomaine,
+      pratique: localPostit.pratique,
+    });
+
+    console.log("✅ Sauvegarde réussie !");
+    onClose();
   };
 
-  useEffect(() => {
-    if (isSelected && !isAssigned) {
-      setShouldReassign(true);
-    }
-  }, [selectedSujet, selectedPratique]);
+  // 🔹 Suppression du post-it
+  const handleDelete = () => {
+    deletePostit(localPostit.id);
+    onClose();
+  };
 
   return (
-    <div
-      id="Postit"
-      onDoubleClick={() => {
-        onDoubleClick();
-        resetFieldsOnSelect();
-      }}
-    >
-      <Paper
-        sx={{
-          mb: 2,
-          p: 2,
-          bgcolor: isSelected
-            ? "lightgreen"
-            : !isAssigned &&
-              (!localPostit.iddomaine || localPostit.iddomaine === null) && // Utilise iddomaine ici
-              (!localPostit.sujet || localPostit.sujet === "Non assigné") &&
-              (!localPostit.pratique || localPostit.pratique === "Non assigné")
-            ? "#a61e15"
-            : "#FFF9C4",
-          boxShadow: 3,
-          borderRadius: 1,
-        }}
-      >
-        {/* Le reste du contenu */}
-
-        <IconButton size="small" onClick={toggleExpand}>
-          {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        </IconButton>
-
-        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Paper
-            sx={{ width: "100%", bgcolor: "rgba(255, 255, 255, 0.5)", p: 1 }}
-          >
-            <TextField
-              fullWidth
-              label="Passage"
-              value={localPostit.word}
-              onChange={(e) => handleFieldChange("word", e.target.value)}
-              variant="outlined"
-              size="small"
-              margin="dense"
-              multiline
-              minRows={2}
-              sx={{ backgroundColor: "transparent", color: "black" }}
-              InputLabelProps={{ style: { color: "black" } }}
-              InputProps={{ style: { color: "black", fontSize: "0.8rem" } }}
-            />
-          </Paper>
-        </Box>
-
-        <Collapse in={isExpanded}>
-          <Box sx={{ mt: 1 }}>
-            <Box
-              sx={{
-                bgcolor: "rgba(255, 249, 196, 0.8)",
-                p: 1,
-                borderRadius: 1,
-              }}
-            >
-              <TimestampInput
-                defaultTimestamp={
-                  localPostit.timestamp && !isNaN(localPostit.timestamp)
-                    ? new Date(localPostit.timestamp * 1000)
-                        .toISOString()
-                        .substr(14, 5)
-                    : "00:00"
-                }
-                onTimestampChange={handleTimestampChange}
-                InputProps={{
-                  style: {
-                    color: "black",
-                    fontSize: "0.8rem",
-                    backgroundColor: "transparent",
-                  },
-                }}
-              />
+    <Modal open={isSelected} onClose={onClose} sx={styles.modalBackground}>
+      <Box sx={styles.modalWrapper} onClick={onClose}>
+        <Box sx={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
+          <DialogTitle>Évaluation du passage</DialogTitle>
+          <DialogContent>
+            {/* Sélection du domaine */}
+            <Box sx={styles.domainSelection}>
+              <Tabs
+                value={selectedDomain ? String(selectedDomain) : ""} // ✅ S'assure que `value` est une string
+                onChange={(event, newValue) => selectDomain(String(newValue))} // ✅ Convertit `newValue` en string
+                variant="scrollable"
+                scrollButtons="auto"
+              >
+                {filteredDomains.map((domain) => (
+                  <Tab
+                    key={domain.iddomaine}
+                    label={domain.nomdomaine}
+                    value={String(domain.iddomaine)} // ✅ Convertit `id` en string
+                  />
+                ))}
+              </Tabs>
             </Box>
 
-            <Paper sx={{ bgcolor: "rgba(255, 255, 255, 0.5)", p: 1, mt: 1 }}>
-              <TextField
-                fullWidth
-                label="Commentaire"
-                value={localPostit.text || ""}
-                onChange={(e) => handleFieldChange("text", e.target.value)}
-                variant="outlined"
-                multiline
-                minRows={2}
-                size="small"
-                margin="dense"
-                sx={{ backgroundColor: "transparent", color: "black" }}
-                InputLabelProps={{ style: { color: "black" } }}
-                InputProps={{ style: { color: "black", fontSize: "0.8rem" } }}
-              />
+            {/* Passage affiché */}
+            <Paper sx={styles.passageBox}>
+              <Typography variant="h6">Passage :</Typography>
+              <Typography>{localPostit.word}</Typography>
             </Paper>
 
-            <Box sx={{ mt: 1, display: "flex", flexDirection: "column" }}>
-              <Typography variant="caption" sx={{ color: "black" }}>
-                Domaine : {localPostit.iddomaine}
-              </Typography>
-              <Typography variant="caption" sx={{ color: "black" }}>
-                Sujet : {localPostit.sujet || "Non assigné"}
-              </Typography>
-              <Typography variant="caption" sx={{ color: "black" }}>
-                Pratique : {localPostit.pratique || "Non assigné"}
-              </Typography>
-            </Box>
+            {/* Commentaire */}
+            <TextField
+              label="Commentaire"
+              value={localPostit.text}
+              onChange={(e) =>
+                setLocalPostit({ ...localPostit, text: e.target.value })
+              }
+              fullWidth
+              multiline
+              rows={3}
+              variant="outlined"
+            />
 
-            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
-              <IconButton color="primary" onClick={handleSave}>
-                <SaveIcon />
-              </IconButton>
-              <IconButton color="error" onClick={toggleDeleteDialog}>
-                <DeleteIcon />
-              </IconButton>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={toggleAffectDialog}
-              >
-                Affecter
-              </Button>
-            </Box>
-          </Box>
-        </Collapse>
+            {/* 🏷 Grille des sujets */}
+            <Typography variant="h6" sx={{ mt: 2 }}>
+              Sélectionner un sujet :
+            </Typography>
+            <GridContainerSujetsEval
+              categories={categoriesSujets}
+              items={sujetsData}
+              columnConfig={columnConfigSujets}
+              selectedPostit={localPostit} // ✅ Passe le Post-it actif
+              setSelectedPostit={setLocalPostit} // ✅ Passe le setter
+            />
 
-        {/* Modal pour l'affectation */}
-        <Dialog
-          open={openAffectDialog}
-          onClose={toggleAffectDialog}
-          fullWidth
-          maxWidth="md"
-        >
-          <DialogTitle>
-            Affecter critère qualité et geste à entraîner
-          </DialogTitle>
-          <DialogContent>
-            <EvalContainer />
+            {/* 🎯 Grille des pratiques */}
+            <Typography variant="h6" sx={{ mt: 2 }}>
+              Pratiques recommandées :
+            </Typography>
+            <GridContainerPratiquesEval
+              categories={categoriesPratiques}
+              items={pratiques}
+              columnConfig={columnConfigPratiques}
+              onPratiqueClick={() => {}} // Géré directement dans le composant
+              selectedPostit={localPostit} // ✅ Passe le Post-it actif
+              setSelectedPostit={setLocalPostit} // ✅ Passe le setter
+            />
           </DialogContent>
+
           <DialogActions>
-            <Button onClick={toggleAffectDialog} color="primary">
+            <Button onClick={onClose} color="primary">
               Fermer
             </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Dialog de confirmation pour la suppression */}
-        <Dialog open={openDeleteDialog} onClose={toggleDeleteDialog}>
-          <DialogTitle>Confirmer la suppression</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Êtes-vous sûr de vouloir supprimer ce post-it ?
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={toggleDeleteDialog} color="primary">
-              Annuler
-            </Button>
-            <Button onClick={handleDelete} color="error" autoFocus>
+            <Button onClick={handleDelete} color="error">
               Supprimer
             </Button>
+            <Button onClick={handleSave} color="primary" variant="contained">
+              Enregistrer
+            </Button>
           </DialogActions>
-        </Dialog>
-      </Paper>
-    </div>
+        </Box>
+      </Box>
+    </Modal>
   );
+};
+
+// 📌 **Styles**
+const styles = {
+  modalBackground: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalWrapper: {
+    width: "100vw",
+    height: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)", // ✅ Fond assombri
+  },
+  modalContainer: {
+    width: "80%",
+    maxHeight: "90vh",
+    bgcolor: "background.paper",
+    boxShadow: 24,
+    p: 4,
+    borderRadius: 2,
+    overflow: "auto",
+  },
+  domainSelection: {
+    position: "relative",
+    width: "100%",
+    overflowX: "auto",
+    backgroundColor: "rgba(138, 137, 137, 0.7)",
+    padding: "10px",
+    borderRadius: "8px",
+  },
+  passageBox: {
+    p: 2,
+    mb: 2,
+    backgroundColor: "#1c1c1c",
+  },
 };
 
 export default memo(Postit);

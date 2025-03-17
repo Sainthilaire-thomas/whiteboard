@@ -2,18 +2,27 @@ import { Grid, Typography, Tooltip } from "@mui/material";
 import { useEffect, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
-import { ColumnConfig, Item, Category } from "@/types/types";
+import {
+  ColumnConfig,
+  Item,
+  Category,
+  Postit as PostitType,
+} from "@/types/types";
 
 interface GridContainerSujetsEvalProps {
   categories: Category[];
   items: Item[];
   columnConfig: ColumnConfig;
+  selectedPostit: PostitType | null; // ✅ Ajout de selectedPostit
+  setSelectedPostit: (postit: PostitType) => void; // ✅ Ajout de setSelectedPostit
 }
 
 const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
   categories,
   items,
   columnConfig,
+  selectedPostit,
+  setSelectedPostit,
 }) => {
   const {
     idActivite,
@@ -60,6 +69,30 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
         category[columnConfig.categoryIdKey]
     )
   );
+
+  const handleSujetClick = (item: Item) => {
+    console.log("📌 Sujet cliqué:", item.nomsujet, "ID:", item.idsujet);
+
+    toggleSujet(currentActivityId, item); // ✅ Ajoute ou supprime le sujet dans l'activité
+
+    // ✅ Si un post-it est sélectionné, on met à jour ses données
+    if (selectedPostit) {
+      console.log("✅ Avant mise à jour du post-it actif:", selectedPostit);
+
+      setSelectedPostit({
+        ...selectedPostit,
+        sujet: item.nomsujet, // ✅ Associe le sujet au post-it
+        idsujet: item.idsujet, // ✅ Stocke l'ID du sujet
+        iddomaine: item.iddomaine, // ✅ Met à jour le domaine si nécessaire
+      });
+
+      console.log("🔄 Après mise à jour du post-it actif:", {
+        sujet: item.nomsujet,
+        idsujet: item.idsujet,
+        iddomaine: item.iddomaine,
+      });
+    }
+  };
 
   return (
     <Grid
@@ -112,7 +145,7 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
                 >
                   <Typography
                     variant="body2"
-                    onClick={() => toggleSujet(currentActivityId, item)}
+                    onClick={() => handleSujetClick(item)}
                     sx={{
                       cursor: "pointer",
                       backgroundColor: isAssociated ? "red" : "inherit",

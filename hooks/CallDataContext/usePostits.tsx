@@ -40,7 +40,7 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         .from("postit")
         .insert([newPostit])
         .select(
-          "id, callid, wordid, word, timestamp, text, iddomaine, sujet, pratique"
+          "id, callid, wordid, word, timestamp, text, iddomaine, sujet,idsujet, pratique"
         )
         .single(); // ✅ Ajout de .single() pour éviter de devoir utiliser data[0]
 
@@ -56,6 +56,7 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         if (data.callid === selectedCallId) {
           setAppelPostits((prev) => [data, ...prev]);
         }
+        console.log("data.id", data.id);
 
         return data.id; // ✅ Retourne l'ID du post-it ajouté
       }
@@ -66,32 +67,71 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
   );
 
   const updatePostit = useCallback(
-    async (id: number, field: string, value: any) => {
-      if (field === "iddomaine" && value === "Non assigné") {
-        value = null; // ✅ Sécurisation
-      }
-      const { error } = await supabaseClient
-        .from("postit")
-        .update({ [field]: value })
-        .eq("id", id);
-      if (error) {
-        console.error("Erreur lors de la mise à jour du post-it:", error);
+    async (id: number, updatedFields: Record<string, any>) => {
+      if (
+        !id ||
+        typeof updatedFields !== "object" ||
+        Array.isArray(updatedFields)
+      ) {
+        console.error(
+          "❌ Erreur : `updatedFields` doit être un objet valide !"
+        );
         return;
       }
 
+      console.log("📝 Tentative de mise à jour Supabase");
+      console.log("   🔹 ID du Post-it:", id);
+      console.log("   🔹 Champs mis à jour:", updatedFields);
+
+      // ✅ Vérification si le post-it existe avant la mise à jour
+      const existingPostit = allPostits.find((p) => p.id === id);
+      if (!existingPostit) {
+        console.warn("⚠️ Post-it introuvable, annulation de la mise à jour.");
+        return;
+      }
+
+      // ✅ Assurer que `idsujet` et `iddomaine` sont bien traités
+      const safeUpdatedFields: Record<string, any> = {};
+      if ("text" in updatedFields) safeUpdatedFields.text = updatedFields.text;
+      if ("sujet" in updatedFields)
+        safeUpdatedFields.sujet = updatedFields.sujet;
+      if ("idsujet" in updatedFields)
+        safeUpdatedFields.idsujet = updatedFields.idsujet ?? null;
+      if ("iddomaine" in updatedFields)
+        safeUpdatedFields.iddomaine = updatedFields.iddomaine ?? null;
+      if ("pratique" in updatedFields)
+        safeUpdatedFields.pratique = updatedFields.pratique;
+
+      console.log("📤 Envoi de la mise à jour :", safeUpdatedFields);
+
+      // ✅ Mise à jour locale
       setAllPostits((prev) =>
         prev.map((postit) =>
-          postit.id === id ? { ...postit, [field]: value } : postit
+          postit.id === id ? { ...postit, ...safeUpdatedFields } : postit
         )
       );
 
       setAppelPostits((prev) =>
         prev.map((postit) =>
-          postit.id === id ? { ...postit, [field]: value } : postit
+          postit.id === id ? { ...postit, ...safeUpdatedFields } : postit
         )
       );
+
+      // ✅ Mise à jour Supabase
+      const { data, error } = await supabaseClient
+        .from("postit")
+        .update(safeUpdatedFields)
+        .eq("id", id)
+        .select("*");
+
+      if (error) {
+        console.error("❌ Erreur Supabase :", error);
+        return;
+      }
+
+      console.log("✅ Mise à jour réussie :", data);
     },
-    []
+    [allPostits]
   );
 
   const deletePostit = useCallback(async (postitId: number) => {

@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Box, IconButton, Snackbar, TextField, Tooltip } from "@mui/material";
+import {
+  Box,
+  IconButton,
+  Snackbar,
+  SnackbarContent,
+  TextField,
+  Tooltip,
+} from "@mui/material";
 import NoteAddIcon from "@mui/icons-material/NoteAdd";
 import EditIcon from "@mui/icons-material/Edit";
 import { useCallData } from "@/context/CallDataContext";
@@ -19,36 +26,36 @@ const AddPostitButton = () => {
     const wordText = currentWord.text ?? "Post-it";
     const timestamp = currentWord.startTime ?? 0;
 
-    const newPostitId = await addPostit(wordid, wordText, timestamp, {
-      sujet: "Non assigné",
-      pratique: "Non assigné",
-      domaine: "Non assigné",
-      text: "", // Le commentaire sera ajouté après
-    });
+    const newPostitId = await addPostit(wordid, wordText, timestamp);
 
-    setLastPostitId(newPostitId);
-    setSnackbarOpen(true);
-    setShowInput(false);
-    setComment("");
+    console.log("🔹 ID du post-it ajouté:", newPostitId);
 
-    // ⏳ Timeout pour masquer le Snackbar, seulement si l'utilisateur ne tape pas
-    const id = setTimeout(() => {
-      if (!showInput) setSnackbarOpen(false);
-    }, 5000);
-    setTimeoutId(id);
+    if (typeof newPostitId === "number") {
+      setLastPostitId(newPostitId);
+      setSnackbarOpen(true);
+      setShowInput(false);
+      setComment("");
+
+      // ⏳ Timeout pour masquer le Snackbar
+      const id = setTimeout(() => {
+        if (!showInput) setSnackbarOpen(false);
+      }, 5000);
+      setTimeoutId(id);
+    } else {
+      console.error("❌ Erreur lors de l'ajout du post-it.");
+    }
   };
 
   const handleEditComment = () => {
     setShowInput(true);
     setSnackbarOpen(true); // Assure que le Snackbar reste ouvert
-
-    // ❌ Annule le timeout pour éviter une fermeture prématurée
     if (timeoutId) clearTimeout(timeoutId);
   };
 
   const handleSaveComment = async () => {
+    console.log("📝 Tentative de mise à jour avec ID:", lastPostitId);
     if (lastPostitId && comment.trim() !== "") {
-      await updatePostit(lastPostitId, "text", comment);
+      await updatePostit(lastPostitId, { text: comment });
     }
 
     setSnackbarOpen(false);
@@ -65,41 +72,43 @@ const AddPostitButton = () => {
       </Tooltip>
 
       {/* Snackbar affiché après l'ajout du post-it */}
-      <Snackbar
-        open={snackbarOpen}
-        message={showInput ? "" : "Post-it ajouté"}
-        action={
-          !showInput && (
-            <Tooltip title="Ajouter un commentaire">
-              <IconButton color="secondary" onClick={handleEditComment}>
-                <EditIcon />
-              </IconButton>
-            </Tooltip>
-          )
-        }
-      >
-        {/* Champ de commentaire bien visible */}
-        {showInput && (
-          <TextField
-            size="small"
-            variant="outlined"
-            placeholder="Ajouter un commentaire..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            onBlur={handleSaveComment}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") handleSaveComment();
-            }}
-            autoFocus
-            sx={{
-              width: 220,
-              bgcolor: "background.paper",
-              border: "1px solid #ccc",
-              borderRadius: 1,
-              p: 1,
-            }}
-          />
-        )}
+      <Snackbar open={snackbarOpen} onClose={() => setSnackbarOpen(false)}>
+        <SnackbarContent
+          message={
+            showInput ? (
+              <TextField
+                size="small"
+                variant="outlined"
+                placeholder="Ajouter un commentaire..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                onBlur={handleSaveComment}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") handleSaveComment();
+                }}
+                autoFocus
+                sx={{
+                  width: 220,
+                  bgcolor: "background.paper",
+                  border: "1px solid #ccc",
+                  borderRadius: 1,
+                  p: 1,
+                }}
+              />
+            ) : (
+              "Post-it ajouté"
+            )
+          }
+          action={
+            !showInput && (
+              <Tooltip title="Ajouter un commentaire">
+                <IconButton color="secondary" onClick={handleEditComment}>
+                  <EditIcon />
+                </IconButton>
+              </Tooltip>
+            )
+          }
+        />
       </Snackbar>
     </Box>
   );
