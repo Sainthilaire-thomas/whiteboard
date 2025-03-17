@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useCallData } from "@/context/CallDataContext";
 import {
   Box,
@@ -43,6 +43,8 @@ const Transcript = ({ callId }: TranscriptProps) => {
     currentWordIndex,
     updateCurrentWordIndex,
   } = useAudio();
+
+  const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
   const [highlightTurnOne, setHighlightTurnOne] = useState(false);
 
@@ -167,6 +169,15 @@ const Transcript = ({ callId }: TranscriptProps) => {
     }
   }, [currentWordIndex, transcription, updateCurrentWord]);
 
+  useEffect(() => {
+    if (currentWordIndex >= 0 && wordRefs.current[currentWordIndex]) {
+      wordRefs.current[currentWordIndex]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center", // 🔹 Place le mot au centre de la fenêtre
+      });
+    }
+  }, [currentWordIndex]);
+
   // ✅ Styles conditionnels pour les tours de parole
   const getWordStyle = (index: number, word: Word) => ({
     fontWeight: index === currentWordIndex ? "bold" : "normal",
@@ -243,6 +254,7 @@ const Transcript = ({ callId }: TranscriptProps) => {
             transcription.words.map((word: Word, index: number) => (
               <span
                 key={index}
+                ref={(el) => (wordRefs.current[index] = el)} // 🔹 Stocke la référence du mot
                 style={getWordStyle(index, word)}
                 onClick={() => handleWordClick(word, index)}
               >
