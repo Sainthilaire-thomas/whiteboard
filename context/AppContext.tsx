@@ -15,9 +15,16 @@ import { useUI } from "@/hooks/AppContext/useUI";
 import { useAuth } from "@/hooks/AppContext/useAuth";
 import { useSelection } from "@/hooks/AppContext/useSelection";
 import { useEntreprises } from "@/hooks/AppContext/useEntreprises";
+import { useCallData } from "@/context/CallDataContext"; // 👈 si tu ne l'as pas encore
+import { CallDataProvider } from "@/context/CallDataContext";
 
 // 📌 Définition du type pour AppContext
-import { AppContextType, Nudge, UseNudgesResult } from "@/types/types";
+import {
+  AppContextType,
+  Nudge,
+  UseNudgesResult,
+  Postit as PostitType,
+} from "@/types/types";
 
 // 📌 Création du contexte
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -39,8 +46,19 @@ export const RawAppProvider = ({ children }: { children: ReactNode }) => {
   const nudges = useNudges();
   const ui = useUI();
   const auth = useAuth();
-  const sélections = useSelection();
+
   const { entreprises, isLoading, error } = useEntreprises();
+
+  // 🟢 État pour stocker le post-it sélectionné
+  const [selectedPostit, setSelectedPostit] = useState<PostitType | null>(null);
+
+  const { idCallActivite, selectedCall } = useCallData(); // ✅ on passe par le contexte ici
+  const selectedCallId = selectedCall?.callid ?? null;
+  const selection = useSelection(
+    selectedPostit,
+    selectedCallId,
+    idCallActivite
+  );
 
   // 🗂️ États globaux
   const [idActivite, setIdActivite] = useState<number | null>(null);
@@ -109,23 +127,27 @@ export const RawAppProvider = ({ children }: { children: ReactNode }) => {
         setSelectedEntreprise,
         refreshKey,
         setRefreshKey,
+        // Ajout de selectedPostit dans le contexte global
+        selectedPostit,
+        setSelectedPostit,
 
         // Sélections (via useSelection)
-        selectedSujet: sélections.selectedSujet,
-        handleSelectSujet: sélections.handleSelectSujet,
-        sujetsForActivite: sélections.sujetsForActivite,
-        fetchSujetsForActivite: sélections.fetchSujetsForActivite,
-        subjectPracticeRelations: sélections.subjectPracticeRelations,
-        toggleSujet: sélections.toggleSujet,
-        selectedPratique: sélections.selectedPratique,
-        handleSelectPratique: sélections.handleSelectPratique,
-        highlightedPractices: sélections.highlightedPractices,
-        calculateHighlightedPractices: sélections.calculateHighlightedPractices,
-        resetSelectedState: sélections.resetSelectedState,
-        avatarTexts: sélections.avatarTexts,
-        updateAvatarText: sélections.updateAvatarText,
-        selectedPostitIds: sélections.selectedPostitIds,
-        setSelectedPostitIds: sélections.setSelectedPostitIds,
+        // selectedSujet: sélections.selectedSujet,
+        // handleSelectSujet: sélections.handleSelectSujet,
+        // sujetsForActivite: sélections.sujetsForActivite,
+        // fetchSujetsForActivite: sélections.fetchSujetsForActivite,
+        // subjectPracticeRelations: sélections.subjectPracticeRelations,
+        // toggleSujet: sélections.toggleSujet,
+        // selectedPratique: sélections.selectedPratique,
+        // handleSelectPratique: sélections.handleSelectPratique,
+        // highlightedPractices: sélections.highlightedPractices,
+        // calculateHighlightedPractices: sélections.calculateHighlightedPractices,
+        // resetSelectedState: sélections.resetSelectedState,
+        // avatarTexts: sélections.avatarTexts,
+        // updateAvatarText: sélections.updateAvatarText,
+        // selectedPostitIds: sélections.selectedPostitIds,
+        // setSelectedPostitIds: sélections.setSelectedPostitIds,
+        ...selection,
 
         // Authentification
         user: auth.user,
@@ -140,6 +162,10 @@ export const RawAppProvider = ({ children }: { children: ReactNode }) => {
 const queryClient = new QueryClient();
 export const AppProvider = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={queryClient}>
-    <RawAppProvider>{children}</RawAppProvider>
+    <CallDataProvider>
+      {" "}
+      {/* ✅ On entoure RawAppProvider ici */}
+      <RawAppProvider>{children}</RawAppProvider>
+    </CallDataProvider>
   </QueryClientProvider>
 );

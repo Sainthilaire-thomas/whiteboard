@@ -24,25 +24,22 @@ export default function RootLayout({
       <body>
         <QueryClientProvider client={queryClient}>
           <SupabaseProvider>
-            <CallDataProvider>
-              <AppProvider>
-                <ZohoProvider>
-                  <TaggingDataProvider>
-                    <CurrentViewProvider>
-                      <ConseillerProvider>
-                        <CustomThemeProvider>
-                          <div>
-                            <GlobalNavBar /> {/* Navbar globale */}
-                            <main>{children}</main>{" "}
-                            {/* Le contenu de la page */}
-                          </div>
-                        </CustomThemeProvider>
-                      </ConseillerProvider>
-                    </CurrentViewProvider>
-                  </TaggingDataProvider>
-                </ZohoProvider>
-              </AppProvider>
-            </CallDataProvider>
+            <AppProvider>
+              <ZohoProvider>
+                <TaggingDataProvider>
+                  <CurrentViewProvider>
+                    <ConseillerProvider>
+                      <CustomThemeProvider>
+                        <div>
+                          <GlobalNavBar /> {/* Navbar globale */}
+                          <main>{children}</main> {/* Le contenu de la page */}
+                        </div>
+                      </CustomThemeProvider>
+                    </ConseillerProvider>
+                  </CurrentViewProvider>
+                </TaggingDataProvider>
+              </ZohoProvider>
+            </AppProvider>{" "}
           </SupabaseProvider>
         </QueryClientProvider>
       </body>

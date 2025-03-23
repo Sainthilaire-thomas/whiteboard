@@ -29,6 +29,7 @@ import { useSupabase } from "@/context/SupabaseContext";
 import { Postit } from "@/types/types";
 import SimplifiedGridContainerSujets from "./SimplifiedGridContainerSujets";
 import SimplifiedGridContainerPratiques from "./SimplifiedGridContainerPratiques";
+import EvaluationCardCompact from "./EvaluationCardCompact";
 import { columnConfigSujets } from "@/config/gridConfig"; // 📌 Vérifie que ce fichier existe !
 
 export default function SyntheseEvaluation() {
@@ -201,39 +202,33 @@ export default function SyntheseEvaluation() {
       <Divider sx={{ my: 2 }} />
 
       {/* 📌 Détail des éléments d'évaluation */}
-      <Paper sx={{ my: 4, p: 2 }}>
-        <Typography variant="h5">DÉTAIL DES ÉLÉMENTS ÉVALUÉS</Typography>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Passage appel</TableCell>
-                <TableCell>Timestamp</TableCell>
-                <TableCell>Commentaire</TableCell>
-                <TableCell>Critère</TableCell>
-                <TableCell>Grille</TableCell>
-                <TableCell>Pratique</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredPostits.map((postit) => (
-                <TableRow key={postit.id}>
-                  <TableCell>{postit.word}</TableCell>
-                  <TableCell>
-                    {new Date(postit.timestamp * 1000)
-                      .toISOString()
-                      .substr(11, 8)}
-                  </TableCell>
-                  <TableCell>{postit.text}</TableCell>
-                  <TableCell>{postit.sujet || "Non assigné"}</TableCell>
-                  <TableCell>{getDomainName(postit.iddomaine)}</TableCell>
-                  <TableCell>{postit.pratique || "Non assigné"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+      <Grid container spacing={2}>
+        {filteredPostits.map((postit) => {
+          // 👉 Trouver la couleur du sujet via idcategoriesujet (indirectement via le sujet)
+          const sujet = sujetsData.find((s) => s.idsujet === postit.idsujet);
+          const couleurSujet = categoriesSujets.find(
+            (cat) => cat.idcategoriesujet === sujet?.idcategoriesujet
+          )?.couleur;
+
+          const pratique = pratiques.find(
+            (p) => p.nompratique === postit.pratique
+          );
+          const couleurPratique = categoriesPratiques.find(
+            (cat) => cat.id === pratique?.idcategoriepratique
+          )?.couleur;
+
+          return (
+            <Grid item xs={12} sm={6} key={postit.id}>
+              <EvaluationCardCompact
+                postit={postit}
+                couleurSujet={couleurSujet}
+                couleurPratique={couleurPratique}
+                onReplay={(ts) => console.log("🔁 Rejouer à", ts)}
+              />
+            </Grid>
+          );
+        })}
+      </Grid>
     </Box>
   );
 }

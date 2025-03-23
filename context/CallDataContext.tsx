@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  useState,
-  createContext,
-  useContext,
-  ReactNode,
-  useEffect,
-  useMemo,
-} from "react";
+import { useState, createContext, useContext, ReactNode } from "react";
+import { useAppContext } from "@/context/AppContext";
 
 // 📚 Imports des hooks
 import { useCalls } from "@/hooks/CallDataContext/useCalls";
@@ -16,8 +10,14 @@ import { useTranscriptions } from "@/hooks/CallDataContext/useTranscriptions";
 import { useDomains } from "@/hooks/useDomains";
 import { useAudio } from "@/hooks/CallDataContext/useAudio";
 import { useZones } from "@/hooks/CallDataContext/useZones";
+import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
 
 import { CallDataContextType, Word } from "@/types/types";
+
+interface CallDataProviderProps {
+  children: ReactNode;
+  selectedEntreprise: number | null;
+}
 
 // 🔹 Création du contexte CallDataContext
 const CallDataContext = createContext<CallDataContextType | undefined>(
@@ -34,12 +34,35 @@ export const useCallData = (): CallDataContextType => {
 };
 
 // 🛠️ Provider du contexte CallDataContext
-export const CallDataProvider = ({ children }: { children: ReactNode }) => {
-  // 📝 Appels
-  const { calls, fetchCalls, selectedCall, selectCall, idCallActivite } =
-    useCalls();
+export const CallDataProvider = ({
+  children,
+  selectedEntreprise,
+}: CallDataProviderProps) => {
+  // 📞 Appels
+  const {
+    calls,
+    fetchCalls,
+    selectedCall,
+    selectCall,
+    setSelectedCall,
+    archiveCall,
+    deleteCall,
+    createAudioUrlWithToken,
+    isLoadingCalls,
+  } = useCalls();
 
-  // 📌 Post-its
+  // ✅ Activité liée à un appel
+
+  const {
+    idCallActivite,
+    fetchActivitiesForCall,
+    createActivityForCall,
+    removeActivityForCall,
+    isLoading,
+    getActivityIdFromCallId,
+  } = useCallActivity({ selectedCall, fetchCalls, selectedEntreprise });
+
+  // 🗒️ Post-its liés à l’appel sélectionné
   const {
     allPostits,
     appelPostits,
@@ -47,9 +70,13 @@ export const CallDataProvider = ({ children }: { children: ReactNode }) => {
     addPostit,
     updatePostit,
     deletePostit,
+    postitToSujetMap,
+    updatePostitToSujetMap,
+    postitToPratiqueMap,
+    updatePostitToPratiqueMap,
   } = usePostits(selectedCall?.callid ?? null);
 
-  // 🖋️ Transcriptions
+  // 🖋️ Transcription
   const { transcription, fetchTranscription } = useTranscriptions();
 
   // 🌍 Domaines
@@ -61,44 +88,71 @@ export const CallDataProvider = ({ children }: { children: ReactNode }) => {
       audioSrc: string | null;
       setAudioSrc: (src: string | null) => void;
       playAudioAtTimestamp: (timestamp: number) => void;
-      playerRef: React.RefObject<HTMLAudioElement>; // 🔴 Cast ici
+      playerRef: React.RefObject<HTMLAudioElement>;
     };
 
-  // 📝 Zones de texte
+  // 🧠 Zones
   const { zoneTexts, selectTextForZone } = useZones();
 
-  // 🗣️ Gestion du mot courant
-  const [currentWord, setCurrentWord] = useState<Word | null>(null); // Initialisez currentWord à null
-  const updateCurrentWord = (word: Word | null) => setCurrentWord(word); // Fonction pour mettre à jour currentWord
+  // 🗣️ Mot courant
+  const [currentWord, setCurrentWord] = useState<Word | null>(null);
+  const updateCurrentWord = (word: Word | null) => setCurrentWord(word);
 
   return (
     <CallDataContext.Provider
       value={{
+        // 📞 Appels
         calls,
         fetchCalls,
         selectedCall,
         selectCall,
+        setSelectedCall,
+        archiveCall,
+        deleteCall,
+        createAudioUrlWithToken,
+        isLoadingCalls,
+
+        // 🗒️ Post-its
         allPostits,
         appelPostits,
         fetchAllPostits,
         addPostit,
         updatePostit,
         deletePostit,
+        postitToSujetMap,
+        updatePostitToSujetMap,
+        postitToPratiqueMap,
+        updatePostitToPratiqueMap,
+
+        // 📚 Transcription
         transcription,
         fetchTranscription,
+
+        // 🧠 Zones
+        zoneTexts,
+        selectTextForZone,
+
+        // 🌍 Domaines
         domains,
         domainNames,
         fetchDomains,
+
+        // 🎧 Audio
         audioSrc,
         setAudioSrc,
         playAudioAtTimestamp,
         playerRef,
-        zoneTexts,
-        selectTextForZone,
-        createAudioUrlWithToken: useCalls().createAudioUrlWithToken,
-        currentWord, // Ajoutez currentWord au provider
-        updateCurrentWord, // Ajoutez updateCurrentWord au provider
+
+        // 🗣️ Word tracking
+        currentWord,
+        updateCurrentWord,
+
+        // 🔄 Activité liée à l’appel
         idCallActivite,
+        fetchActivitiesForCall,
+        createActivityForCall,
+        removeActivityForCall,
+        getActivityIdFromCallId,
       }}
     >
       {children}

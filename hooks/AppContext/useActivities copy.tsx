@@ -29,12 +29,12 @@ export function useActivities(): UseActivitiesResult {
           throw new Error(error.message);
         }
 
-        // 🛠️ Conversion explicite vers le type CategoriePratique[]
+        // ✅ On mappe les données pour qu'elles correspondent au type `CategoriePratique`
         return (data ?? []).map((category) => ({
-          id: category.idcategoriepratique,
-          name: category.nomcategorie,
-          couleur: category.couleur,
-        })) as CategoriePratique[];
+          id: category.idcategoriepratique, // ✅ Correction : `id`
+          name: category.nomcategorie, // ✅ Correction : `name`
+          couleur: category.couleur, // ✅ La couleur est bien présente
+        })) as CategoriePratique[]; // 🔥 Assure la conformité avec `CategoriePratique`
       },
     });
 

@@ -8,7 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
+import { useCallData } from "@/context/CallDataContext";
 
 interface Conseiller {
   idconseiller: number;
@@ -49,7 +49,7 @@ export const ConseillerProvider = ({ children }: { children: ReactNode }) => {
   const [isLoadingConseillers, setIsLoadingConseillers] = useState(true);
   const [errorConseillers, setErrorConseillers] = useState<string | null>(null);
 
-  const { idCallActivite } = useCallActivity();
+  const { idCallActivite } = useCallData();
 
   useEffect(() => {
     const fetchConseillers = async () => {

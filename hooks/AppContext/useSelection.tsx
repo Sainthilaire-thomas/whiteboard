@@ -3,8 +3,13 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { Sujet, Pratique, RelationSujetPratique, Item } from "@/types/types";
 import { usePostits } from "@/hooks/CallDataContext/usePostits";
 import { useCallData } from "@/context/CallDataContext";
+import { Postit } from "@/types/types";
 
-export function useSelection() {
+export function useSelection(
+  selectedPostit: Postit | null,
+  selectedCallId: number | null,
+  idCallActivite: number | null
+) {
   const [selectedSujet, setSelectedSujet] = useState<Sujet | null>(null);
   const [selectedPratique, setSelectedPratique] = useState<Pratique | null>(
     null
@@ -15,12 +20,14 @@ export function useSelection() {
   const [avatarTexts, setAvatarTexts] = useState<Record<number, string>>({});
   const [selectedPostitIds, setSelectedPostitIds] = useState<number[]>([]);
   const [sujetsForActivite, setSujetsForActivite] = useState<number[]>([]);
+  const [initialSujetsForActivite, setInitialSujetsForActivite] = useState<
+    number[]
+  >([]);
   const [subjectPracticeRelations, setSubjectPracticeRelations] = useState<
     RelationSujetPratique[]
   >([]);
-  const { selectedCall } = useCallData();
-  const selectedCallId = selectedCall ? selectedCall.callid : null;
-  const { updatePostit } = usePostits(selectedCallId);
+
+  const { updatePostit } = usePostits(selectedCallId ?? null);
 
   // 📌 🚀 Récupération des relations sujet ↔ pratique
   useEffect(() => {
@@ -45,6 +52,7 @@ export function useSelection() {
   useEffect(() => {
     if (!selectedSujet) {
       setHighlightedPractices([]); // ✅ Aucune pratique highlightée si aucun sujet sélectionné
+
       return;
     }
 
@@ -55,22 +63,96 @@ export function useSelection() {
     setHighlightedPractices([...new Set(newHighlighted)]);
   }, [selectedSujet, subjectPracticeRelations]);
 
-  // 📝 **Sélection d’un sujet (un seul possible)**
-  const handleSelectSujet = useCallback(
-    (sujet: Sujet) => {
-      if (!selectedPostitIds.length) {
-        alert("⚠️ Sélectionnez un post-it avant d'affecter un sujet.");
+  // ✅ Mettre à jour les pratiques highlightées quand on change de post-it
+  useEffect(() => {
+    if (!selectedPostit || !selectedPostit.idsujet) {
+      setHighlightedPractices([]); // Aucune pratique highlightée si pas de sujet
+      return;
+    }
+
+    const newHighlighted = subjectPracticeRelations
+      .filter((relation) => relation.idsujet === selectedPostit.idsujet)
+      .map((relation) => relation.idpratique);
+
+    setHighlightedPractices([...new Set(newHighlighted)]);
+  }, [selectedPostit, subjectPracticeRelations]); // ✅ Mise à jour dès que `selectedPostit` change
+
+  // 📌 🚀 Récupération des sujets liés à l’activité
+  const fetchSujetsForActivite = useCallback(
+    async (idActivite: number, updateInitial = false) => {
+      const { data, error } = await supabaseClient
+        .from("activitesconseillers_sujets")
+        .select("idsujet")
+        .eq("idactivite", idActivite);
+
+      if (error) {
+        console.error("❌ Erreur récupération sujets:", error);
         return;
       }
 
+      console.log(
+        "📥 Chargement des sujets de l’activité :",
+        data.map((s) => s.idsujet)
+      );
+
+      setSujetsForActivite(data.map((s) => s.idsujet)); // 🔹 Mise à jour dynamique
+
+      if (updateInitial) {
+        setInitialSujetsForActivite(data.map((s) => s.idsujet)); // 🔹 Ne mettre à jour les initiaux qu'au chargement du post-it
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (selectedPostit && selectedPostit.idactivite) {
+      fetchSujetsForActivite(selectedPostit.idactivite, true); // ✅ On met à jour `initialSujetsForActivite` uniquement ici
+    }
+  }, [selectedPostit, fetchSujetsForActivite]);
+
+  const loadSujetsForPostit = useCallback(async (idActivite: number) => {
+    const { data, error } = await supabaseClient
+      .from("activitesconseillers_sujets")
+      .select("idsujet")
+      .eq("idactivite", idActivite);
+
+    if (error) {
+      console.error("❌ Erreur récupération sujets initiaux :", error);
+      return;
+    }
+
+    const idsujets = data.map((s) => s.idsujet);
+    console.log("📥 Sujets initiaux pour ce post-it :", idsujets);
+
+    setInitialSujetsForActivite(idsujets); // ✅ Fige les sujets initiaux pour ce post-it
+    setSujetsForActivite(idsujets); // ✅ État évolutif mis à jour
+  }, []);
+
+  useEffect(() => {
+    if (selectedPostit && selectedPostit.idactivite) {
+      loadSujetsForPostit(selectedPostit.idactivite);
+    }
+  }, [selectedPostit, loadSujetsForPostit]); // ✅ Rechargé uniquement à chaque changement de post-it
+
+  // 📝 **Sélection d’un sujet (un seul possible)**
+  const handleSelectSujet = useCallback(
+    (sujet: Sujet | null) => {
       setSelectedSujet(sujet);
 
-      selectedPostitIds.forEach((postitId) => {
-        updatePostit(postitId, "sujet", sujet.nomsujet);
-        updatePostit(postitId, "idsujet", sujet.idsujet);
-      });
+      if (!sujet) {
+        setHighlightedPractices([]); // Désélection -> plus de pratiques en vert
+        return;
+      }
+
+      // Trouver les pratiques associées au sujet
+      const newHighlighted = subjectPracticeRelations
+        .filter((relation) => relation.idsujet === sujet.idsujet)
+        .map((relation) => relation.idpratique);
+
+      setHighlightedPractices([...new Set(newHighlighted)]);
+      console.log("✅ Pratiques mises en évidence :", newHighlighted);
     },
-    [selectedPostitIds, updatePostit]
+    [subjectPracticeRelations]
   );
 
   // 📝 **Sélection d’une pratique**
@@ -89,22 +171,6 @@ export function useSelection() {
     },
     [subjectPracticeRelations]
   );
-
-  // 📌 **Mise à jour des sujets liés à l’activité lors du chargement**
-  const fetchSujetsForActivite = useCallback(async (idActivite: number) => {
-    const { data, error } = await supabaseClient
-      .from("activitesconseillers_sujets")
-      .select("idsujet")
-      .eq("idactivite", idActivite);
-
-    if (error) {
-      console.error("❌ Erreur récupération sujets:", error);
-      return;
-    }
-
-    // 📌 On stocke uniquement les `idsujet`
-    setSujetsForActivite(data.map((s) => s.idsujet));
-  }, []);
 
   // 📌 **Activation/Désactivation d’un sujet**
   const toggleSujet = async (idActivite: number, item: Item) => {
@@ -141,6 +207,116 @@ export function useSelection() {
     }
   };
 
+  const syncSujetsForActiviteFromMap = useCallback(
+    async (
+      postitToSujetMap: Record<number, number | null>,
+      idActivite: number
+    ) => {
+      // 🧠 Extraire les IDs de sujet uniques depuis la map
+      const sujetIdsFromMap = Array.from(
+        new Set(
+          Object.values(postitToSujetMap).filter(
+            (id): id is number => id !== null
+          )
+        )
+      );
+
+      console.log("🔁 Sujets à synchroniser :", sujetIdsFromMap);
+
+      try {
+        // 🧹 1. Supprimer tous les sujets existants pour cette activité
+        const { error: deleteError } = await supabaseClient
+          .from("activitesconseillers_sujets")
+          .delete()
+          .eq("idactivite", idActivite);
+
+        if (deleteError) {
+          console.error("❌ Erreur suppression ancienne liste :", deleteError);
+          return;
+        }
+
+        // 🧩 2. Recréer les sujets à partir de la map
+        if (sujetIdsFromMap.length > 0) {
+          const { error: insertError } = await supabaseClient
+            .from("activitesconseillers_sujets")
+            .insert(
+              sujetIdsFromMap.map((id) => ({
+                idactivite: idActivite,
+                idsujet: id,
+                travaille: true,
+              }))
+            );
+
+          if (insertError) {
+            console.error(
+              "❌ Erreur insertion des nouveaux sujets :",
+              insertError
+            );
+            return;
+          }
+        }
+
+        console.log("✅ Synchronisation des sujets réussie !");
+        setSujetsForActivite(sujetIdsFromMap);
+      } catch (err) {
+        console.error("❌ Erreur générale lors de la synchronisation :", err);
+      }
+    },
+    []
+  );
+
+  const syncPratiquesForActiviteFromMap = async (
+    postitToPratiqueMap: Record<number, string | null>,
+    idActivite: number,
+    allPratiques: Pratique[]
+  ) => {
+    const pratiques = [
+      ...new Set(
+        Object.values(postitToPratiqueMap).filter((p): p is string => !!p)
+      ),
+    ];
+
+    const idsPratiques = pratiques
+      .map((nom) => allPratiques.find((p) => p.nompratique === nom)?.idpratique)
+      .filter((id): id is number => !!id);
+
+    console.log("🔁 Pratiques à synchroniser :", idsPratiques);
+
+    try {
+      // 🧹 Supprimer les pratiques existantes
+      const { error: deleteError } = await supabaseClient
+        .from("activitesconseillers_pratiques")
+        .delete()
+        .eq("idactivite", idActivite);
+
+      if (deleteError) {
+        console.error("❌ Erreur lors de la suppression :", deleteError);
+        return;
+      }
+
+      // ➕ Recréer les nouvelles pratiques
+      if (idsPratiques.length > 0) {
+        const { error: insertError } = await supabaseClient
+          .from("activitesconseillers_pratiques")
+          .insert(
+            idsPratiques.map((idpratique) => ({
+              idactivite: idActivite,
+              idpratique,
+            }))
+          );
+
+        if (insertError) {
+          console.error("❌ Erreur lors de l'insertion :", insertError);
+          return;
+        }
+      }
+
+      console.log("✅ Synchronisation des pratiques réussie !");
+    } catch (error) {
+      console.error("❌ Erreur générale de synchronisation :", error);
+    }
+  };
+
   // ♻️ **Réinitialisation des sélections**
   const resetSelectedState = useCallback(() => {
     setSelectedSujet(null);
@@ -170,7 +346,11 @@ export function useSelection() {
 
     // 📌 Ajout des sujets liés à une activité
     sujetsForActivite,
+    setSujetsForActivite,
     fetchSujetsForActivite,
+    initialSujetsForActivite,
     toggleSujet,
+    syncSujetsForActiviteFromMap,
+    syncPratiquesForActiviteFromMap,
   };
 }

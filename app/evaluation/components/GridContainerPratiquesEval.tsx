@@ -3,133 +3,76 @@
 import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import { Tooltip } from "@mui/material";
-import { useEffect, useState } from "react";
-import { supabaseClient } from "@/lib/supabaseClient";
 import { useAppContext } from "@/context/AppContext";
-import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
-import { Pratique, Category } from "@/types/types";
-import { Postit as PostitType } from "@/types/types";
+import { useCallData } from "@/context/CallDataContext";
+import { Pratique, Category, CategoriePratique } from "@/types/types";
 
 interface GridContainerPratiquesEvalProps {
-  categories: Category[];
+  categories: CategoriePratique[];
   items: Pratique[];
   columnConfig: {
-    categoryIdKey: keyof Pratique;
-    categoryNameKey: keyof Category;
-    itemIdKey: keyof Pratique;
-    itemNameKey: keyof Pratique;
+    categoryIdKey: string;
+    categoryNameKey: string;
+    itemIdKey: string;
+    itemNameKey: string;
   };
   onPratiqueClick: (pratique: Pratique) => void;
-  selectedPostit: PostitType | null;
-  setSelectedPostit: (postit: PostitType) => void;
+  pratiquesDeLActivite: string[]; // ← ✅ AJOUT ICI
 }
 
 const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
   categories,
   items,
   columnConfig,
-  onPratiqueClick,
-  selectedPostit,
-  setSelectedPostit,
+  pratiquesDeLActivite,
 }) => {
-  const [localItems, setLocalItems] = useState<Pratique[]>(items);
+  console.log("pratiquesdeLActivite", pratiquesDeLActivite);
 
+  const { updatePostit, idCallActivite, updatePostitToPratiqueMap } =
+    useCallData();
   const {
     highlightedPractices,
     idActivite,
     handleSelectPratique,
     setIdPratique,
     handleOpenDrawerWithData,
+    selectedPostit,
+    setSelectedPostit,
   } = useAppContext();
 
-  const { idCallActivite } = useCallActivity();
   const currentActivityId = idCallActivite || idActivite;
 
-  // ✅ Récupération des pratiques associées à une activité (depuis Supabase)
-  useEffect(() => {
-    if (!currentActivityId) return;
-
-    const fetchPratiquesForActivite = async () => {
-      const { data, error } = await supabaseClient
-        .from("activitesconseillers_pratiques")
-        .select("idpratique, travaille")
-        .eq("idactivite", currentActivityId);
-
-      if (error) {
-        console.error("Erreur récupération pratiques:", error);
-        return;
-      }
-
-      const updatedItems = items.map((item) => {
-        const activitePratique = data.find(
-          (d) => d.idpratique === item.idpratique
-        );
-        return activitePratique
-          ? { ...item, valeurnumérique: activitePratique.travaille ? 0 : 1 }
-          : { ...item, valeurnumérique: 1 };
-      });
-
-      setLocalItems(updatedItems);
-    };
-
-    fetchPratiquesForActivite();
-  }, [currentActivityId, items]);
-
-  // ✅ Gestion du clic sur une pratique (toggle + mise à jour Supabase)
+  // ✅ Gestion du clic sur une pratique (ajout/suppression)
   const handleItemClick = async (selectedItem: Pratique) => {
     console.log("🎯 Pratique cliquée:", selectedItem.nompratique);
 
-    handleSelectPratique(selectedItem);
-    setIdPratique(selectedItem.idpratique);
-
-    const newValue = selectedItem.valeurnumérique === 1 ? 0 : 1;
-    const updatedItems = localItems.map((item) =>
-      item.idpratique === selectedItem.idpratique
-        ? { ...item, valeurnumérique: newValue }
-        : item
-    );
-
-    setLocalItems(updatedItems);
-    onPratiqueClick(selectedItem);
-
-    // ✅ Mise à jour du Post-it actif
-    if (selectedPostit) {
-      console.log("✅ Avant mise à jour du post-it actif:", selectedPostit);
-
-      setSelectedPostit({
-        ...selectedPostit,
-        pratique: selectedItem.nompratique, // ✅ Associe la pratique
-      });
-
-      console.log("🔄 Après mise à jour du post-it actif:", {
-        pratique: selectedItem.nompratique,
-      });
-    }
-
-    if (!currentActivityId) {
-      alert("Veuillez créer une activité d'abord !");
+    if (!selectedPostit) {
+      alert("⚠️ Aucun post-it actif !");
       return;
     }
 
-    try {
-      if (newValue === 1) {
-        await supabaseClient
-          .from("activitesconseillers_pratiques")
-          .delete()
-          .match({
-            idactivite: currentActivityId,
-            idpratique: selectedItem.idpratique,
-          });
-      } else {
-        await supabaseClient.from("activitesconseillers_pratiques").upsert({
-          idactivite: currentActivityId,
-          idpratique: selectedItem.idpratique,
-          travaille: true,
-        });
-      }
-    } catch (error) {
-      console.error("Erreur gestion pratiques:", error);
-    }
+    const isSelectedForPostit =
+      selectedPostit.pratique === selectedItem.nompratique;
+
+    // 🔄 Mise à jour locale du post-it
+    const updatedPostit = isSelectedForPostit
+      ? { ...selectedPostit, pratique: "Non Assigné" }
+      : { ...selectedPostit, pratique: selectedItem.nompratique };
+
+    // ✅ Met à jour l'état local et le mapping
+    setSelectedPostit(updatedPostit);
+    updatePostitToPratiqueMap(
+      updatedPostit.id,
+      isSelectedForPostit ? null : updatedPostit.pratique
+    );
+
+    // ✅ Met à jour le post-it dans Supabase
+    await updatePostit(updatedPostit.id, {
+      pratique: updatedPostit.pratique,
+    });
+
+    console.log("✅ Post-it mis à jour !");
+    handleSelectPratique(isSelectedForPostit ? null : selectedItem);
   };
 
   // ✅ Gestion du clic droit pour ouvrir le drawer
@@ -184,7 +127,7 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
 
       {categories.map((category) => {
         // 🔍 Filtrer les pratiques appartenant à cette catégorie
-        const pratiquesFiltrees = localItems.filter(
+        const pratiquesFiltrees = items.filter(
           (item) => item[columnConfig.categoryIdKey] === category.id
         );
 
@@ -193,44 +136,48 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
             item
             xs={12 / categories.length}
             key={category.id}
-            sx={{
-              backgroundColor: category.couleur ?? "#ffffff",
-              borderLeft: "1px solid white",
-              borderRight: "1px solid white",
-            }}
+            sx={{ backgroundColor: category.couleur ?? "#ffffff" }}
           >
             {/* 📌 Affichage des pratiques */}
             {pratiquesFiltrees.length > 0 ? (
-              pratiquesFiltrees.map((item) => (
-                <Tooltip
-                  title={item.description || ""}
-                  key={item[columnConfig.itemIdKey]}
-                  placement="top"
-                >
-                  <Typography
-                    variant="body2"
-                    onClick={() => handleItemClick(item)}
-                    onContextMenu={(event) => handleRightClick(event, item)}
-                    sx={{
-                      cursor: "pointer",
-                      backgroundColor:
-                        item.valeurnumérique === 0
-                          ? "red"
-                          : highlightedPractices.includes(item.idpratique)
-                          ? "#28c30a"
-                          : "inherit",
-                      "&:hover": {
-                        backgroundColor: "rgba(255, 255, 255, 0.2)",
-                      },
-                      padding: "10px",
-                      borderBottom: "1px solid white",
-                      textAlign: "center",
-                    }}
+              pratiquesFiltrees.map((item) => {
+                const isAssociated = pratiquesDeLActivite.includes(
+                  item.nompratique
+                );
+                const isSelectedForPostit =
+                  selectedPostit?.pratique === item.nompratique;
+                const isHighlighted = highlightedPractices.includes(
+                  item.idpratique
+                );
+
+                return (
+                  <Tooltip
+                    key={item[columnConfig.itemIdKey]}
+                    title={item.description || ""}
+                    placement="top"
                   >
-                    {item[columnConfig.itemNameKey]}
-                  </Typography>
-                </Tooltip>
-              ))
+                    <Typography
+                      variant="body2"
+                      onClick={() => handleItemClick(item)}
+                      onContextMenu={(event) => handleRightClick(event, item)}
+                      sx={{
+                        cursor: "pointer",
+                        backgroundColor: isSelectedForPostit
+                          ? "red" // 🟥 Pratique active sur le post-it
+                          : isAssociated
+                          ? "gray" // 🟫 Pratique encore associée à l'activité
+                          : category.couleur, // 🎨 Couleur d'origine si elle n'est plus associée
+                        border: isHighlighted ? "2px dashed #FFA500" : "none", // ✨ Highlight si associée au sujet sélectionné
+                        padding: "10px",
+                        textAlign: "center",
+                      }}
+                    >
+                      {item[columnConfig.itemNameKey]}{" "}
+                      {isHighlighted ? "🔗" : ""}
+                    </Typography>
+                  </Tooltip>
+                );
+              })
             ) : (
               <Typography
                 variant="body2"

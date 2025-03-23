@@ -1,25 +1,46 @@
 "use client";
 
-import { Box, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
-import { Entreprise } from "@/types/types";
+import {
+  Box,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Typography,
+} from "@mui/material";
+import { useAppContext } from "@/context/AppContext";
 
-interface EntrepriseSelectionProps {
-  entreprises: Entreprise[]; // Utilisation du type Entreprise
-  selectedEntreprise: number | null;
-  setSelectedEntreprise: (id: number | null) => void;
-}
+export default function EntrepriseSelection() {
+  const {
+    entreprises,
+    selectedEntreprise,
+    setSelectedEntreprise,
+    isLoadingEntreprises,
+    errorEntreprises,
+  } = useAppContext();
 
-export default function EntrepriseSelection({
-  entreprises,
-  selectedEntreprise,
-  setSelectedEntreprise,
-}: EntrepriseSelectionProps) {
+  if (isLoadingEntreprises) {
+    return <Typography>Chargement des entreprises...</Typography>;
+  }
+
+  if (errorEntreprises) {
+    return (
+      <Typography color="error">
+        Erreur de chargement : {errorEntreprises.message}
+      </Typography>
+    );
+  }
+
+  if (!entreprises || entreprises.length === 0) {
+    return <Typography>Aucune entreprise disponible</Typography>;
+  }
+
   return (
     <Box sx={{ flexGrow: 1, p: 2 }}>
       <FormControl fullWidth sx={{ mb: 2 }}>
         <InputLabel>Entreprise</InputLabel>
         <Select
-          value={selectedEntreprise || ""}
+          value={selectedEntreprise ?? ""}
           onChange={(event) =>
             setSelectedEntreprise(
               event.target.value ? Number(event.target.value) : null
@@ -27,7 +48,7 @@ export default function EntrepriseSelection({
           }
           label="Entreprise"
         >
-          <MenuItem value="">Aucune Sélection</MenuItem>
+          <MenuItem value="">Aucune sélection</MenuItem>
           {entreprises.map((entreprise) => (
             <MenuItem key={entreprise.id} value={entreprise.id}>
               {entreprise.nom}

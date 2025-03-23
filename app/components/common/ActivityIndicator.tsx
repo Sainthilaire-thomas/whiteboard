@@ -23,15 +23,13 @@ import { useRouter } from "next/navigation";
 import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
 import { useConseiller } from "@/context/ConseillerContext";
-import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 const ActivityIndicator = () => {
   const router = useRouter();
   const { selectedEntreprise } = useAppContext();
-  const { selectedCall } = useCallData();
+  const { selectedCall, idCallActivite } = useCallData();
   const { selectedConseiller, conseillers } = useConseiller();
-  const { idCallActivite } = useCallActivity();
 
   const [currentPhase, setCurrentPhase] = useState<string | null>(null);
 

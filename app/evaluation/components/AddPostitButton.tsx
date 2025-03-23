@@ -17,8 +17,8 @@ const AddPostitButton = () => {
   const [showInput, setShowInput] = useState(false);
   const [comment, setComment] = useState("");
   const [lastPostitId, setLastPostitId] = useState<number | null>(null);
-  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
 
+  /** 🔹 Ajout d'un Post-it */
   const handleAddPostit = async () => {
     if (!currentWord) return;
 
@@ -26,41 +26,56 @@ const AddPostitButton = () => {
     const wordText = currentWord.text ?? "Post-it";
     const timestamp = currentWord.startTime ?? 0;
 
-    const newPostitId = await addPostit(wordid, wordText, timestamp);
+    try {
+      const newPostitId = await addPostit(wordid, wordText, timestamp);
+      console.log("🔹 ID du post-it ajouté:", newPostitId);
 
-    console.log("🔹 ID du post-it ajouté:", newPostitId);
-
-    if (typeof newPostitId === "number") {
-      setLastPostitId(newPostitId);
-      setSnackbarOpen(true);
-      setShowInput(false);
-      setComment("");
-
-      // ⏳ Timeout pour masquer le Snackbar
-      const id = setTimeout(() => {
-        if (!showInput) setSnackbarOpen(false);
-      }, 5000);
-      setTimeoutId(id);
-    } else {
-      console.error("❌ Erreur lors de l'ajout du post-it.");
+      if (typeof newPostitId === "number") {
+        setLastPostitId(newPostitId);
+        setSnackbarOpen(true);
+        setShowInput(false);
+        setComment("");
+      }
+    } catch (error) {
+      console.error("❌ Erreur lors de l'ajout du post-it:", error);
     }
   };
 
+  /** 🔹 Ouverture du champ de commentaire */
   const handleEditComment = () => {
     setShowInput(true);
-    setSnackbarOpen(true); // Assure que le Snackbar reste ouvert
-    if (timeoutId) clearTimeout(timeoutId);
+    setSnackbarOpen(true);
   };
 
+  /** 🔹 Sauvegarde du commentaire */
   const handleSaveComment = async () => {
-    console.log("📝 Tentative de mise à jour avec ID:", lastPostitId);
-    if (lastPostitId && comment.trim() !== "") {
-      await updatePostit(lastPostitId, { text: comment });
-    }
+    if (!lastPostitId || !comment.trim()) return;
 
+    try {
+      console.log("📝 Mise à jour du Post-it ID:", lastPostitId);
+      await updatePostit(lastPostitId, { text: comment });
+    } catch (error) {
+      console.error("❌ Erreur lors de la mise à jour du post-it:", error);
+    } finally {
+      handleCloseSnackbar();
+    }
+  };
+
+  /** 🔹 Fermeture du Snackbar */
+  const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
     setShowInput(false);
   };
+
+  /** 🔹 Ferme automatiquement le Snackbar après 5 secondes (si pas de saisie) */
+  useEffect(() => {
+    if (snackbarOpen && !showInput) {
+      const timer = setTimeout(() => {
+        handleCloseSnackbar();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [snackbarOpen, showInput]);
 
   return (
     <Box>
@@ -72,7 +87,7 @@ const AddPostitButton = () => {
       </Tooltip>
 
       {/* Snackbar affiché après l'ajout du post-it */}
-      <Snackbar open={snackbarOpen} onClose={() => setSnackbarOpen(false)}>
+      <Snackbar open={snackbarOpen} onClose={handleCloseSnackbar}>
         <SnackbarContent
           message={
             showInput ? (
@@ -83,9 +98,7 @@ const AddPostitButton = () => {
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 onBlur={handleSaveComment}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") handleSaveComment();
-                }}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveComment()}
                 autoFocus
                 sx={{
                   width: 220,

@@ -7,11 +7,9 @@ import { Call, UseCallsResult } from "@/types/types";
 export function useCalls(): UseCallsResult {
   const [calls, setCalls] = useState<Call[]>([]);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
-  const [idCallActivite, setIdCallActivite] = useState<number | null>(null);
-  const [isLoadingCalls, setIsLoadingCalls] = useState<boolean>(false);
-  const [isLoadingActivity, setIsLoadingActivity] = useState<boolean>(false);
+  const [isLoadingCalls, setIsLoadingCalls] = useState(false);
 
-  // ✅ Récupération des appels pour une entreprise (avec activités)
+  // 🔁 Récupération des appels pour une entreprise (avec activités)
   const fetchCalls = useCallback(async (identreprise: number) => {
     if (!identreprise) {
       console.warn("⚠️ Aucun identreprise fourni !");
@@ -20,31 +18,24 @@ export function useCalls(): UseCallsResult {
 
     setIsLoadingCalls(true);
 
-    // Étape 1: Récupérer les callid associés à l'entreprise
     const { data: callIdsData, error: callIdsError } = await supabaseClient
       .from("entreprise_call")
       .select("callid")
       .eq("identreprise", identreprise);
 
     if (callIdsError) {
-      console.error(
-        "❌ Erreur lors de la récupération des callid:",
-        callIdsError
-      );
+      console.error("❌ Erreur récupération callid:", callIdsError);
       setIsLoadingCalls(false);
       return;
     }
 
-    const callIds = callIdsData.map((row: { callid: number }) => row.callid);
+    const callIds = callIdsData.map((row) => row.callid);
 
     if (callIds.length === 0) {
-      console.warn("⚠️ Aucun appel trouvé pour cette entreprise.");
       setCalls([]);
       setIsLoadingCalls(false);
       return;
     }
-
-    // Étape 2: Récupérer les appels avec leurs activités associées
 
     const { data, error } = await supabaseClient
       .from("call")
@@ -71,9 +62,9 @@ export function useCalls(): UseCallsResult {
       .in("callid", callIds);
 
     if (error) {
-      console.error("❌ Erreur lors de la récupération des appels:", error);
+      console.error("❌ Erreur récupération appels:", error);
     } else {
-      const formattedData: Call[] = data.map((call: any) => ({
+      const formattedCalls: Call[] = data.map((call: any) => ({
         callid: call.callid,
         filename: call.filename,
         audiourl: call.audiourl,
@@ -86,100 +77,25 @@ export function useCalls(): UseCallsResult {
         preparedfortranscript: call.preparedfortranscript,
         status: call.status,
         duree: call.duree,
-        callactivityrelation: call.callactivityrelation
-          ? call.callactivityrelation.map((relation: any) => ({
-              activityid: relation.activityid,
-              activitesconseillers: relation.activitesconseillers
-                ? Array.isArray(relation.activitesconseillers)
-                  ? relation.activitesconseillers.map((act: any) => ({
-                      idactivite: act.idactivite,
-                      nature: act.nature,
-                    }))
-                  : [
-                      {
-                        idactivite: relation.activitesconseillers.idactivite,
-                        nature: relation.activitesconseillers.nature,
-                      },
-                    ]
-                : [],
-            }))
-          : [],
+        callactivityrelation:
+          call.callactivityrelation?.map((rel: any) => ({
+            activityid: rel.activityid,
+            activitesconseillers: Array.isArray(rel.activitesconseillers)
+              ? rel.activitesconseillers.map((act: any) => ({
+                  idactivite: act.idactivite,
+                  nature: act.nature,
+                }))
+              : [],
+          })) ?? [],
       }));
 
-      setCalls(formattedData);
+      setCalls(formattedCalls);
     }
 
     setIsLoadingCalls(false);
   }, []);
 
-  // ✅ Création d'une activité et association à un appel (si aucune n’existe)
-
-  const createActivityForCall = useCallback(
-    async (callId: number, activityType: string, idConseiller: number) => {
-      setIsLoadingActivity(true);
-
-      try {
-        const dateNow = new Date().toISOString();
-
-        // 📝 Insérer une nouvelle activité avec `idconseiller`
-        const { data: activityData, error: errorActivity } =
-          await supabaseClient
-            .from("activitesconseillers")
-            .insert([
-              {
-                dateactivite: dateNow,
-                statut: "ouvert",
-                nature: activityType, // ✅ Type de l’activité
-                idconseiller: idConseiller, // ✅ Ajout du conseiller sélectionné
-              },
-            ])
-            .select()
-            .single();
-
-        if (errorActivity) {
-          console.error(
-            "❌ Erreur lors de l'insertion dans activitesconseillers :",
-            errorActivity
-          );
-          throw errorActivity;
-        }
-
-        if (!activityData) {
-          console.error(
-            "⚠️ L'insertion de l'activité a retourné une valeur vide."
-          );
-          return;
-        }
-
-        const activityId = activityData.idactivite;
-
-        setIdCallActivite(activityId);
-
-        // 🔗 Associer l’appel à l’activité
-        const { error: errorRelation } = await supabaseClient
-          .from("callactivityrelation")
-          .insert([{ callid: callId, activityid: activityId }]);
-
-        if (errorRelation) {
-          console.error(
-            "❌ Erreur lors de l'association de l'appel à l'activité:",
-            errorRelation
-          );
-          throw errorRelation;
-        }
-
-        // 🔄 Rafraîchir les appels
-        fetchCalls(selectedCall?.callid ?? 0);
-      } catch (error) {
-        console.error("❌ Erreur lors de la création de l’activité :", error);
-      } finally {
-        setIsLoadingActivity(false);
-      }
-    },
-    [fetchCalls, selectedCall]
-  );
-
-  // ✅ Sélection d'un appel
+  // ✅ Sélection d’un appel
   const selectCall = useCallback((call: Call) => {
     console.log(`🎯 Sélection de l'appel ${call.callid}`);
     setSelectedCall(call);
@@ -191,10 +107,8 @@ export function useCalls(): UseCallsResult {
     selectedCall,
     selectCall,
     setSelectedCall,
-    idCallActivite,
-    createActivityForCall,
     isLoadingCalls,
-    isLoadingActivity,
+
     archiveCall: async (callId: number) => {
       try {
         const { error } = await supabaseClient
@@ -202,15 +116,17 @@ export function useCalls(): UseCallsResult {
           .update({ archived: true })
           .eq("callid", callId);
         if (error) throw error;
+
         setCalls((prev) =>
           prev.map((call) =>
             call.callid === callId ? { ...call, archived: true } : call
           )
         );
       } catch (error) {
-        console.error("❌ Erreur lors de l'archivage de l'appel:", error);
+        console.error("❌ Erreur archivage appel :", error);
       }
     },
+
     deleteCall: async (callId: number) => {
       try {
         const { error } = await supabaseClient
@@ -218,27 +134,24 @@ export function useCalls(): UseCallsResult {
           .delete()
           .eq("callid", callId);
         if (error) throw error;
+
         setCalls((prev) => prev.filter((call) => call.callid !== callId));
       } catch (error) {
-        console.error("❌ Erreur lors de la suppression de l'appel:", error);
+        console.error("❌ Erreur suppression appel :", error);
       }
     },
+
     createAudioUrlWithToken: async (filepath: string) => {
       if (!filepath) return null;
       try {
         const { data, error } = await supabaseClient.storage
           .from("Calls")
           .createSignedUrl(filepath, 60);
-        if (error) {
-          console.error(
-            "❌ Erreur lors de la génération de l'URL signée:",
-            error
-          );
-          return null;
-        }
+        if (error) throw error;
+
         return data?.signedUrl ?? null;
       } catch (error) {
-        console.error("❌ Erreur lors de la création de l'URL signée:", error);
+        console.error("❌ Erreur URL signée audio :", error);
         return null;
       }
     },

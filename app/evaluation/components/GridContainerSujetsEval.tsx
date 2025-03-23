@@ -1,50 +1,57 @@
 import { Grid, Typography, Tooltip } from "@mui/material";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, memo } from "react";
 import { useAppContext } from "@/context/AppContext";
-import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
+import { useCallData } from "@/context/CallDataContext";
 import {
   ColumnConfig,
   Item,
   Category,
   Postit as PostitType,
+  Pratique,
 } from "@/types/types";
 
 interface GridContainerSujetsEvalProps {
   categories: Category[];
   items: Item[];
   columnConfig: ColumnConfig;
-  selectedPostit: PostitType | null; // ✅ Ajout de selectedPostit
-  setSelectedPostit: (postit: PostitType) => void; // ✅ Ajout de setSelectedPostit
+  handleSujetClick: (item: Item) => void;
+  sujetsDeLActivite: number[];
 }
 
 const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
   categories,
   items,
   columnConfig,
-  selectedPostit,
-  setSelectedPostit,
+  handleSujetClick,
+  sujetsDeLActivite,
 }) => {
+  console.log("sujetsDeLActivite", sujetsDeLActivite);
+
   const {
     idActivite,
     fetchSujetsForActivite,
+    handleSelectSujet,
     toggleSujet,
     sujetsForActivite, // ✅ Contient uniquement des `idsujet`
+    setSujetsForActivite,
+    initialSujetsForActivite,
+    selectedPostit,
+    setSelectedPostit,
   } = useAppContext();
-  const { idCallActivite } = useCallActivity();
+
+  const { updatePostit, idCallActivite } = useCallData();
 
   const currentActivityId = idCallActivite || idActivite;
 
-  // ✅ `useMemo` est maintenant avant `useEffect`, assurant un ordre stable des Hooks
+  // ✅ Créer un ensemble pour un accès plus rapide
   const sujetsSet = useMemo(
     () => new Set(sujetsForActivite),
     [sujetsForActivite]
   );
-
-  useEffect(() => {
-    if (currentActivityId) {
-      fetchSujetsForActivite(currentActivityId);
-    }
-  }, [currentActivityId, fetchSujetsForActivite]);
+  const initialSujetsSet = useMemo(
+    () => new Set(initialSujetsForActivite),
+    [initialSujetsForActivite]
+  );
 
   if (!currentActivityId) {
     return (
@@ -69,30 +76,6 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
         category[columnConfig.categoryIdKey]
     )
   );
-
-  const handleSujetClick = (item: Item) => {
-    console.log("📌 Sujet cliqué:", item.nomsujet, "ID:", item.idsujet);
-
-    toggleSujet(currentActivityId, item); // ✅ Ajoute ou supprime le sujet dans l'activité
-
-    // ✅ Si un post-it est sélectionné, on met à jour ses données
-    if (selectedPostit) {
-      console.log("✅ Avant mise à jour du post-it actif:", selectedPostit);
-
-      setSelectedPostit({
-        ...selectedPostit,
-        sujet: item.nomsujet, // ✅ Associe le sujet au post-it
-        idsujet: item.idsujet, // ✅ Stocke l'ID du sujet
-        iddomaine: item.iddomaine, // ✅ Met à jour le domaine si nécessaire
-      });
-
-      console.log("🔄 Après mise à jour du post-it actif:", {
-        sujet: item.nomsujet,
-        idsujet: item.idsujet,
-        iddomaine: item.iddomaine,
-      });
-    }
-  };
 
   return (
     <Grid
@@ -132,7 +115,10 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
                 category[columnConfig.categoryIdKey]
             )
             .map((item) => {
-              const isAssociated = sujetsSet.has(item.idsujet);
+              const isAssociated = sujetsDeLActivite.includes(item.idsujet);
+
+              const isSelectedForPostit =
+                selectedPostit?.idsujet === item.idsujet;
 
               return (
                 <Tooltip
@@ -148,11 +134,18 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
                     onClick={() => handleSujetClick(item)}
                     sx={{
                       cursor: "pointer",
-                      backgroundColor: isAssociated ? "red" : "inherit",
+                      backgroundColor: isSelectedForPostit
+                        ? "red"
+                        : isAssociated
+                        ? "gray"
+                        : category.couleur,
+
                       "&:hover": {
-                        backgroundColor: isAssociated
+                        backgroundColor: isSelectedForPostit
                           ? "red"
-                          : "rgba(255, 255, 255, 0.2)", // ✅ Fix hover
+                          : isAssociated
+                          ? "gray"
+                          : "rgba(255, 255, 255, 0.2)",
                       },
                       padding: "10px",
                       borderBottom: "1px solid white",
@@ -170,4 +163,4 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
   );
 };
 
-export default GridContainerSujetsEval;
+export default memo(GridContainerSujetsEval);

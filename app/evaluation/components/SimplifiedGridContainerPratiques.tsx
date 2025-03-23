@@ -5,7 +5,7 @@ import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import { Tooltip } from "@mui/material";
 import { useAppContext } from "@/context/AppContext";
-import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
+import { useCallData } from "@/context/CallDataContext";
 import { Pratique, Category } from "@/types/types";
 import { supabaseClient } from "@/lib/supabaseClient";
 
@@ -31,7 +31,7 @@ const SimplifiedGridContainerPratiques: React.FC<
 }) => {
   const [localItems, setLocalItems] = useState<Pratique[]>(items);
   const { idActivite, handleSelectPratique, setIdPratique } = useAppContext();
-  const { idCallActivite } = useCallActivity();
+  const { idCallActivite } = useCallData();
   const currentActivityId = idCallActivite || idActivite;
 
   // Debugging logs

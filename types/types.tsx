@@ -61,6 +61,7 @@ export interface Postit {
   idsujet: number | null; // ✅ ID du sujet (ajouté)
   pratique: string;
   timestamp: number;
+  idactivite?: number | null;
 }
 
 export interface UsePostitsResult {
@@ -78,6 +79,13 @@ export interface UsePostitsResult {
     updatedFields: Record<string, any>
   ) => Promise<void>; // ✅ Assure que `updatedFields` est un objet
   deletePostit: (id: number) => Promise<void>;
+  postitToSujetMap: Record<number, number | null>;
+  updatePostitToSujetMap: (postitId: number, sujetId: number | null) => void;
+  postitToPratiqueMap: Record<string, string | null>;
+  updatePostitToPratiqueMap: (
+    postitId: string,
+    idPratique: string | null
+  ) => void;
 }
 
 // 🔹 Entreprises
@@ -281,9 +289,9 @@ export interface CallDataContextType {
   addPostit: (
     wordid: number,
     word: string,
-    timestamp: number,
-    metadata?: { sujet?: string; pratique?: string; domaine?: string } // ✅ Correction ici
-  ) => Promise<void>;
+    timestamp: number
+  ) => Promise<number | null>;
+
   updatePostit: (
     id: number,
     updatedFields: Record<string, any>
@@ -304,6 +312,24 @@ export interface CallDataContextType {
   currentWord: Word | null;
   updateCurrentWord: (word: Word | null) => void;
   idCallActivite: number | null; // Ajoute cette ligne si 'idCallActivite' est nécessaire
+
+  postitToSujetMap: Record<number, number | null>;
+  updatePostitToSujetMap: (postitId: number, sujetId: number | null) => void;
+  postitToPratiqueMap: Record<number, string | null>;
+  updatePostitToPratiqueMap: (
+    postitId: number,
+    pratique: string | null
+  ) => void;
+
+  isLoadingCalls: boolean;
+  createActivityForCall: (
+    callId: number,
+    activityType: "evaluation" | "coaching",
+    idConseiller: number
+  ) => Promise<void>;
+  archiveCall: (callId: number) => Promise<void>;
+  deleteCall: (callId: number) => Promise<void>;
+  removeActivityForCall: (callId: number) => Promise<void>;
 }
 
 export interface UIContextType {
@@ -351,11 +377,7 @@ export interface UseActivitiesResult {
   fetchReviewsForPractice: (idpratique: number) => Promise<void>;
   reviews: Avis[];
   averageRating: number;
-  categoriesPratiques: {
-    idcategoriepratique: number;
-    nomcategorie: string;
-    couleur: string;
-  };
+  categoriesPratiques: CategoriePratique[]; // ✅ on aligne avec ton usage
 }
 
 // 🔹 Texte associé aux avatars
@@ -472,6 +494,11 @@ export interface AppContextType {
   subjectPracticeRelations: RelationSujetPratique[];
   sujetsForActivite: number[]; // Contient les sujets liés à l'activité actuelle
   fetchSujetsForActivite: (idActivite: number) => Promise<void>;
+  syncPratiquesForActiviteFromMap: (
+    postitToPratiqueMap: Record<number, string | null>,
+    idActivite: number,
+    allPratiques: Pratique[]
+  ) => Promise<void>;
 
   toggleSujet: (idActivite: number, sujet: Item) => Promise<void>;
 
@@ -525,7 +552,8 @@ export interface AppContextType {
   selectedSujet: Sujet | null;
   handleSelectSujet: (sujet: Sujet) => void;
   selectedPratique: Pratique | null;
-  handleSelectPratique: (pratique: Pratique) => void;
+  handleSelectPratique: (pratique: Pratique | null) => void;
+
   highlightedPractices: number[];
   calculateHighlightedPractices: (
     disabledSubjects: number[],
@@ -537,6 +565,20 @@ export interface AppContextType {
   selectedPostitIds: number[];
   setSelectedPostitIds: (ids: number[]) => void;
   postits: Postit[]; // Assurez-vous que 'postits' est bien ici
+
+  // Post-it sélectionné
+  selectedPostit: Postit | null;
+  setSelectedPostit: (postit: Postit | null) => void;
+
+  // Sujets de l’activité (initialement chargés)
+  initialSujetsForActivite: number[];
+  setSujetsForActivite: (ids: number[]) => void;
+
+  // Sync depuis postitToSujetMap (hook useSelection)
+  syncSujetsForActiviteFromMap: (
+    postitToSujetMap: Record<number, number | null>,
+    idActivite: number
+  ) => Promise<void>;
 
   // Authentification
   user: any;

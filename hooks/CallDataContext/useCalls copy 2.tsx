@@ -18,9 +18,6 @@ export function useCalls(): UseCallsResult {
       return;
     }
 
-    console.log(
-      `🔍 Récupération des callid pour identreprise: ${identreprise}`
-    );
     setIsLoadingCalls(true);
 
     // Étape 1: Récupérer les callid associés à l'entreprise
@@ -48,7 +45,7 @@ export function useCalls(): UseCallsResult {
     }
 
     // Étape 2: Récupérer les appels avec leurs activités associées
-    console.log(`🔍 Récupération des détails des appels`);
+
     const { data, error } = await supabaseClient
       .from("call")
       .select(
@@ -76,8 +73,6 @@ export function useCalls(): UseCallsResult {
     if (error) {
       console.error("❌ Erreur lors de la récupération des appels:", error);
     } else {
-      console.log(`✅ ${data.length} appels récupérés`);
-
       const formattedData: Call[] = data.map((call: any) => ({
         callid: call.callid,
         filename: call.filename,
@@ -122,9 +117,6 @@ export function useCalls(): UseCallsResult {
   const createActivityForCall = useCallback(
     async (callId: number, activityType: string, idConseiller: number) => {
       setIsLoadingActivity(true);
-      console.log(
-        `🛠️ Création d'une activité '${activityType}' pour l'appel ${callId} avec conseiller ${idConseiller}`
-      );
 
       try {
         const dateNow = new Date().toISOString();
@@ -160,7 +152,6 @@ export function useCalls(): UseCallsResult {
         }
 
         const activityId = activityData.idactivite;
-        console.log(`✅ Activité créée avec succès: ID ${activityId}`);
 
         setIdCallActivite(activityId);
 
@@ -176,8 +167,6 @@ export function useCalls(): UseCallsResult {
           );
           throw errorRelation;
         }
-
-        console.log(`✅ Activité ${activityId} associée à l’appel ${callId}`);
 
         // 🔄 Rafraîchir les appels
         fetchCalls(selectedCall?.callid ?? 0);

@@ -5,7 +5,8 @@ import Typography from "@mui/material/Typography";
 import { Tooltip } from "@mui/material";
 import { useEffect } from "react";
 import { useAppContext } from "@/context/AppContext";
-import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
+import { useCallData } from "@/context/CallDataContext";
+
 import { ColumnConfig, Item, Category } from "@/types/types";
 
 interface SimplifiedGridContainerSujetsProps {
@@ -19,7 +20,7 @@ const SimplifiedGridContainerSujets: React.FC<
 > = ({ categories = [], items = [], columnConfig }) => {
   const { idActivite, fetchSujetsForActivite, toggleSujet, sujetsForActivite } =
     useAppContext();
-  const { idCallActivite } = useCallActivity();
+  const { idCallActivite } = useCallData();
 
   const currentActivityId = idCallActivite || idActivite;
 

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { Postit, UsePostitsResult } from "@/types/types";
+import { useAppContext } from "@/context/AppContext";
 
 export function usePostits(selectedCallId: number | null): UsePostitsResult {
   const [allPostits, setAllPostits] = useState<Postit[]>([]);
@@ -19,6 +20,13 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     (callId: number) => allPostits.filter((postit) => postit.callid === callId),
     [allPostits]
   );
+
+  const [postitToSujetMap, setPostitToSujetMap] = useState<
+    Record<number, number | null>
+  >({});
+  const [postitToPratiqueMap, setPostitToPratiqueMap] = useState<
+    Record<number, string | null>
+  >({});
 
   const addPostit = useCallback(
     async (wordid: number, word: string, timestamp: number) => {
@@ -56,7 +64,6 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         if (data.callid === selectedCallId) {
           setAppelPostits((prev) => [data, ...prev]);
         }
-        console.log("data.id", data.id);
 
         return data.id; // ✅ Retourne l'ID du post-it ajouté
       }
@@ -79,10 +86,6 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         return;
       }
 
-      console.log("📝 Tentative de mise à jour Supabase");
-      console.log("   🔹 ID du Post-it:", id);
-      console.log("   🔹 Champs mis à jour:", updatedFields);
-
       // ✅ Vérification si le post-it existe avant la mise à jour
       const existingPostit = allPostits.find((p) => p.id === id);
       if (!existingPostit) {
@@ -101,8 +104,6 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         safeUpdatedFields.iddomaine = updatedFields.iddomaine ?? null;
       if ("pratique" in updatedFields)
         safeUpdatedFields.pratique = updatedFields.pratique;
-
-      console.log("📤 Envoi de la mise à jour :", safeUpdatedFields);
 
       // ✅ Mise à jour locale
       setAllPostits((prev) =>
@@ -128,10 +129,29 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         console.error("❌ Erreur Supabase :", error);
         return;
       }
-
-      console.log("✅ Mise à jour réussie :", data);
     },
     [allPostits]
+  );
+
+  // 🔁 Mettre à jour le mapping pour un post-it donné
+  const updatePostitToSujetMap = useCallback(
+    (postitId: number, sujetId: number | null) => {
+      setPostitToSujetMap((prev) => ({
+        ...prev,
+        [postitId]: sujetId,
+      }));
+    },
+    []
+  );
+
+  const updatePostitToPratiqueMap = useCallback(
+    (postitId: number, nomPratique: string | null) => {
+      setPostitToPratiqueMap((prev) => ({
+        ...prev,
+        [postitId]: nomPratique,
+      }));
+    },
+    []
   );
 
   const deletePostit = useCallback(async (postitId: number) => {
@@ -160,6 +180,31 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     }
   }, [selectedCallId, getPostitsForCall]);
 
+  useEffect(() => {
+    if (!selectedCallId || appelPostits.length === 0) return;
+
+    const initialMap: Record<number, number | null> = {};
+    appelPostits.forEach((postit) => {
+      initialMap[postit.id] = postit.idsujet ?? null;
+    });
+
+    setPostitToSujetMap(initialMap);
+  }, [appelPostits, selectedCallId]);
+
+  useEffect(() => {
+    if (!selectedCallId || appelPostits.length === 0) return;
+
+    const initialPratiqueMap: Record<number, string | null> = {};
+    appelPostits.forEach((postit) => {
+      initialPratiqueMap[postit.id] =
+        postit.pratique && postit.pratique !== "Non Assigné"
+          ? postit.pratique
+          : null;
+    });
+
+    setPostitToPratiqueMap(initialPratiqueMap);
+  }, [appelPostits, selectedCallId]);
+
   return {
     allPostits,
     appelPostits,
@@ -168,5 +213,9 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     addPostit,
     updatePostit,
     deletePostit,
+    postitToSujetMap,
+    updatePostitToSujetMap,
+    postitToPratiqueMap,
+    updatePostitToPratiqueMap,
   };
 }

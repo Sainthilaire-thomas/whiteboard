@@ -2,18 +2,23 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { useCallData } from "@/context/CallDataContext";
-import { useAppContext } from "@/context/AppContext";
+import { Call } from "@/types/types";
 
-export function useCallActivity() {
-  const { selectedCall, fetchCalls } = useCallData();
+interface UseCallActivityProps {
+  selectedCall: Call | null;
+  fetchCalls: (identreprise: number) => Promise<void>;
+  selectedEntreprise: number | null;
+}
+
+export function useCallActivity({
+  selectedCall,
+  fetchCalls,
+  selectedEntreprise,
+}: UseCallActivityProps) {
   const [idCallActivite, setIdCallActivite] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { selectedEntreprise } = useAppContext();
-  // ✅ Récupérer l'activité associée à un appel
-  const fetchActivitiesForCall = useCallback(async (callId: number) => {
-    if (!callId) return;
 
+  const fetchActivitiesForCall = useCallback(async (callId: number) => {
     const { data, error } = await supabaseClient
       .from("callactivityrelation")
       .select("activityid")
@@ -24,16 +29,30 @@ export function useCallActivity() {
       return;
     }
 
-    setIdCallActivite(data.length > 0 ? data[0].activityid : null);
+    setIdCallActivite(data?.[0]?.activityid ?? null);
+  }, []);
+
+  const getActivityIdFromCallId = useCallback(async (callId: number) => {
+    const { data, error } = await supabaseClient
+      .from("callactivityrelation")
+      .select("activityid")
+      .eq("callid", callId)
+      .single();
+
+    if (error) {
+      console.error("❌ Erreur récupération idactivite :", error);
+      return null;
+    }
+
+    return data.activityid;
   }, []);
 
   useEffect(() => {
-    if (selectedCall) {
+    if (selectedCall?.callid && !idCallActivite) {
       fetchActivitiesForCall(selectedCall.callid);
     }
-  }, [selectedCall, fetchActivitiesForCall]);
+  }, [selectedCall, idCallActivite, fetchActivitiesForCall]);
 
-  // ✅ Créer une nouvelle activité et l'associer à un appel
   const createActivityForCall = useCallback(
     async (
       callId: number,
@@ -41,7 +60,6 @@ export function useCallActivity() {
       idConseiller: number
     ) => {
       setIsLoading(true);
-
       try {
         const { data: activityData, error: errorActivity } =
           await supabaseClient
@@ -58,6 +76,7 @@ export function useCallActivity() {
             .single();
 
         if (errorActivity) throw errorActivity;
+
         const activityId = activityData.idactivite;
         setIdCallActivite(activityId);
 
@@ -73,83 +92,43 @@ export function useCallActivity() {
     []
   );
 
-  // ✅ Supprimer une activité et sa relation avec l'appel
-  const removeActivityForCall = async (callId: number) => {
-    try {
-      // Étape 1 : Trouver l'ID de l'activité associée via `callactivityrelation`
-      const { data: relations, error: errorRelations } = await supabaseClient
-        .from("callactivityrelation")
-        .select("activityid")
-        .eq("callid", callId);
+  const removeActivityForCall = useCallback(
+    async (callId: number) => {
+      try {
+        const { data: relations } = await supabaseClient
+          .from("callactivityrelation")
+          .select("activityid")
+          .eq("callid", callId);
 
-      if (errorRelations) {
-        console.error("❌ Erreur récupération des relations :", errorRelations);
-        return;
-      }
+        const activityId = relations?.[0]?.activityid;
+        if (!activityId) return;
 
-      if (!relations || relations.length === 0) {
-        console.warn("⚠️ Aucune activité associée trouvée pour cet appel.");
-        return;
-      }
-
-      const activityId = relations[0].activityid; // Supposons une seule activité associée
-
-      // Étape 2 : Supprimer l’entrée dans `callactivityrelation`
-      const { error: deleteRelationError } = await supabaseClient
-        .from("callactivityrelation")
-        .delete()
-        .eq("callid", callId);
-
-      if (deleteRelationError) {
-        console.error(
-          "❌ Erreur suppression dans `callactivityrelation` :",
-          deleteRelationError
-        );
-        return;
-      }
-
-      // Étape 3 : Vérifier si l'activité est encore utilisée par d'autres appels
-      const { data: remainingRelations, error: errorRemainingRelations } =
         await supabaseClient
+          .from("callactivityrelation")
+          .delete()
+          .eq("callid", callId);
+
+        const { data: remainingRelations } = await supabaseClient
           .from("callactivityrelation")
           .select("callid")
           .eq("activityid", activityId);
 
-      if (errorRemainingRelations) {
-        console.error(
-          "❌ Erreur vérification des relations restantes :",
-          errorRemainingRelations
-        );
-        return;
-      }
-
-      // Si l'activité n'est plus associée à aucun appel, la supprimer
-      if (remainingRelations.length === 0) {
-        const { error: deleteActivityError } = await supabaseClient
-          .from("activitesconseillers")
-          .delete()
-          .eq("idactivite", activityId);
-
-        if (deleteActivityError) {
-          console.error(
-            `❌ Erreur suppression de l'activité ${activityId} :`,
-            deleteActivityError
-          );
-        } else {
-          console.log(`✅ Activité ${activityId} supprimée.`);
+        if ((remainingRelations?.length ?? 0) === 0) {
+          await supabaseClient
+            .from("activitesconseillers")
+            .delete()
+            .eq("idactivite", activityId);
         }
-      } else {
-        console.log(
-          `ℹ️ L'activité ${activityId} est encore utilisée par d'autres appels et n'a pas été supprimée.`
-        );
-      }
 
-      // 🔄 Rafraîchir les appels après la suppression
-      await fetchCalls(selectedEntreprise ?? 0);
-    } catch (error) {
-      console.error("❌ Erreur dans `removeActivityForCall` :", error);
-    }
-  };
+        if (selectedEntreprise) {
+          await fetchCalls(selectedEntreprise);
+        }
+      } catch (error) {
+        console.error("❌ Erreur suppression activité :", error);
+      }
+    },
+    [fetchCalls, selectedEntreprise]
+  );
 
   return {
     idCallActivite,
@@ -157,5 +136,6 @@ export function useCallActivity() {
     createActivityForCall,
     removeActivityForCall,
     isLoading,
+    getActivityIdFromCallId,
   };
 }

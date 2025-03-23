@@ -1,9 +1,5 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { useCallData } from "@/context/CallDataContext";
-import { useAppContext } from "@/context/AppContext";
-import { useConseiller } from "@/context/ConseillerContext";
 import { supabaseClient } from "@/lib/supabaseClient";
 import {
   Box,
@@ -35,19 +31,18 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-export default function CallSelection() {
-  const { selectedEntreprise } = useAppContext(); // ✅ via contexte
-  const {
-    calls,
-    fetchCalls,
-    isLoadingCalls,
-    createActivityForCall,
-    archiveCall,
-    deleteCall,
-    removeActivityForCall,
-    selectCall,
-  } = useCallData();
+import { useConseiller } from "@/context/ConseillerContext";
 
+interface CallSelectionProps {
+  selectedEntreprise: number | null; // ✅ Permet null
+  selectCall: (call: any) => void;
+}
+
+const CallSelection: React.FC<CallSelectionProps> = ({
+  selectedEntreprise,
+  selectCall,
+}) => {
+  // ✅ Utilisation du contexte pour récupérer les conseillers et avatars
   const {
     selectedConseiller,
     setSelectedConseiller,
@@ -56,24 +51,38 @@ export default function CallSelection() {
     isLoadingConseillers,
   } = useConseiller();
 
+  const {
+    calls,
+    fetchCalls,
+    isLoadingCalls,
+    createActivityForCall,
+    archiveCall,
+    deleteCall,
+    removeActivityForCall,
+  } = useCallData();
+
+  // ✅ État pour stocker la nature de l'activité sélectionnée par appel
   const [selectedNatures, setSelectedNatures] = useState<{
     [key: number]: "evaluation" | "coaching";
   }>({});
+  const [showConseillerSelect, setShowConseillerSelect] = useState<
+    number | null
+  >(null);
   const [showDialog, setShowDialog] = useState<number | null>(null);
+
+  // ✅ Fonction pour gérer le changement de nature d'activité
+  const handleNatureChange = (
+    callId: number,
+    value: "evaluation" | "coaching"
+  ) => {
+    setSelectedNatures((prev) => ({ ...prev, [callId]: value }));
+  };
 
   useEffect(() => {
     if (selectedEntreprise !== null) {
       fetchCalls(selectedEntreprise);
     }
   }, [selectedEntreprise, fetchCalls]);
-
-  if (isLoadingCalls) {
-    return (
-      <Box display="flex" justifyContent="center" p={2}>
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ flexGrow: 1, p: 2 }}>
@@ -82,7 +91,11 @@ export default function CallSelection() {
           <Typography variant="h6">📞 Appels disponibles</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          {calls.length > 0 ? (
+          {isLoadingCalls ? (
+            <Box display="flex" justifyContent="center" p={2}>
+              <CircularProgress />
+            </Box>
+          ) : calls.length > 0 ? (
             <Grid container direction="column" spacing={2}>
               {calls.map((call) => (
                 <Grid item xs={12} key={call.callid}>
@@ -140,12 +153,15 @@ export default function CallSelection() {
                         Supprimer
                       </Button>
 
+                      {/* ✅ Bouton Dissocier si une activité est associée */}
                       {call.callactivityrelation.length > 0 && (
                         <Button
                           size="small"
                           color="error"
                           onClick={async () => {
                             await removeActivityForCall(call.callid);
+
+                            // 🔄 Rafraîchir la liste des appels après la dissociation
                             if (selectedEntreprise !== null) {
                               await fetchCalls(selectedEntreprise);
                             }
@@ -155,6 +171,7 @@ export default function CallSelection() {
                         </Button>
                       )}
 
+                      {/* ✅ Nouveau bouton "Créer une activité" */}
                       {call.callactivityrelation.length === 0 && (
                         <Button
                           size="small"
@@ -166,14 +183,14 @@ export default function CallSelection() {
                       )}
                     </CardActions>
 
-                    {/* Dialog pour création d’activité */}
+                    {/* ✅ Dialog (Popup) pour sélectionner Nature + Conseiller */}
                     <Dialog
                       open={showDialog === call.callid}
                       onClose={() => setShowDialog(null)}
                     >
                       <DialogTitle>Créer une activité</DialogTitle>
                       <DialogContent>
-                        {/* Sélection nature */}
+                        {/* Sélection de la nature */}
                         <FormControl fullWidth sx={{ mt: 2 }}>
                           <InputLabel>Type d’activité</InputLabel>
                           <Select
@@ -192,7 +209,7 @@ export default function CallSelection() {
                           </Select>
                         </FormControl>
 
-                        {/* Sélection conseiller */}
+                        {/* Sélection du conseiller avec Avatar */}
                         <FormControl fullWidth sx={{ mt: 2 }}>
                           <InputLabel>Conseiller</InputLabel>
                           <Select
@@ -214,25 +231,27 @@ export default function CallSelection() {
                               let avatarUrl = "";
 
                               if (type === "conseiller") {
-                                const c = conseillers.find(
+                                const conseiller = conseillers.find(
                                   (c) => c.idconseiller === parseInt(id)
                                 );
-                                if (c) {
-                                  displayName = `${c.nom} ${c.prenom}`;
-                                  avatarUrl = c.avatarUrl || "";
+                                if (conseiller) {
+                                  displayName = `${conseiller.nom} ${conseiller.prenom}`;
+                                  avatarUrl = conseiller.avatarUrl || "";
                                 }
-                              } else {
-                                const a = avatarsAnonymes.find(
+                              } else if (type === "avatar") {
+                                const avatar = avatarsAnonymes.find(
                                   (a) => a.idavatar === parseInt(id)
                                 );
-                                if (a) {
-                                  displayName = a.nom;
-                                  avatarUrl = a.url || "";
+                                if (avatar) {
+                                  displayName = avatar.nom;
+                                  avatarUrl = avatar.url || "";
                                 }
                               }
 
                               return (
-                                <ListItem>
+                                <ListItem
+                                  sx={{ display: "flex", alignItems: "center" }}
+                                >
                                   <ListItemAvatar>
                                     <Avatar src={avatarUrl}>
                                       {displayName.charAt(0)}
@@ -243,8 +262,9 @@ export default function CallSelection() {
                               );
                             }}
                           >
+                            {/* 🔥 Ajout des conseillers non anonymes */}
                             {conseillers
-                              .filter((c) => !c.estanonyme)
+                              .filter((c) => !c.estanonyme) // ❌ Supprime les anonymes
                               .map((c) => (
                                 <MenuItem
                                   key={`conseiller-${c.idconseiller}`}
@@ -261,6 +281,7 @@ export default function CallSelection() {
                                 </MenuItem>
                               ))}
 
+                            {/* 🔥 Ajout des avatars anonymes */}
                             {avatarsAnonymes.map((a) => (
                               <MenuItem
                                 key={`avatar-${a.idavatar}`}
@@ -275,41 +296,53 @@ export default function CallSelection() {
                           </Select>
                         </FormControl>
                       </DialogContent>
+
                       <DialogActions>
                         <Button onClick={() => setShowDialog(null)}>
                           Annuler
                         </Button>
                         <Button
                           onClick={async () => {
-                            if (!selectedConseiller) return;
+                            if (!selectedConseiller) {
+                              console.warn("⚠️ Aucun conseiller sélectionné !");
+                              return;
+                            }
+
                             let idConseiller = selectedConseiller.id;
 
+                            // Vérifier si c'est un avatar anonyme → Créer un conseiller en base
                             if (selectedConseiller.type === "avatar") {
-                              const { data: newConseiller, error } =
-                                await supabaseClient
-                                  .from("conseillers")
-                                  .insert([
-                                    {
-                                      nom: "Anonyme",
-                                      prenom: "anonyme",
-                                      email: null,
-                                      entreprise: null,
-                                      pseudo: null,
-                                      idavatar: selectedConseiller.id,
-                                      estanonyme: true,
-                                    },
-                                  ])
-                                  .select()
-                                  .single();
+                              const {
+                                data: newConseiller,
+                                error: createError,
+                              } = await supabaseClient
+                                .from("conseillers")
+                                .insert([
+                                  {
+                                    nom: "Anonyme",
+                                    prenom: "anonyme",
+                                    email: null,
+                                    entreprise: null,
+                                    pseudo: null,
+                                    idavatar: selectedConseiller.id,
+                                    estanonyme: true,
+                                  },
+                                ])
+                                .select()
+                                .single();
 
-                              if (error) {
-                                console.error("Erreur création avatar", error);
+                              if (createError) {
+                                console.error(
+                                  "❌ Erreur lors de la création du conseiller anonyme :",
+                                  createError
+                                );
                                 return;
                               }
 
-                              idConseiller = newConseiller.idconseiller;
+                              idConseiller = newConseiller.idconseiller; // Récupérer l'ID créé
                             }
 
+                            // Créer l'activité avec l'ID du conseiller (normal ou anonyme)
                             await createActivityForCall(
                               call.callid,
                               selectedNatures[call.callid] || "evaluation",
@@ -341,4 +374,6 @@ export default function CallSelection() {
       </Accordion>
     </Box>
   );
-}
+};
+
+export default CallSelection;

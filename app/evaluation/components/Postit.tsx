@@ -1,12 +1,10 @@
 "use client";
-
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, memo, useMemo } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import {
   Box,
   Paper,
   TextField,
-  IconButton,
   Typography,
   Button,
   DialogActions,
@@ -16,24 +14,24 @@ import {
   Tab,
   Modal,
 } from "@mui/material";
-import SaveIcon from "@mui/icons-material/Save";
-import DeleteIcon from "@mui/icons-material/Delete";
 import { useCallData } from "@/context/CallDataContext";
 import { useAppContext } from "@/context/AppContext";
 import { useFilteredDomains } from "@/hooks/AppContext/useFilteredDomains";
 import GridContainerSujetsEval from "./GridContainerSujetsEval";
 import GridContainerPratiquesEval from "./GridContainerPratiquesEval";
 import { columnConfigSujets, columnConfigPratiques } from "@/config/gridConfig";
-import { Postit as PostitType } from "@/types/types";
+import { Item } from "@/types/types";
 
-interface PostitProps {
-  postit: PostitType;
-  isSelected: boolean;
-  onClose: () => void;
-}
+const Postit = () => {
+  const {
+    deletePostit,
+    updatePostit,
+    updatePostitToSujetMap,
+    postitToSujetMap,
+    postitToPratiqueMap,
+    idCallActivite,
+  } = useCallData();
 
-const Postit = ({ postit, isSelected, onClose }: PostitProps) => {
-  const { deletePostit, updatePostit } = useCallData();
   const {
     selectedEntreprise,
     selectedDomain,
@@ -42,76 +40,161 @@ const Postit = ({ postit, isSelected, onClose }: PostitProps) => {
     sujetsData,
     categoriesPratiques,
     pratiques,
+    selectedPostit,
+    setSelectedPostit,
+    fetchSujetsForActivite,
   } = useAppContext();
 
-  // 🔹 Récupération des domaines liés à l'entreprise
   const { filteredDomains } = useFilteredDomains(selectedEntreprise);
+  const { syncSujetsForActiviteFromMap, syncPratiquesForActiviteFromMap } =
+    useAppContext();
 
-  const [localPostit, setLocalPostit] = useState<PostitType>({ ...postit });
-
-  useEffect(() => {
-    console.log("📝 Mise à jour du Post-it:", localPostit);
-  }, [localPostit]);
-
-  // 🟢 Initialisation du domaine si non défini
-  useEffect(() => {
-    if (!localPostit.iddomaine && selectedDomain) {
-      setLocalPostit((prev) => ({
-        ...prev,
-        iddomaine: selectedDomain ? Number(selectedDomain) : null, // ✅ Converti en number
-      }));
+  const sujetsDeLActivite = useMemo(() => {
+    if (!postitToSujetMap || Object.keys(postitToSujetMap).length === 0) {
+      return [];
     }
-  }, [selectedDomain]);
+    return [
+      ...new Set(
+        Object.values(postitToSujetMap).filter(
+          (id): id is number => id !== null
+        )
+      ),
+    ];
+  }, [postitToSujetMap]);
+
+  const pratiquesDeLActivite = useMemo(() => {
+    if (!postitToPratiqueMap || Object.keys(postitToPratiqueMap).length === 0) {
+      return [];
+    }
+    return [
+      ...new Set(
+        Object.values(postitToPratiqueMap).filter((p): p is string => !!p)
+      ),
+    ];
+  }, [postitToPratiqueMap]);
+
+  const [readyToDisplayGrids, setReadyToDisplayGrids] = useState(false);
 
   useEffect(() => {
-    setLocalPostit((prev) => ({
-      ...prev,
-      sujet: postit.sujet || "", // ✅ Vérifie qu'on a bien un sujet
-      idsujet: postit.idsujet || null, // ✅ Vérifie qu'on a bien un ID de sujet
-    }));
-  }, [postit]);
+    const timeout = setTimeout(() => setReadyToDisplayGrids(true), 0);
+    return () => clearTimeout(timeout);
+  }, []);
 
-  // 🔹 Sauvegarde du post-it
+  //Selection du sujet du posit
+  // Dans Postit.tsx
 
-  const handleSave = async () => {
-    console.log("💾 Sauvegarde du Post-it:", {
-      id: localPostit.id,
-      text: localPostit.text,
-      sujet: localPostit.sujet,
-      idsujet: localPostit.idsujet,
-      iddomaine: localPostit.iddomaine,
-      pratique: localPostit.pratique, // ✅ Ajoute la pratique
+  if (!selectedPostit) return null;
+
+  const handleSujetClick = (item: Item) => {
+    if (!selectedPostit) {
+      alert("⚠️ Aucun post-it sélectionné !");
+      return;
+    }
+
+    const isCurrentlySelected = selectedPostit.idsujet === item.idsujet;
+
+    // 🔄 Mise à jour locale du post-it
+    const updatedPostit = isCurrentlySelected
+      ? {
+          ...selectedPostit,
+          sujet: "Non Assigné",
+          idsujet: null,
+          iddomaine: null,
+        }
+      : {
+          ...selectedPostit,
+          sujet: item.nomsujet,
+          idsujet: item.idsujet,
+          iddomaine: item.iddomaine,
+        };
+
+    setSelectedPostit(updatedPostit);
+
+    // 🔁 Met à jour le mapping central
+    updatePostitToSujetMap(updatedPostit.id, updatedPostit.idsujet ?? null);
+
+    // 💾 Mise à jour du post-it dans Supabase
+    updatePostit(updatedPostit.id, {
+      sujet: updatedPostit.sujet,
+      idsujet: updatedPostit.idsujet,
+      iddomaine: updatedPostit.iddomaine,
     });
+  };
 
-    await updatePostit(localPostit.id, {
-      text: localPostit.text,
-      sujet: localPostit.sujet,
-      idsujet: localPostit.idsujet,
-      iddomaine: localPostit.iddomaine,
-      pratique: localPostit.pratique,
+  // ✅ Sauvegarde du post-it
+  const handleSave = async () => {
+    console.log("💾 Sauvegarde du Post-it:", selectedPostit);
+
+    await updatePostit(selectedPostit.id, {
+      text: selectedPostit.text,
+      sujet: selectedPostit.sujet,
+      idsujet: selectedPostit.idsujet,
+      iddomaine: selectedPostit.iddomaine,
+      pratique: selectedPostit.pratique,
     });
 
     console.log("✅ Sauvegarde réussie !");
-    onClose();
+    setSelectedPostit(null);
   };
 
-  // 🔹 Suppression du post-it
-  const handleDelete = () => {
-    deletePostit(localPostit.id);
-    onClose();
+  // ✅ Suppression du post-it
+  const handleDelete = async () => {
+    if (!selectedPostit.id) return;
+
+    try {
+      const { data: otherPostits } = await supabaseClient
+        .from("postit")
+        .select("id")
+        .eq("idsujet", selectedPostit.idsujet)
+        .neq("id", selectedPostit.id);
+
+      if (!otherPostits || otherPostits.length === 0) {
+        await supabaseClient
+          .from("activitesconseillers_sujets")
+          .delete()
+          .match({
+            idactivite: idCallActivite,
+            idsujet: selectedPostit.idsujet,
+          });
+
+        console.log("✅ Sujet supprimé des sujets de l'activité !");
+      }
+
+      await deletePostit(selectedPostit.id);
+      console.log("✅ Post-it supprimé !");
+      setSelectedPostit(null);
+    } catch (error) {
+      console.error("❌ Erreur lors de la suppression:", error);
+    }
+  };
+
+  const handleClosePostit = () => {
+    if (idCallActivite) {
+      syncSujetsForActiviteFromMap(postitToSujetMap, idCallActivite);
+      syncPratiquesForActiviteFromMap(
+        postitToPratiqueMap,
+        idCallActivite,
+        pratiques
+      );
+    }
+    setSelectedPostit(null);
   };
 
   return (
-    <Modal open={isSelected} onClose={onClose} sx={styles.modalBackground}>
-      <Box sx={styles.modalWrapper} onClick={onClose}>
+    <Modal
+      open={!!selectedPostit}
+      onClose={handleClosePostit}
+      sx={styles.modalBackground}
+    >
+      <Box sx={styles.modalWrapper} onClick={handleClosePostit}>
         <Box sx={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
           <DialogTitle>Évaluation du passage</DialogTitle>
           <DialogContent>
             {/* Sélection du domaine */}
             <Box sx={styles.domainSelection}>
               <Tabs
-                value={selectedDomain ? String(selectedDomain) : ""} // ✅ S'assure que `value` est une string
-                onChange={(event, newValue) => selectDomain(String(newValue))} // ✅ Convertit `newValue` en string
+                value={selectedDomain ? String(selectedDomain) : ""}
+                onChange={(event, newValue) => selectDomain(String(newValue))}
                 variant="scrollable"
                 scrollButtons="auto"
               >
@@ -119,7 +202,7 @@ const Postit = ({ postit, isSelected, onClose }: PostitProps) => {
                   <Tab
                     key={domain.iddomaine}
                     label={domain.nomdomaine}
-                    value={String(domain.iddomaine)} // ✅ Convertit `id` en string
+                    value={String(domain.iddomaine)}
                   />
                 ))}
               </Tabs>
@@ -128,50 +211,56 @@ const Postit = ({ postit, isSelected, onClose }: PostitProps) => {
             {/* Passage affiché */}
             <Paper sx={styles.passageBox}>
               <Typography variant="h6">Passage :</Typography>
-              <Typography>{localPostit.word}</Typography>
+              <Typography>{selectedPostit.word}</Typography>
             </Paper>
 
             {/* Commentaire */}
             <TextField
               label="Commentaire"
-              value={localPostit.text}
+              value={selectedPostit.text}
               onChange={(e) =>
-                setLocalPostit({ ...localPostit, text: e.target.value })
+                setSelectedPostit({ ...selectedPostit, text: e.target.value })
               }
               fullWidth
               multiline
               rows={3}
               variant="outlined"
             />
+            <Box sx={{ minHeight: 300 }}>
+              {readyToDisplayGrids ? (
+                <>
+                  <Typography variant="h6" sx={{ mt: 2 }}>
+                    Sélectionner un sujet :
+                  </Typography>
+                  <GridContainerSujetsEval
+                    categories={categoriesSujets}
+                    items={sujetsData}
+                    columnConfig={columnConfigSujets}
+                    handleSujetClick={handleSujetClick}
+                    sujetsDeLActivite={sujetsDeLActivite}
+                  />
 
-            {/* 🏷 Grille des sujets */}
-            <Typography variant="h6" sx={{ mt: 2 }}>
-              Sélectionner un sujet :
-            </Typography>
-            <GridContainerSujetsEval
-              categories={categoriesSujets}
-              items={sujetsData}
-              columnConfig={columnConfigSujets}
-              selectedPostit={localPostit} // ✅ Passe le Post-it actif
-              setSelectedPostit={setLocalPostit} // ✅ Passe le setter
-            />
-
-            {/* 🎯 Grille des pratiques */}
-            <Typography variant="h6" sx={{ mt: 2 }}>
-              Pratiques recommandées :
-            </Typography>
-            <GridContainerPratiquesEval
-              categories={categoriesPratiques}
-              items={pratiques}
-              columnConfig={columnConfigPratiques}
-              onPratiqueClick={() => {}} // Géré directement dans le composant
-              selectedPostit={localPostit} // ✅ Passe le Post-it actif
-              setSelectedPostit={setLocalPostit} // ✅ Passe le setter
-            />
+                  <Typography variant="h6" sx={{ mt: 2 }}>
+                    Pratiques recommandées :
+                  </Typography>
+                  <GridContainerPratiquesEval
+                    categories={categoriesPratiques}
+                    items={pratiques}
+                    columnConfig={columnConfigPratiques}
+                    onPratiqueClick={() => {}}
+                    pratiquesDeLActivite={pratiquesDeLActivite}
+                  />
+                </>
+              ) : (
+                <Typography variant="body2" sx={{ textAlign: "center", mt: 4 }}>
+                  Chargement...
+                </Typography>
+              )}
+            </Box>
           </DialogContent>
 
           <DialogActions>
-            <Button onClick={onClose} color="primary">
+            <Button onClick={() => setSelectedPostit(null)} color="primary">
               Fermer
             </Button>
             <Button onClick={handleDelete} color="error">
@@ -179,6 +268,39 @@ const Postit = ({ postit, isSelected, onClose }: PostitProps) => {
             </Button>
             <Button onClick={handleSave} color="primary" variant="contained">
               Enregistrer
+            </Button>
+            <Button
+              onClick={() => {
+                if (idCallActivite) {
+                  syncSujetsForActiviteFromMap(
+                    postitToSujetMap,
+                    idCallActivite
+                  );
+                } else {
+                  console.warn("❌ Aucune activité trouvée pour cet appel !");
+                }
+              }}
+              variant="outlined"
+              color="secondary"
+            >
+              Enregistrer les sujets
+            </Button>
+            <Button
+              onClick={() => {
+                if (idCallActivite) {
+                  syncPratiquesForActiviteFromMap(
+                    postitToPratiqueMap,
+                    idCallActivite,
+                    pratiques
+                  ); // ✅
+                } else {
+                  console.warn("❌ Aucune activité trouvée pour cet appel !");
+                }
+              }}
+              variant="outlined"
+              color="secondary"
+            >
+              Enregistrer les pratiques
             </Button>
           </DialogActions>
         </Box>
@@ -200,7 +322,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // ✅ Fond assombri
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContainer: {
     width: "80%",

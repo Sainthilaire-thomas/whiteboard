@@ -7,15 +7,16 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
-import EntrepriseSelection from "../components/common/EntrepriseSelection";
-import CallSelection from "../components/common/CallSelection";
-import NewCallUploader from "../components/common/NewCallUploader";
-import EvaluationPostits from "./components/EvaluationPostits";
 import EvaluationTranscript from "./components/EvaluationTranscript";
-import EvaluationDrawer from "./components/EvaluationDrawer";
+import SyntheseEvaluation from "./components/SyntheseEvaluation";
+import SelectionEntrepriseEtAppel from "../components/common/SelectionEntrepriseetAppel";
 import { EvaluationProps } from "@/types/types"; // ✅ Import correct
+import ActivitySidebar from "../components/navigation/ActivitySidebar";
+import { useSearchParams } from "next/navigation";
 
 const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
+  const searchParams = useSearchParams();
+  const view = searchParams.get("view");
   const { user, isAuthenticated } = useAuth0();
   const { selectedCall, setAudioSrc, calls, selectCall } = useCallData();
   const {
@@ -43,74 +44,69 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
   }, [selectedCall, setAudioSrc]);
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-      }}
-    >
-      <Box
-        sx={{ display: "flex", justifyContent: "space-between", px: 2, py: 1 }}
-      >
-        <IconButton onClick={() => setIsLeftDrawerOpen(!isLeftDrawerOpen)}>
-          <MenuIcon />
-        </IconButton>
-
-        <IconButton onClick={() => setIsRightDrawerOpen(!isRightDrawerOpen)}>
-          <MenuIcon />
-        </IconButton>
-      </Box>
-
-      <Drawer
-        anchor="left"
-        open={isLeftDrawerOpen}
-        onClose={() => setIsLeftDrawerOpen(false)}
-        PaperProps={{ sx: { width: "65%", paddingTop: "96px" } }}
-      >
-        <EntrepriseSelection
-          entreprises={entreprises} // ✅ On passe bien un tableau d'entreprises
-          selectedEntreprise={selectedEntreprise} // ✅ On passe l'entreprise sélectionnée
-          setSelectedEntreprise={setSelectedEntreprise} // ✅ Permet de modifier la sélection
-        />
-        <CallSelection
-          calls={calls}
-          selectCall={selectCall}
-          selectedEntreprise={selectedEntreprise}
-        />
-        <NewCallUploader selectedEntreprise={selectedEntreprise} />
-      </Drawer>
-
-      <Box sx={{ display: "flex", flexGrow: 1, pt: 0 }}>
-        <EvaluationPostits />
-        <EvaluationTranscript />
-      </Box>
-
-      <EvaluationDrawer
-        isRightDrawerOpen={isRightDrawerOpen}
-        setIsRightDrawerOpen={setIsRightDrawerOpen}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
+    <Box sx={{ display: "flex", height: "100vh" }}>
+      {/* ✅ Barre latérale complète à gauche */}
+      <ActivitySidebar
+        entreprises={entreprises}
+        selectedEntreprise={selectedEntreprise}
+        setSelectedEntreprise={setSelectedEntreprise}
+        calls={calls}
+        selectCall={selectCall}
+        selectedCall={selectedCall}
       />
 
-      <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "80%",
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
-            overflow: "auto",
-            maxHeight: "90vh",
-          }}
-        >
-          {/* Historique de l'évaluation */}
+      {/* ✅ Colonne principale à droite */}
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Header droit avec bouton pour ouvrir Synthèse */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end", px: 2, py: 1 }}>
+          <IconButton onClick={() => setIsRightDrawerOpen(!isRightDrawerOpen)}>
+            <MenuIcon />
+          </IconButton>
         </Box>
-      </Modal>
+
+        <Box sx={{ display: "flex", flexGrow: 1 }}>
+          {/* Transcript principal */}
+          <Box sx={{ flex: 1 }}>
+            <EvaluationTranscript />
+          </Box>
+
+          {/* Zone contextuelle */}
+          {view && (
+            <Box
+              sx={{
+                width: 400,
+                borderLeft: "1px solid #ddd",
+                bgcolor: "background.default",
+                px: 2,
+                py: 2,
+                overflowY: "auto",
+              }}
+            >
+              {view === "selection" && <SelectionEntrepriseEtAppel />}
+              {view === "synthese" && <SyntheseEvaluation />}
+            </Box>
+          )}
+        </Box>
+
+        <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)}>
+          <Box
+            sx={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "80%",
+              bgcolor: "background.paper",
+              boxShadow: 24,
+              p: 4,
+              overflow: "auto",
+              maxHeight: "90vh",
+            }}
+          >
+            {/* Historique de l'évaluation */}
+          </Box>
+        </Modal>
+      </Box>
     </Box>
   );
 };

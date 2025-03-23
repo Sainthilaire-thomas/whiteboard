@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Box, Slider, Tooltip } from "@mui/material";
 import {
   TimeLineAudioProps,
@@ -6,6 +6,7 @@ import {
   Postit as PostitType, // ✅ Utilisation correcte du type
 } from "@/types/types";
 import { useCallData } from "@/context/CallDataContext";
+import { useAppContext } from "@/context/AppContext";
 import Postit from "./Postit"; // 🔹 Assure-toi d'importer le bon fichier du composant Postit
 
 const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
@@ -14,11 +15,10 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
   markers,
   onSeek,
 }) => {
-  const appelPostits = useCallData().appelPostits;
+  const { fetchAllPostits, appelPostits } = useCallData(); // ou usePostits
 
   // ✅ État pour stocker le post-it sélectionné
-  // ✅ Utilisation correcte du type `PostitType`
-  const [selectedPostit, setSelectedPostit] = useState<PostitType | null>(null);
+  const { selectedPostit, setSelectedPostit } = useAppContext();
 
   // ✅ Fermer le post-it
   const handleClosePostit = () => {
@@ -58,6 +58,10 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
 
     onSeek(marker.time);
   };
+
+  useEffect(() => {
+    fetchAllPostits();
+  }, []);
 
   return (
     <Box sx={{ width: "100%", position: "relative", padding: "10px" }}>
