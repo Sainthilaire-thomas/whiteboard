@@ -17,6 +17,21 @@ import { useSearchParams } from "next/navigation";
 const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
+  const contextPanels: Record<
+    string,
+    { component: React.ReactNode; width: number }
+  > = {
+    selection: {
+      component: <SelectionEntrepriseEtAppel />,
+      width: 400,
+    },
+    synthese: {
+      component: <SyntheseEvaluation />,
+      width: 700,
+    },
+    // Tu peux ajouter d'autres vues ici...
+  };
+
   const { user, isAuthenticated } = useAuth0();
   const { selectedCall, setAudioSrc, calls, selectCall } = useCallData();
   const {
@@ -57,13 +72,6 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
 
       {/* ✅ Colonne principale à droite */}
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        {/* Header droit avec bouton pour ouvrir Synthèse */}
-        <Box sx={{ display: "flex", justifyContent: "flex-end", px: 2, py: 1 }}>
-          <IconButton onClick={() => setIsRightDrawerOpen(!isRightDrawerOpen)}>
-            <MenuIcon />
-          </IconButton>
-        </Box>
-
         <Box sx={{ display: "flex", flexGrow: 1 }}>
           {/* Transcript principal */}
           <Box sx={{ flex: 1 }}>
@@ -71,41 +79,23 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
           </Box>
 
           {/* Zone contextuelle */}
-          {view && (
+          {view && contextPanels[view] && (
             <Box
               sx={{
-                width: 400,
+                width: contextPanels[view].width,
                 borderLeft: "1px solid #ddd",
                 bgcolor: "background.default",
                 px: 2,
                 py: 2,
                 overflowY: "auto",
+                transition: "width 0.3s ease",
+                height: "100vh",
               }}
             >
-              {view === "selection" && <SelectionEntrepriseEtAppel />}
-              {view === "synthese" && <SyntheseEvaluation />}
+              {contextPanels[view].component}
             </Box>
           )}
         </Box>
-
-        <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)}>
-          <Box
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "80%",
-              bgcolor: "background.paper",
-              boxShadow: 24,
-              p: 4,
-              overflow: "auto",
-              maxHeight: "90vh",
-            }}
-          >
-            {/* Historique de l'évaluation */}
-          </Box>
-        </Modal>
       </Box>
     </Box>
   );
