@@ -4,10 +4,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import CustomThemeProvider from "@/app/components/common/Theme/ThemeProvider";
 import { CurrentViewProvider } from "@/hooks/whiteboard/useCurrentView";
-import { CallDataProvider } from "@/context/CallDataContext";
+import RootProvider from "@/context/RootProvider";
 import { ZohoProvider } from "@/context/ZohoContext";
 import { TaggingDataProvider } from "@/context/TaggingDataContext";
-import { AppProvider } from "@/context/AppContext";
 import GlobalNavBar from "./components/common/GlobalNavBar"; // Importer la GlobalNavBar
 import { SupabaseProvider } from "@/context/SupabaseContext";
 import { ConseillerProvider } from "@/context/ConseillerContext";
@@ -24,7 +23,7 @@ export default function RootLayout({
       <body>
         <QueryClientProvider client={queryClient}>
           <SupabaseProvider>
-            <AppProvider>
+            <RootProvider>
               <ZohoProvider>
                 <TaggingDataProvider>
                   <CurrentViewProvider>
@@ -39,7 +38,7 @@ export default function RootLayout({
                   </CurrentViewProvider>
                 </TaggingDataProvider>
               </ZohoProvider>
-            </AppProvider>{" "}
+            </RootProvider>
           </SupabaseProvider>
         </QueryClientProvider>
       </body>

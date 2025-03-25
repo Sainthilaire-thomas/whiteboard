@@ -7,7 +7,7 @@ import {
 } from "@/types/types";
 import { useCallData } from "@/context/CallDataContext";
 import { useAppContext } from "@/context/AppContext";
-import Postit from "./Postit"; // 🔹 Assure-toi d'importer le bon fichier du composant Postit
+import { useRouter } from "next/navigation";
 
 const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
   duration,
@@ -16,6 +16,7 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
   onSeek,
 }) => {
   const { fetchAllPostits, appelPostits } = useCallData(); // ou usePostits
+  const router = useRouter();
 
   // ✅ État pour stocker le post-it sélectionné
   const { selectedPostit, setSelectedPostit } = useAppContext();
@@ -55,7 +56,7 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
       pratique: matchingPostit.pratique,
       callid: matchingPostit.callid,
     });
-
+    router.push("/evaluation?view=postit");
     onSeek(marker.time);
   };
 
@@ -96,15 +97,6 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
           />
         </Tooltip>
       ))}
-
-      {/* ✅ Affichage du Post-it en modal lorsqu'un post-it est sélectionné */}
-      {selectedPostit && (
-        <Postit
-          postit={selectedPostit}
-          isSelected={true}
-          onClose={handleClosePostit} // ✅ Passe `handleClosePostit`
-        />
-      )}
     </Box>
   );
 };

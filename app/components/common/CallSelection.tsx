@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useCallData } from "@/context/CallDataContext";
-import { useAppContext } from "@/context/AppContext";
 import { useConseiller } from "@/context/ConseillerContext";
 import { supabaseClient } from "@/lib/supabaseClient";
 import {
@@ -35,8 +34,15 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-export default function CallSelection() {
-  const { selectedEntreprise } = useAppContext(); // ✅ via contexte
+interface CallSelectionProps {
+  selectedEntreprise: number | null;
+}
+
+export default function CallSelection({
+  selectedEntreprise,
+}: CallSelectionProps) {
+  console.log("selectedEntreprise", selectedEntreprise);
+
   const {
     calls,
     fetchCalls,

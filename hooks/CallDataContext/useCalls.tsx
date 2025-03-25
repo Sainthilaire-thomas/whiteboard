@@ -11,6 +11,8 @@ export function useCalls(): UseCallsResult {
 
   // 🔁 Récupération des appels pour une entreprise (avec activités)
   const fetchCalls = useCallback(async (identreprise: number) => {
+    console.log("idEntreprise dansfetchCalls", identreprise);
+
     if (!identreprise) {
       console.warn("⚠️ Aucun identreprise fourni !");
       return;

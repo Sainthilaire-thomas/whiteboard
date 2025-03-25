@@ -38,7 +38,17 @@ export const useAppContext = (): AppContextType => {
 };
 
 // 📌 Provider principal
-export const RawAppProvider = ({ children }: { children: ReactNode }) => {
+interface RawAppProviderProps {
+  children: ReactNode;
+  selectedEntreprise: number | null;
+  setSelectedEntreprise: (id: number | null) => void;
+}
+
+export const RawAppProvider = ({
+  children,
+  selectedEntreprise,
+  setSelectedEntreprise,
+}: RawAppProviderProps) => {
   // 📦 Hooks custom
   const activités = useActivities();
   const domaines = useDomains();
@@ -63,9 +73,6 @@ export const RawAppProvider = ({ children }: { children: ReactNode }) => {
   // 🗂️ États globaux
   const [idActivite, setIdActivite] = useState<number | null>(null);
   const [idPratique, setIdPratique] = useState<number | null>(null);
-  const [selectedEntreprise, setSelectedEntreprise] = useState<number | null>(
-    null
-  );
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
   return (
@@ -158,14 +165,3 @@ export const RawAppProvider = ({ children }: { children: ReactNode }) => {
     </AppContext.Provider>
   );
 };
-
-const queryClient = new QueryClient();
-export const AppProvider = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={queryClient}>
-    <CallDataProvider>
-      {" "}
-      {/* ✅ On entoure RawAppProvider ici */}
-      <RawAppProvider>{children}</RawAppProvider>
-    </CallDataProvider>
-  </QueryClientProvider>
-);

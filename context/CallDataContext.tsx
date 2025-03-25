@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, createContext, useContext, ReactNode } from "react";
+import {
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+  ReactNode,
+} from "react";
 import { useAppContext } from "@/context/AppContext";
 
 // 📚 Imports des hooks
@@ -50,6 +56,14 @@ export const CallDataProvider = ({
     createAudioUrlWithToken,
     isLoadingCalls,
   } = useCalls();
+
+  // 💡 C’est ici qu’on va lancer fetchCalls quand selectedEntreprise change
+  useEffect(() => {
+    if (selectedEntreprise !== null) {
+      console.log("📞 Triggering fetchCalls from CallDataProvider");
+      fetchCalls(selectedEntreprise);
+    }
+  }, [selectedEntreprise, fetchCalls]);
 
   // ✅ Activité liée à un appel
 

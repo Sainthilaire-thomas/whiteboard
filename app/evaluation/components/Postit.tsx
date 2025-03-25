@@ -21,8 +21,13 @@ import GridContainerSujetsEval from "./GridContainerSujetsEval";
 import GridContainerPratiquesEval from "./GridContainerPratiquesEval";
 import { columnConfigSujets, columnConfigPratiques } from "@/config/gridConfig";
 import { Item } from "@/types/types";
+import { useRouter } from "next/navigation";
 
-const Postit = () => {
+interface PostitProps {
+  inline?: boolean; // 👈 par défaut false
+}
+
+const Postit: React.FC<PostitProps> = ({ inline = false }) => {
   const {
     deletePostit,
     updatePostit,
@@ -45,6 +50,7 @@ const Postit = () => {
     fetchSujetsForActivite,
   } = useAppContext();
 
+  const router = useRouter();
   const { filteredDomains } = useFilteredDomains(selectedEntreprise);
   const { syncSujetsForActiviteFromMap, syncPratiquesForActiviteFromMap } =
     useAppContext();
@@ -178,7 +184,138 @@ const Postit = () => {
       );
     }
     setSelectedPostit(null);
+    router.push("/evaluation?view=synthese");
   };
+
+  const content = (
+    <>
+      <DialogTitle>Évaluation du passage</DialogTitle>
+      <DialogContent>
+        {/* Sélection du domaine */}
+        <Box sx={styles.domainSelection}>
+          <Tabs
+            value={selectedDomain ? String(selectedDomain) : ""}
+            onChange={(event, newValue) => selectDomain(String(newValue))}
+            variant="scrollable"
+            scrollButtons="auto"
+          >
+            {filteredDomains.map((domain) => (
+              <Tab
+                key={domain.iddomaine}
+                label={domain.nomdomaine}
+                value={String(domain.iddomaine)}
+              />
+            ))}
+          </Tabs>
+        </Box>
+
+        {/* Passage affiché */}
+        <Paper sx={styles.passageBox}>
+          <Typography variant="h6">Passage :</Typography>
+          <Typography>{selectedPostit.word}</Typography>
+        </Paper>
+
+        {/* Commentaire */}
+        <TextField
+          label="Commentaire"
+          value={selectedPostit.text}
+          onChange={(e) =>
+            setSelectedPostit({ ...selectedPostit, text: e.target.value })
+          }
+          fullWidth
+          multiline
+          rows={3}
+          variant="outlined"
+        />
+
+        <Box sx={{ minHeight: 300 }}>
+          {readyToDisplayGrids ? (
+            <>
+              <Typography variant="h6" sx={{ mt: 2 }}>
+                Sélectionner un sujet :
+              </Typography>
+              <GridContainerSujetsEval
+                categories={categoriesSujets}
+                items={sujetsData}
+                columnConfig={columnConfigSujets}
+                handleSujetClick={handleSujetClick}
+                sujetsDeLActivite={sujetsDeLActivite}
+              />
+
+              <Typography variant="h6" sx={{ mt: 2 }}>
+                Pratiques recommandées :
+              </Typography>
+              <GridContainerPratiquesEval
+                categories={categoriesPratiques}
+                items={pratiques}
+                columnConfig={columnConfigPratiques}
+                onPratiqueClick={() => {}}
+                pratiquesDeLActivite={pratiquesDeLActivite}
+              />
+            </>
+          ) : (
+            <Typography variant="body2" sx={{ textAlign: "center", mt: 4 }}>
+              Chargement...
+            </Typography>
+          )}
+        </Box>
+      </DialogContent>
+
+      <DialogActions>
+        <Button onClick={() => setSelectedPostit(null)} color="primary">
+          Fermer
+        </Button>
+        <Button onClick={handleDelete} color="error">
+          Supprimer
+        </Button>
+        <Button onClick={handleSave} color="primary" variant="contained">
+          Enregistrer
+        </Button>
+        <Button
+          onClick={() =>
+            idCallActivite &&
+            syncSujetsForActiviteFromMap(postitToSujetMap, idCallActivite)
+          }
+          variant="outlined"
+          color="secondary"
+        >
+          Enregistrer les sujets
+        </Button>
+        <Button
+          onClick={() =>
+            idCallActivite &&
+            syncPratiquesForActiviteFromMap(
+              postitToPratiqueMap,
+              idCallActivite,
+              pratiques
+            )
+          }
+          variant="outlined"
+          color="secondary"
+        >
+          Enregistrer les pratiques
+        </Button>
+      </DialogActions>
+    </>
+  );
+
+  if (inline) {
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          overflowY: "auto",
+          p: 2,
+          boxSizing: "border-box",
+        }}
+      >
+        {content}
+      </Box>
+    );
+  }
 
   return (
     <Modal
@@ -188,121 +325,7 @@ const Postit = () => {
     >
       <Box sx={styles.modalWrapper} onClick={handleClosePostit}>
         <Box sx={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
-          <DialogTitle>Évaluation du passage</DialogTitle>
-          <DialogContent>
-            {/* Sélection du domaine */}
-            <Box sx={styles.domainSelection}>
-              <Tabs
-                value={selectedDomain ? String(selectedDomain) : ""}
-                onChange={(event, newValue) => selectDomain(String(newValue))}
-                variant="scrollable"
-                scrollButtons="auto"
-              >
-                {filteredDomains.map((domain) => (
-                  <Tab
-                    key={domain.iddomaine}
-                    label={domain.nomdomaine}
-                    value={String(domain.iddomaine)}
-                  />
-                ))}
-              </Tabs>
-            </Box>
-
-            {/* Passage affiché */}
-            <Paper sx={styles.passageBox}>
-              <Typography variant="h6">Passage :</Typography>
-              <Typography>{selectedPostit.word}</Typography>
-            </Paper>
-
-            {/* Commentaire */}
-            <TextField
-              label="Commentaire"
-              value={selectedPostit.text}
-              onChange={(e) =>
-                setSelectedPostit({ ...selectedPostit, text: e.target.value })
-              }
-              fullWidth
-              multiline
-              rows={3}
-              variant="outlined"
-            />
-            <Box sx={{ minHeight: 300 }}>
-              {readyToDisplayGrids ? (
-                <>
-                  <Typography variant="h6" sx={{ mt: 2 }}>
-                    Sélectionner un sujet :
-                  </Typography>
-                  <GridContainerSujetsEval
-                    categories={categoriesSujets}
-                    items={sujetsData}
-                    columnConfig={columnConfigSujets}
-                    handleSujetClick={handleSujetClick}
-                    sujetsDeLActivite={sujetsDeLActivite}
-                  />
-
-                  <Typography variant="h6" sx={{ mt: 2 }}>
-                    Pratiques recommandées :
-                  </Typography>
-                  <GridContainerPratiquesEval
-                    categories={categoriesPratiques}
-                    items={pratiques}
-                    columnConfig={columnConfigPratiques}
-                    onPratiqueClick={() => {}}
-                    pratiquesDeLActivite={pratiquesDeLActivite}
-                  />
-                </>
-              ) : (
-                <Typography variant="body2" sx={{ textAlign: "center", mt: 4 }}>
-                  Chargement...
-                </Typography>
-              )}
-            </Box>
-          </DialogContent>
-
-          <DialogActions>
-            <Button onClick={() => setSelectedPostit(null)} color="primary">
-              Fermer
-            </Button>
-            <Button onClick={handleDelete} color="error">
-              Supprimer
-            </Button>
-            <Button onClick={handleSave} color="primary" variant="contained">
-              Enregistrer
-            </Button>
-            <Button
-              onClick={() => {
-                if (idCallActivite) {
-                  syncSujetsForActiviteFromMap(
-                    postitToSujetMap,
-                    idCallActivite
-                  );
-                } else {
-                  console.warn("❌ Aucune activité trouvée pour cet appel !");
-                }
-              }}
-              variant="outlined"
-              color="secondary"
-            >
-              Enregistrer les sujets
-            </Button>
-            <Button
-              onClick={() => {
-                if (idCallActivite) {
-                  syncPratiquesForActiviteFromMap(
-                    postitToPratiqueMap,
-                    idCallActivite,
-                    pratiques
-                  ); // ✅
-                } else {
-                  console.warn("❌ Aucune activité trouvée pour cet appel !");
-                }
-              }}
-              variant="outlined"
-              color="secondary"
-            >
-              Enregistrer les pratiques
-            </Button>
-          </DialogActions>
+          {content}
         </Box>
       </Box>
     </Modal>

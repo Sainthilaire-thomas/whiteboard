@@ -9,10 +9,12 @@ import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
 import EvaluationTranscript from "./components/EvaluationTranscript";
 import SyntheseEvaluation from "./components/SyntheseEvaluation";
-import SelectionEntrepriseEtAppel from "../components/common/SelectionEntrepriseetAppel";
+import SelectionEntrepriseEtAppel from "../components/common/SelectionEntrepriseEtAppel";
+import Postit from "./components/Postit";
 import { EvaluationProps } from "@/types/types"; // ✅ Import correct
 import ActivitySidebar from "../components/navigation/ActivitySidebar";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
   const searchParams = useSearchParams();
@@ -29,9 +31,13 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
       component: <SyntheseEvaluation />,
       width: 700,
     },
-    // Tu peux ajouter d'autres vues ici...
+    postit: {
+      component: <Postit inline />,
+      width: 700,
+    },
   };
 
+  const router = useRouter();
   const { user, isAuthenticated } = useAuth0();
   const { selectedCall, setAudioSrc, calls, selectCall } = useCallData();
   const {
@@ -41,6 +47,8 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
     errorEntreprises,
     selectedEntreprise,
     setSelectedEntreprise,
+    selectedPostit,
+    setSelectedPostit,
   } = useAppContext();
 
   const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState(false);
@@ -57,6 +65,12 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
       setAudioSrc(selectedCall.audiourl ?? null);
     }
   }, [selectedCall, setAudioSrc]);
+
+  useEffect(() => {
+    if (view === "postit" && !selectedPostit) {
+      router.push("/evaluation?view=synthese");
+    }
+  }, [view, selectedPostit, router]);
 
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>
@@ -79,7 +93,7 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
           </Box>
 
           {/* Zone contextuelle */}
-          {view && contextPanels[view] && (
+          {view && contextPanels[view] ? (
             <Box
               sx={{
                 width: contextPanels[view].width,
@@ -87,14 +101,14 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
                 bgcolor: "background.default",
                 px: 2,
                 py: 2,
+                height: "100vh",
                 overflowY: "auto",
                 transition: "width 0.3s ease",
-                height: "100vh",
               }}
             >
               {contextPanels[view].component}
             </Box>
-          )}
+          ) : null}
         </Box>
       </Box>
     </Box>

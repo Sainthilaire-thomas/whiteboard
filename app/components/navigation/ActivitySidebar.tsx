@@ -22,6 +22,7 @@ import {
 } from "@mui/icons-material";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAppContext } from "@/context/AppContext";
 
 type StepStatus = "à faire" | "en cours" | "réalisé";
 type PhaseKey = "selection" | "evaluation" | "coaching" | "suivi" | "feedback";
@@ -34,27 +35,6 @@ type Phase = {
     route?: string;
   }[];
 };
-
-const phases: Phase[] = [
-  {
-    label: "Sélection",
-    key: "selection",
-    subSteps: [
-      {
-        label: "Sélection entreprise & appel",
-        route: "/evaluation?view=selection",
-      },
-    ],
-  },
-  {
-    label: "Évaluation",
-    key: "evaluation",
-    subSteps: [{ label: "Synthèse", route: "/evaluation?view=synthese" }],
-  },
-  { label: "Coaching", key: "coaching" },
-  { label: "Suivi", key: "suivi" },
-  { label: "Feedback", key: "feedback" },
-];
 
 const nextStatus: Record<StepStatus, StepStatus> = {
   "à faire": "en cours",
@@ -79,6 +59,32 @@ export default function ActivitySidebar() {
   const searchParams = useSearchParams();
   const [openPhase, setOpenPhase] = useState<PhaseKey | null>("selection");
   const [isExpanded, setIsExpanded] = useState(false);
+  const { selectedPostit } = useAppContext();
+  const phases: Phase[] = [
+    {
+      label: "Sélection",
+      key: "selection",
+      subSteps: [
+        {
+          label: "Sélection entreprise & appel",
+          route: "/evaluation?view=selection",
+        },
+      ],
+    },
+    {
+      label: "Évaluation",
+      key: "evaluation",
+      subSteps: [
+        { label: "Synthèse", route: "/evaluation?view=synthese" },
+        ...(selectedPostit
+          ? [{ label: "Passage sélectionné", route: "/evaluation?view=postit" }]
+          : []),
+      ],
+    },
+    { label: "Coaching", key: "coaching" },
+    { label: "Suivi", key: "suivi" },
+    { label: "Feedback", key: "feedback" },
+  ];
 
   const [stepStatus, setStepStatus] = useState<Record<PhaseKey, StepStatus>>({
     selection: "en cours",
