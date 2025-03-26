@@ -54,6 +54,7 @@ const Postit: React.FC<PostitProps> = ({ inline = false }) => {
   const { filteredDomains } = useFilteredDomains(selectedEntreprise);
   const { syncSujetsForActiviteFromMap, syncPratiquesForActiviteFromMap } =
     useAppContext();
+  const [showTabs, setShowTabs] = useState(false);
 
   const sujetsDeLActivite = useMemo(() => {
     if (!postitToSujetMap || Object.keys(postitToSujetMap).length === 0) {
@@ -189,86 +190,142 @@ const Postit: React.FC<PostitProps> = ({ inline = false }) => {
 
   const content = (
     <>
-      <DialogTitle>Évaluation du passage</DialogTitle>
-      <DialogContent>
-        {/* Sélection du domaine */}
-        <Box sx={styles.domainSelection}>
-          <Tabs
-            value={selectedDomain ? String(selectedDomain) : ""}
-            onChange={(event, newValue) => selectDomain(String(newValue))}
-            variant="scrollable"
-            scrollButtons="auto"
+      <DialogTitle>📝 Évaluation du passage</DialogTitle>
+      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <Box sx={styles.stepBox}>
+          <Typography variant="subtitle2" color="primary" sx={{ mb: 1 }}>
+            🟢 Contexte du passage
+          </Typography>
+
+          <Typography variant="caption" color="text.secondary">
+            Passage sélectionné :
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              mb: 2,
+              fontStyle: "italic",
+              fontWeight: 400,
+              color: "text.primary",
+            }}
           >
-            {filteredDomains.map((domain) => (
-              <Tab
-                key={domain.iddomaine}
-                label={domain.nomdomaine}
-                value={String(domain.iddomaine)}
-              />
-            ))}
-          </Tabs>
+            « {selectedPostit.word} »
+          </Typography>
+
+          <Typography variant="caption" color="text.secondary">
+            Commentaire à chaud :
+          </Typography>
+          <TextField
+            variant="standard"
+            fullWidth
+            value={selectedPostit.text}
+            onChange={(e) =>
+              setSelectedPostit({ ...selectedPostit, text: e.target.value })
+            }
+            placeholder="Note rapide à chaud..."
+            sx={{ mb: 2 }}
+          />
+
+          <Typography variant="caption" color="text.secondary">
+            Domaine d’analyse :
+          </Typography>
+          {selectedDomain && !showTabs ? (
+            <Box
+              sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}
+            >
+              <Typography variant="body2" fontWeight={500}>
+                {
+                  filteredDomains.find(
+                    (d) => d.iddomaine === Number(selectedDomain)
+                  )?.nomdomaine
+                }
+              </Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setShowTabs(true)}
+              >
+                Changer
+              </Button>
+            </Box>
+          ) : (
+            <Box sx={styles.domainSelection}>
+              <Tabs
+                value={selectedDomain ? String(selectedDomain) : ""}
+                onChange={(event, newValue) => {
+                  selectDomain(String(newValue));
+                  setShowTabs(false);
+                }}
+                variant="scrollable"
+                scrollButtons="auto"
+              >
+                {filteredDomains.map((domain) => (
+                  <Tab
+                    key={domain.iddomaine}
+                    label={domain.nomdomaine}
+                    value={String(domain.iddomaine)}
+                  />
+                ))}
+              </Tabs>
+            </Box>
+          )}
         </Box>
 
-        {/* Passage affiché */}
-        <Paper sx={styles.passageBox}>
-          <Typography variant="h6">Passage :</Typography>
-          <Typography>{selectedPostit.word}</Typography>
-        </Paper>
+        {/* 🎯 Bloc 4 – Choix du sujet */}
+        <Box sx={styles.stepBox}>
+          <Typography variant="subtitle2" color="primary" gutterBottom>
+            🧭 Étape 1 : Quel critère qualité est en défaut ?
+          </Typography>
 
-        {/* Commentaire */}
-        <TextField
-          label="Commentaire"
-          value={selectedPostit.text}
-          onChange={(e) =>
-            setSelectedPostit({ ...selectedPostit, text: e.target.value })
-          }
-          fullWidth
-          multiline
-          rows={3}
-          variant="outlined"
-        />
+          <GridContainerSujetsEval
+            categories={categoriesSujets}
+            items={sujetsData}
+            columnConfig={columnConfigSujets}
+            handleSujetClick={handleSujetClick}
+            sujetsDeLActivite={sujetsDeLActivite}
+          />
+        </Box>
 
-        <Box sx={{ minHeight: 300 }}>
-          {readyToDisplayGrids ? (
-            <>
-              <Typography variant="h6" sx={{ mt: 2 }}>
-                Sélectionner un sujet :
-              </Typography>
-              <GridContainerSujetsEval
-                categories={categoriesSujets}
-                items={sujetsData}
-                columnConfig={columnConfigSujets}
-                handleSujetClick={handleSujetClick}
-                sujetsDeLActivite={sujetsDeLActivite}
-              />
+        {/* 🛠️ Bloc 5 – Choix de la pratique */}
+        <Box sx={styles.stepBox}>
+          <Typography variant="subtitle2" color="primary" gutterBottom>
+            🛠️ Étape 2 : Quelle pratique peut améliorer ce critère ?
+          </Typography>
 
-              <Typography variant="h6" sx={{ mt: 2 }}>
-                Pratiques recommandées :
-              </Typography>
-              <GridContainerPratiquesEval
-                categories={categoriesPratiques}
-                items={pratiques}
-                columnConfig={columnConfigPratiques}
-                onPratiqueClick={() => {}}
-                pratiquesDeLActivite={pratiquesDeLActivite}
-              />
-            </>
+          {selectedPostit.idsujet ? (
+            <GridContainerPratiquesEval
+              categories={categoriesPratiques}
+              items={pratiques}
+              columnConfig={columnConfigPratiques}
+              onPratiqueClick={() => {}}
+              pratiquesDeLActivite={pratiquesDeLActivite}
+            />
           ) : (
-            <Typography variant="body2" sx={{ textAlign: "center", mt: 4 }}>
-              Chargement...
+            <Typography
+              variant="body2"
+              sx={{ fontStyle: "italic", color: "text.secondary", mt: 1 }}
+            >
+              👉 Veuillez d’abord sélectionner un sujet.
             </Typography>
           )}
         </Box>
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={() => setSelectedPostit(null)} color="primary">
+      {/* 🔘 Boutons actions */}
+      <Box
+        sx={{ ...styles.stepBox, display: "flex", flexWrap: "wrap", gap: 1 }}
+      >
+        <Button
+          onClick={() => setSelectedPostit(null)}
+          variant="outlined"
+          color="inherit"
+        >
           Fermer
         </Button>
-        <Button onClick={handleDelete} color="error">
+        <Button onClick={handleDelete} variant="outlined" color="error">
           Supprimer
         </Button>
-        <Button onClick={handleSave} color="primary" variant="contained">
+        <Button onClick={handleSave} variant="contained" color="primary">
           Enregistrer
         </Button>
         <Button
@@ -295,7 +352,7 @@ const Postit: React.FC<PostitProps> = ({ inline = false }) => {
         >
           Enregistrer les pratiques
         </Button>
-      </DialogActions>
+      </Box>
     </>
   );
 
@@ -347,6 +404,16 @@ const styles = {
     justifyContent: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
+
+  stepBox: {
+    p: 2,
+    mb: 2,
+    bgcolor: "background.default",
+    borderRadius: 2,
+    border: "1px solid",
+    borderColor: "divider",
+  },
+
   modalContainer: {
     width: "80%",
     maxHeight: "90vh",
@@ -367,7 +434,6 @@ const styles = {
   passageBox: {
     p: 2,
     mb: 2,
-    backgroundColor: "#1c1c1c",
   },
 };
 

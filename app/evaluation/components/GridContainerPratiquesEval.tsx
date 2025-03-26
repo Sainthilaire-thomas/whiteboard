@@ -26,8 +26,6 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
   columnConfig,
   pratiquesDeLActivite,
 }) => {
-  console.log("pratiquesdeLActivite", pratiquesDeLActivite);
-
   const { updatePostit, idCallActivite, updatePostitToPratiqueMap } =
     useCallData();
   const {
@@ -44,8 +42,6 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
 
   // ✅ Gestion du clic sur une pratique (ajout/suppression)
   const handleItemClick = async (selectedItem: Pratique) => {
-    console.log("🎯 Pratique cliquée:", selectedItem.nompratique);
-
     if (!selectedPostit) {
       alert("⚠️ Aucun post-it actif !");
       return;
