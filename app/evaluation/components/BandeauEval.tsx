@@ -17,7 +17,7 @@ import { useState, useMemo } from "react";
 import { columnConfigPratiques, columnConfigSujets } from "@/config/gridConfig";
 
 // Chargement dynamique de SyntheseEvaluation
-const SyntheseEvaluation = dynamic(() => import("./SyntheseEvaluation"), {
+const SyntheseEvaluation = dynamic(() => import("./SyntheseEvaluation.old"), {
   loading: () => <p>Chargement de la synthèse...</p>,
 });
 

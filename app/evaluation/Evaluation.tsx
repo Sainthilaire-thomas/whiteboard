@@ -8,7 +8,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
 import EvaluationTranscript from "./components/EvaluationTranscript";
-import SyntheseEvaluation from "./components/SyntheseEvaluation";
+import SyntheseEvaluation from "./components/SyntheseEvaluation/index";
 import SelectionEntrepriseEtAppel from "../components/common/SelectionEntrepriseEtAppel";
 import Postit from "./components/Postit";
 import { EvaluationProps } from "@/types/types"; // ✅ Import correct
@@ -32,7 +32,7 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
     },
     synthese: {
       component: <SyntheseEvaluation />,
-      width: 700,
+      width: "50%",
     },
     postit: {
       component: <Postit inline />,

@@ -13,7 +13,7 @@ import GridContainerPratiquesEval from "./GridContainerPratiquesEval";
 import GridContainerSujetsEval from "./GridContainerSujetsEval";
 import Exercices from "./Exercices";
 import AssessmentIcon from "@mui/icons-material/Assessment"; // Icône pour la synthèse
-import SyntheseEvaluation from "./SyntheseEvaluation";
+import SyntheseEvaluation from "./SyntheseEvaluation.old";
 import { useSupabase } from "@/context/SupabaseContext";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { Domaine, Pratique } from "@/types/types";

@@ -47,7 +47,7 @@ export function useActivities(): UseActivitiesResult {
       const { data, error } = await supabaseClient
         .from("pratiques")
         .select(
-          `idpratique, nompratique, description, jeuderole, idcategoriepratique`
+          `idpratique, nompratique, description, jeuderole, idcategoriepratique,geste`
         )
         .order("idpratique", { ascending: true });
 
@@ -65,6 +65,7 @@ export function useActivities(): UseActivitiesResult {
         description: pratique.description,
         jeuderole: pratique.jeuderole,
         idcategoriepratique: pratique.idcategoriepratique,
+        geste: pratique.geste,
       })) as Pratique[];
     },
   });
