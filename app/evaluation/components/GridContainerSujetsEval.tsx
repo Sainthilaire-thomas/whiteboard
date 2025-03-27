@@ -1,4 +1,5 @@
 import { Grid, Typography, Tooltip } from "@mui/material";
+import { darken } from "@mui/material/styles";
 import { useEffect, useMemo, memo } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
@@ -82,7 +83,14 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
       container
       spacing={0}
       alignItems="stretch"
-      sx={{ width: "auto", maxWidth: "100%", height: "100%", overflow: "auto" }}
+      sx={{
+        width: "auto",
+        maxWidth: "100%",
+
+        overflow: "auto",
+
+        boxShadow: 1,
+      }}
     >
       {filteredCategories.map((category) => (
         <Grid
@@ -91,18 +99,22 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
           key={category[columnConfig.categoryIdKey]}
           sx={{
             backgroundColor: category.couleur,
-            borderLeft: "1px solid white",
-            borderRight: "1px solid white",
+            borderLeft: "0.5px solid white",
+            borderRight: "0.5px solid white",
           }}
         >
           <Typography
             variant="subtitle2"
             sx={{
               fontWeight: "bold",
-              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              backgroundColor: darken(String(category.couleur), 0.2),
               textAlign: "center",
               padding: "6px",
-              borderBottom: "1px solid white",
+              borderBottom: "0.5px solid white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: 48, // 👈 hauteur fixe pour toutes les têtes de colonnes
             }}
           >
             {category[columnConfig.categoryNameKey]}
@@ -135,20 +147,29 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
                     sx={{
                       cursor: "pointer",
                       backgroundColor: isSelectedForPostit
-                        ? "red"
+                        ? "error.main"
                         : isAssociated
                         ? "gray"
                         : category.couleur,
 
                       "&:hover": {
                         backgroundColor: isSelectedForPostit
-                          ? "red"
+                          ? "error.main"
                           : isAssociated
-                          ? "gray"
-                          : "rgba(255, 255, 255, 0.2)",
+                          ? "action.selected"
+                          : "action.hover",
                       },
-                      padding: "10px",
-                      borderBottom: "1px solid white",
+                      px: 1,
+                      py: 0.5,
+                      fontSize: "0.85rem",
+                      lineHeight: 1.2,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      minHeight: 36,
+
+                      borderBottom: "0.5px solid white",
+
                       textAlign: "center",
                     }}
                   >
