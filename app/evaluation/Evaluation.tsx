@@ -1,4 +1,3 @@
-// 📜 app/evaluation/Evaluation.tsx
 "use client";
 
 import { useState, useEffect, useCallback, memo } from "react";
@@ -11,7 +10,8 @@ import EvaluationTranscript from "./components/EvaluationTranscript";
 import SyntheseEvaluation from "./components/SyntheseEvaluation/index";
 import SelectionEntrepriseEtAppel from "../components/common/SelectionEntrepriseEtAppel";
 import Postit from "./components/Postit";
-import { EvaluationProps } from "@/types/types"; // ✅ Import correct
+import FourZones from "./components/FourZones/FourZones"; // Importation du composant FourZones
+import { EvaluationProps } from "@/types/types";
 import ActivitySidebar from "../components/navigation/ActivitySidebar";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -22,9 +22,11 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
+
+  // Ajout de FourZones aux panneaux contextuels
   const contextPanels: Record<
     string,
-    { component: React.ReactNode; width: number }
+    { component: React.ReactNode; width: number | string }
   > = {
     selection: {
       component: <SelectionEntrepriseEtAppel />,
@@ -37,6 +39,10 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
     postit: {
       component: <Postit inline />,
       width: 700,
+    },
+    roleplay: {
+      component: <FourZones />, // Ajout du composant FourZones
+      width: "55%", // Largeur légèrement plus grande pour FourZones
     },
   };
 
@@ -56,6 +62,9 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
     setSelectedPostit,
   } = useAppContext();
 
+  // Récupérer le postit sélectionné pour le jeu de rôle
+  const { selectedPostitForRolePlay } = useCallData();
+
   const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState(false);
   const [isRightDrawerOpen, setIsRightDrawerOpen] = useState(false);
   const [tabIndex, setTabIndex] = useState(0);
@@ -71,11 +80,15 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
     }
   }, [selectedCall, setAudioSrc]);
 
+  // Vérification des conditions de redirection
   useEffect(() => {
     if (view === "postit" && !selectedPostit) {
       router.push("/evaluation?view=synthese");
+    } else if (view === "roleplay" && !selectedPostitForRolePlay) {
+      // Redirection si on essaie d'accéder à la vue jeu de rôle sans postit sélectionné
+      router.push("/evaluation?view=synthese");
     }
-  }, [view, selectedPostit, router]);
+  }, [view, selectedPostit, selectedPostitForRolePlay, router]);
 
   useEffect(() => {
     if ((view && contextPanels[view]) || selectedPostit) {
@@ -99,8 +112,13 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
         {/* ✅ Colonne principale à droite */}
         <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <Box sx={{ display: "flex", flexGrow: 1 }}>
-            {/* Transcript principal */}
-            <Box sx={{ flex: 1 }}>
+            {/* Transcript principal - masqué si on est en mode jeu de rôle plein écran */}
+            <Box
+              sx={{
+                flex: view === "roleplay-fullscreen" ? 0 : 1,
+                display: view === "roleplay-fullscreen" ? "none" : "block",
+              }}
+            >
               <EvaluationTranscript />
             </Box>
 
@@ -109,9 +127,14 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
               ((view && contextPanels[view]) || selectedPostit) && (
                 <Box
                   sx={{
-                    width: contextPanels[view!]?.width ?? 400,
-
-                    borderLeft: "1px solid #ddd",
+                    width:
+                      view === "roleplay-fullscreen"
+                        ? "100%"
+                        : contextPanels[view!]?.width ?? 400,
+                    borderLeft:
+                      view === "roleplay-fullscreen"
+                        ? "none"
+                        : "1px solid #ddd",
                     bgcolor: "background.default",
                     px: 2,
                     py: 2,

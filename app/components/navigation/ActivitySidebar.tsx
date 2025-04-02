@@ -23,6 +23,7 @@ import {
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppContext } from "@/context/AppContext";
+import { useCallData } from "@/context/CallDataContext";
 
 type StepStatus = "à faire" | "en cours" | "réalisé";
 type PhaseKey = "selection" | "evaluation" | "coaching" | "suivi" | "feedback";
@@ -60,6 +61,8 @@ export default function ActivitySidebar() {
   const [openPhase, setOpenPhase] = useState<PhaseKey | null>("selection");
   const [isExpanded, setIsExpanded] = useState(false);
   const { selectedPostit } = useAppContext();
+  const { selectedPostitForRolePlay } = useCallData();
+
   const phases: Phase[] = [
     {
       label: "Sélection",
@@ -81,7 +84,22 @@ export default function ActivitySidebar() {
           : []),
       ],
     },
-    { label: "Coaching", key: "coaching" },
+    {
+      label: "Coaching",
+      key: "coaching",
+      subSteps: [
+        ...(selectedPostitForRolePlay
+          ? [
+              {
+                label: `Jeu de rôle: ${
+                  selectedPostitForRolePlay.pratique || "Passage"
+                }`,
+                route: "/evaluation?view=roleplay",
+              },
+            ]
+          : []),
+      ],
+    },
     { label: "Suivi", key: "suivi" },
     { label: "Feedback", key: "feedback" },
   ];

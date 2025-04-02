@@ -330,6 +330,18 @@ export interface CallDataContextType {
   archiveCall: (callId: number) => Promise<void>;
   deleteCall: (callId: number) => Promise<void>;
   removeActivityForCall: (callId: number) => Promise<void>;
+
+  selectedPostitForRolePlay: Postit | null;
+  setSelectedPostitForRolePlay: (postit: Postit | null) => void;
+  rolePlayData: RolePlayData | null;
+  saveRolePlayData: (data: RolePlayData, postitId: number) => Promise<void>;
+  fetchRolePlayData: (callId: number, postitId: number) => Promise<void>;
+  deleteRolePlayData: (rolePlayId: number) => Promise<void>;
+  getRolePlaysByCallId: (
+    callId: number
+  ) => Promise<{ id: number; postit_id: number; note: RolePlayData }[]>;
+  isLoadingRolePlay: boolean;
+  rolePlayError: Error | null;
 }
 
 export interface UIContextType {
@@ -645,4 +657,29 @@ export interface UseQuizResult {
 export interface UseZonesResult {
   zoneTexts: ZoneTexts;
   selectTextForZone: (text: string, zone: keyof ZoneTexts) => void;
+}
+
+// Type pour un post-it dans le jeu de rôle
+export interface RolePlayPostit {
+  id: string;
+  content: string;
+  zone: string;
+  color: string;
+}
+
+// Type pour les données complètes d'un jeu de rôle
+export interface RolePlayData {
+  callId: number;
+  postits: RolePlayPostit[];
+  clientText?: string;
+  date: string;
+}
+
+export interface RolePlayDataRecord {
+  id: number;
+  call_id: number;
+  postit_id: number;
+  note: RolePlayData;
+  type: string;
+  created_at: string;
 }

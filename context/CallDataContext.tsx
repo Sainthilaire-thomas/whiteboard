@@ -17,8 +17,9 @@ import { useDomains } from "@/hooks/useDomains";
 import { useAudio } from "@/hooks/CallDataContext/useAudio";
 import { useZones } from "@/hooks/CallDataContext/useZones";
 import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
+import { useRolePlay } from "@/hooks/CallDataContext/useRolePlay";
 
-import { CallDataContextType, Word } from "@/types/types";
+import { CallDataContextType, Word, Postit, RolePlayData } from "@/types/types";
 
 interface CallDataProviderProps {
   children: ReactNode;
@@ -108,6 +109,24 @@ export const CallDataProvider = ({
   // 🧠 Zones
   const { zoneTexts, selectTextForZone } = useZones();
 
+  // 🎮 Post-it sélectionné pour le jeu de rôle
+  const [selectedPostitForRolePlay, setSelectedPostitForRolePlay] =
+    useState<Postit | null>(null);
+
+  // 🎲 Jeu de rôle
+  const {
+    rolePlayData,
+    saveRolePlayData,
+    fetchRolePlayData,
+    deleteRolePlayData,
+    getRolePlaysByCallId,
+    isLoading: isLoadingRolePlay,
+    error: rolePlayError,
+  } = useRolePlay(
+    selectedCall?.callid ?? null,
+    selectedPostitForRolePlay?.id ?? null
+  );
+
   // 🗣️ Mot courant
   const [currentWord, setCurrentWord] = useState<Word | null>(null);
   const updateCurrentWord = (word: Word | null) => setCurrentWord(word);
@@ -167,6 +186,17 @@ export const CallDataProvider = ({
         createActivityForCall,
         removeActivityForCall,
         getActivityIdFromCallId,
+
+        // 🎮 Jeu de rôle coaching
+        selectedPostitForRolePlay,
+        setSelectedPostitForRolePlay,
+        rolePlayData,
+        saveRolePlayData,
+        fetchRolePlayData,
+        deleteRolePlayData,
+        getRolePlaysByCallId,
+        isLoadingRolePlay,
+        rolePlayError,
       }}
     >
       {children}

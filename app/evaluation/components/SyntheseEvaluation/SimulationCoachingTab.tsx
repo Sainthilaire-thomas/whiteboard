@@ -24,8 +24,10 @@ import {
   LightbulbOutlined,
 } from "@mui/icons-material";
 import { SimulationCoachingTabProps, Postit } from "@/types/evaluation";
+import { useRouter } from "next/navigation";
 import { sortPostits, SortCriteria } from "./utils/filters";
 import { formatTimecode, truncateText } from "./utils/formatters";
+import { useCallData } from "@/context/CallDataContext";
 
 const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
   filteredPostits,
@@ -40,6 +42,8 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const router = useRouter();
+  const { setSelectedPostitForRolePlay } = useCallData();
 
   const [filterView, setFilterView] = useState<FilterView>("all");
   const [selectedSujet, setSelectedSujet] = useState("");
@@ -81,8 +85,11 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
 
   // Fonction pour simuler le coaching sur un passage
   const handleSimulateCoaching = (postit: Postit) => {
-    console.log("Simuler coaching pour:", postit);
-    // Implémenter la logique pour démarrer la simulation
+    // Stocker le postit sélectionné dans le contexte global
+    setSelectedPostitForRolePlay(postit);
+
+    // Rediriger vers la vue de jeu de rôle
+    router.push("/evaluation?view=roleplay");
   };
 
   return (
