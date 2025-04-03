@@ -88,3 +88,15 @@ export interface CallDataContextType {
   selectTextForZone: any;
   isLoadingRolePlay: boolean;
 }
+
+// Dans le fichier où ImprovementSection est défini
+interface ImprovementSectionProps {
+  selectedClientText: string;
+  newPostitContent: string; // Ajoutez cette propriété
+  onNewPostitContentChange: React.Dispatch<React.SetStateAction<string>>;
+  currentZone: string;
+  onCurrentZoneChange: React.Dispatch<React.SetStateAction<string>>;
+  onAddPostit: () => void;
+  fontSize: number;
+  zoneColors: Record<string, string>;
+}

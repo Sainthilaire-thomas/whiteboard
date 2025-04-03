@@ -1,7 +1,16 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  /* config options here */
+const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ["formidable", "node-fetch", "form-data"],
+  },
+  // Augmenter la taille maximale des corps de requête si nécessaire
+  api: {
+    responseLimit: "8mb",
+    bodyParser: {
+      sizeLimit: "8mb",
+    },
+  },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

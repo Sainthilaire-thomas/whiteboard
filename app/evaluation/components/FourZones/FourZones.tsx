@@ -29,7 +29,8 @@ import {
   EditPostitDialog,
   CategoryDialog,
 } from "./components/DialogComponents";
-import SpeechToTextForFourZones from "./components/SpeechToTextForFourZones";
+
+import DynamicSpeechToTextForFourZones from "./components/DynamicSpeechToTextForFourZones";
 
 // Import des types, constantes et utilitaires
 import { ZONES } from "./constants/zone";
@@ -57,13 +58,15 @@ import { sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
 
 const FourZones: React.FC = () => {
   const { mode } = useThemeMode();
+  // Utilisez un cast explicite pour résoudre le conflit
+  const callDataContext = useCallData();
   const {
     selectedCall,
     selectedPostitForRolePlay,
     rolePlayData,
     saveRolePlayData,
     isLoadingRolePlay,
-  } = useCallData() as CallDataContextType;
+  } = callDataContext as unknown as CallDataContextType;
 
   // États pour les post-its et textes
   const [selectedClientText, setSelectedClientText] = useState<string>("");
@@ -233,7 +236,8 @@ const FourZones: React.FC = () => {
     setEditPostitContent("");
   };
   //fonction pour ajouter postit depuis la reconnaissance vocale
-  const addPostitsFromSpeech = (newPostits) => {
+  // Dans FourZones.tsx
+  const addPostitsFromSpeech = (newPostits: PostitType[]) => {
     setPostits([...postits, ...newPostits]);
   };
 
@@ -369,7 +373,7 @@ const FourZones: React.FC = () => {
           justifyContent: "space-between",
           alignItems: "center",
           p: 1,
-          bgcolor: "#f5f5f5",
+          bgcolor: mode === "dark" ? "background.default" : "#f5f5f5",
           borderRadius: 1,
         }}
       >
@@ -424,7 +428,9 @@ const FourZones: React.FC = () => {
               setShowCategoryDialog(true);
             }}
           />
-          <SpeechToTextForFourZones onAddPostits={addPostitsFromSpeech} />
+          <DynamicSpeechToTextForFourZones
+            onAddPostits={addPostitsFromSpeech}
+          />
         </>
       )}
 

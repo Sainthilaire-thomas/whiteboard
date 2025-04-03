@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   Button,
@@ -9,6 +11,7 @@ import {
   Chip,
   Alert,
   Snackbar,
+  CircularProgress,
   AlertColor,
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
@@ -18,149 +21,219 @@ import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import WarningIcon from "@mui/icons-material/Warning";
 
-// Import des constantes et utilitaires de l'application existante
-const ZONES = {
-  JE_FAIS: "JE_FAIS",
-  VOUS_AVEZ_FAIT: "VOUS_AVEZ_FAIT",
-  ENTREPRISE_FAIT: "ENTREPRISE_FAIT",
-  VOUS_FEREZ: "VOUS_FEREZ",
-};
+// Import des constantes pour les zones
+import { ZONES } from "../constants/zone";
+import { generateId, getZoneColors } from "../utils/postitUtils";
+import { useThemeMode } from "@/app/components/common/Theme/ThemeProvider";
+import { PostitType } from "../types/types";
 
-// Fonction pour générer un ID unique (reprise de votre utilitaire)
-const generateId = () =>
-  `postit_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+// Type pour les sélections de texte
+interface TextSelection {
+  id: string;
+  text: string;
+  zone: string | null;
+}
 
-// Définition des couleurs des zones selon le thème clair
-const zoneColors = {
-  [ZONES.JE_FAIS]: "#aed581", // Vert clair
-  [ZONES.VOUS_AVEZ_FAIT]: "#81c784", // Vert moyen
-  [ZONES.ENTREPRISE_FAIT]: "#ef9a9a", // Rouge clair
-  [ZONES.VOUS_FEREZ]: "#a5d6a7", // Vert pâle
-};
+// Type pour les props du composant
+interface SpeechToTextForFourZonesProps {
+  onAddPostits: (postits: PostitType[]) => void;
+}
 
-// Titres des zones pour l'affichage
-const zoneTitles = {
-  [ZONES.JE_FAIS]: "Ce que je fais",
-  [ZONES.VOUS_AVEZ_FAIT]: "Ce qu'a fait le client",
-  [ZONES.ENTREPRISE_FAIT]: "Ce que fait l'entreprise",
-  [ZONES.VOUS_FEREZ]: "Ce que fera le client",
-};
+const SpeechToTextForFourZones: React.FC<SpeechToTextForFourZonesProps> = ({
+  onAddPostits,
+}) => {
+  const { mode } = useThemeMode();
 
-const SpeechToTextForFourZones = ({ onAddPostits }) => {
   // États pour gérer l'enregistrement et la transcription
-  const [isRecording, setIsRecording] = useState(false);
-  const [transcription, setTranscription] = useState("");
-  const [selections, setSelections] = useState([]);
-  const [currentZone, setCurrentZone] = useState(ZONES.JE_FAIS);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [transcription, setTranscription] = useState<string>("");
+  const [selections, setSelections] = useState<TextSelection[]>([]);
+  const [currentZone, setCurrentZone] = useState<string>(ZONES.JE_FAIS);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
   // État pour les notifications
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState("info");
+  const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string>("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<AlertColor>("info");
 
-  // Référence pour le SpeechRecognition
-  const recognitionRef = useRef(null);
+  // Références pour l'enregistrement audio
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  // Ajout d'une référence pour suivre si une sélection est en cours
+  const selectionInProgressRef = useRef<boolean>(false);
+
+  // Obtenir les couleurs des zones en fonction du thème
+  const zoneColors = getZoneColors(mode);
+
+  // Titres des zones pour l'affichage
+  const zoneTitles: Record<string, string> = {
+    [ZONES.JE_FAIS]: "Ce que je fais",
+    [ZONES.VOUS_AVEZ_FAIT]: "Ce qu'a fait le client",
+    [ZONES.ENTREPRISE_FAIT]: "Ce que fait l'entreprise",
+    [ZONES.VOUS_FEREZ]: "Ce que fera le client",
+  };
 
   // État pour la taille de police
-  const [fontSize, setFontSize] = useState(14);
+  const [fontSize, setFontSize] = useState<number>(14);
 
-  // Configuration de la reconnaissance vocale
+  // Vérifier la compatibilité de l'API MediaRecorder
   useEffect(() => {
-    // Vérifier si la reconnaissance vocale est supportée par le navigateur
-    if (
-      !("webkitSpeechRecognition" in window) &&
-      !("SpeechRecognition" in window)
-    ) {
+    if (typeof window === "undefined") return;
+
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
       showNotification(
-        "La reconnaissance vocale n'est pas supportée par votre navigateur. Essayez Chrome ou Edge.",
+        "Votre navigateur ne supporte pas l'enregistrement audio. Veuillez utiliser Chrome, Firefox ou Edge récent.",
         "error"
       );
-      return;
     }
-
-    // Initialiser la reconnaissance vocale
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognitionRef.current = new SpeechRecognition();
-
-    // Configuration
-    recognitionRef.current.continuous = true;
-    recognitionRef.current.interimResults = true;
-    recognitionRef.current.lang = "fr-FR"; // Langue française par défaut
-
-    // Gérer les résultats de la reconnaissance
-    recognitionRef.current.onresult = (event) => {
-      let interimTranscript = "";
-      let finalTranscript = transcription;
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += " " + transcript;
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-
-      setTranscription(finalTranscript + interimTranscript);
-    };
-
-    // Gérer les erreurs
-    recognitionRef.current.onerror = (event) => {
-      console.error("Erreur de reconnaissance vocale:", event.error);
-      showNotification(
-        `Erreur de reconnaissance vocale: ${event.error}`,
-        "error"
-      );
-    };
-
-    return () => {
-      // Nettoyage
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, [transcription]);
+  }, []);
 
   // Afficher une notification
-  const showNotification = (message, severity) => {
+  const showNotification = (message: string, severity: AlertColor) => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
   };
 
   // Démarrer/arrêter l'enregistrement
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (isRecording) {
-      recognitionRef.current.stop();
-      showNotification("Enregistrement arrêté", "info");
+      // Arrêter l'enregistrement
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state === "recording"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
+      setIsRecording(false);
+      showNotification("Traitement de l'enregistrement...", "info");
     } else {
-      recognitionRef.current.start();
-      showNotification("Enregistrement démarré", "success");
+      try {
+        // Demander la permission d'accès au microphone
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+
+        // Créer un nouveau MediaRecorder
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: "audio/webm", // Format compatible avec l'API Whisper
+        });
+
+        // Réinitialiser les chunks audio
+        audioChunksRef.current = [];
+
+        // Configurer les événements du MediaRecorder
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          // Libérer les pistes audio pour arrêter le microphone
+          stream.getTracks().forEach((track) => track.stop());
+
+          // Créer un blob à partir des chunks audio
+          const audioBlob = new Blob(audioChunksRef.current, {
+            type: "audio/webm",
+          });
+
+          // Envoyer l'audio à l'API pour transcription
+          await sendAudioForTranscription(audioBlob);
+        };
+
+        // Démarrer l'enregistrement
+        mediaRecorder.start(1000); // Collecter des chunks toutes les secondes
+        mediaRecorderRef.current = mediaRecorder;
+        setIsRecording(true);
+        showNotification("Enregistrement démarré", "success");
+      } catch (error) {
+        console.error("Erreur lors de l'accès au microphone:", error);
+        showNotification(
+          "Impossible d'accéder au microphone. Veuillez vérifier les permissions.",
+          "error"
+        );
+      }
     }
-    setIsRecording(!isRecording);
   };
 
-  // Capturer la sélection de texte
+  // Envoyer l'audio au serveur pour transcription via Whisper
+  const sendAudioForTranscription = async (audioBlob: Blob) => {
+    try {
+      setIsProcessing(true);
+
+      // Créer un FormData pour envoyer le fichier audio
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.webm");
+
+      // Envoyer au point d'API Next.js
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de la transcription");
+      }
+
+      // Ajouter la transcription reçue
+      setTranscription((prev) => {
+        const newTranscription = prev
+          ? `${prev} ${data.transcription}`
+          : data.transcription;
+        return newTranscription;
+      });
+
+      showNotification("Transcription terminée avec succès", "success");
+    } catch (error) {
+      console.error("Erreur de transcription:", error);
+      showNotification(
+        `Erreur lors de la transcription: ${
+          error instanceof Error ? error.message : "Erreur inconnue"
+        }`,
+        "error"
+      );
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Capturer la sélection de texte - version corrigée
   const handleTextSelection = () => {
     const selection = window.getSelection();
+
     if (selection && selection.toString().trim().length > 0) {
       const selectedText = selection.toString().trim();
 
-      // Ajouter la sélection à la liste
-      setSelections([
-        ...selections,
-        {
-          id: generateId(),
-          text: selectedText,
-          zone: null,
-        },
-      ]);
+      // Vérifier si cette sélection existe déjà pour éviter les doublons
+      const selectionExists = selections.some(
+        (existingSelection) => existingSelection.text === selectedText
+      );
+
+      if (!selectionExists) {
+        // Ajouter la sélection à la liste seulement si elle n'existe pas
+        setSelections([
+          ...selections,
+          {
+            id: generateId(),
+            text: selectedText,
+            zone: null,
+          },
+        ]);
+
+        // Effacer la sélection pour éviter les sélections accidentelles
+        if (selection.removeAllRanges) {
+          selection.removeAllRanges();
+        }
+      }
     }
   };
 
   // Assigner une sélection à une zone
-  const assignToZone = (selectionId, zone) => {
+  const assignToZone = (selectionId: string, zone: string) => {
     // Mettre à jour la sélection avec la zone
     setSelections(
       selections.map((selection) =>
@@ -179,14 +252,17 @@ const SpeechToTextForFourZones = ({ onAddPostits }) => {
   };
 
   // Supprimer une sélection
-  const deleteSelection = (id) => {
+  const deleteSelection = (id: string) => {
     setSelections(selections.filter((selection) => selection.id !== id));
   };
 
   // Convertir les sélections en post-its et les envoyer au composant parent
   const convertSelectionsToPostits = () => {
     // Filtrer les sélections qui ont une zone assignée
-    const assignedSelections = selections.filter((selection) => selection.zone);
+    const assignedSelections = selections.filter(
+      (selection): selection is TextSelection & { zone: string } =>
+        selection.zone !== null
+    );
 
     if (assignedSelections.length === 0) {
       showNotification(
@@ -197,7 +273,7 @@ const SpeechToTextForFourZones = ({ onAddPostits }) => {
     }
 
     // Convertir les sélections en format de post-its
-    const newPostits = assignedSelections.map((selection) => ({
+    const newPostits: PostitType[] = assignedSelections.map((selection) => ({
       id: generateId(),
       content: selection.text,
       zone: selection.zone,
@@ -206,19 +282,17 @@ const SpeechToTextForFourZones = ({ onAddPostits }) => {
     }));
 
     // Appeler la fonction callback avec les nouveaux post-its
-    if (typeof onAddPostits === "function") {
-      onAddPostits(newPostits);
-      showNotification(`${newPostits.length} post-its ajoutés`, "success");
+    onAddPostits(newPostits);
+    showNotification(`${newPostits.length} post-its ajoutés`, "success");
 
-      // Supprimer les sélections converties
-      setSelections(selections.filter((selection) => !selection.zone));
-    }
+    // Supprimer les sélections converties
+    setSelections(selections.filter((selection) => !selection.zone));
   };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
       <Typography variant="h6" component="h2" gutterBottom>
-        Assistant de saisie vocale
+        Assistant de saisie vocale (Whisper API)
       </Typography>
 
       {/* Section d'enregistrement */}
@@ -238,16 +312,22 @@ const SpeechToTextForFourZones = ({ onAddPostits }) => {
               color={isRecording ? "error" : "primary"}
               startIcon={isRecording ? <StopIcon /> : <MicIcon />}
               onClick={toggleRecording}
+              disabled={isProcessing}
             >
               {isRecording ? "Arrêter" : "Démarrer"}
             </Button>
-            <Button variant="outlined" color="secondary" onClick={clearAll}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={clearAll}
+              disabled={isProcessing || isRecording}
+            >
               Effacer
             </Button>
           </Box>
         </Box>
 
-        {/* Zone de transcription */}
+        {/* Zone de transcription - utiliser uniquement onMouseUp pour la sélection */}
         <Paper
           elevation={1}
           sx={{
@@ -255,12 +335,42 @@ const SpeechToTextForFourZones = ({ onAddPostits }) => {
             minHeight: "150px",
             maxHeight: "250px",
             overflow: "auto",
-            bgcolor: "#f5f5f5",
+            bgcolor: mode === "dark" ? "background.default" : "#f5f5f5",
             cursor: "text",
+            position: "relative",
           }}
-          onClick={handleTextSelection}
-          onMouseUp={handleTextSelection}
+          onMouseUp={handleTextSelection} // Garder uniquement cet événement, pas onClick
         >
+          {isProcessing && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(255, 255, 255, 0.7)",
+                zIndex: 1,
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                }}
+              >
+                <CircularProgress size={40} />
+                <Typography sx={{ mt: 2 }}>
+                  Transcription en cours...
+                </Typography>
+              </Box>
+            </Box>
+          )}
+
           {transcription ? (
             <Typography
               sx={{ whiteSpace: "pre-wrap", fontSize: `${fontSize}px` }}
@@ -308,14 +418,21 @@ const SpeechToTextForFourZones = ({ onAddPostits }) => {
                   border: "1px solid #e0e0e0",
                   borderRadius: 1,
                   bgcolor: selection.zone
-                    ? zoneColors[selection.zone]
+                    ? `${zoneColors[selection.zone]}80` // Ajout d'une transparence pour meilleure lisibilité
+                    : mode === "dark"
+                    ? "background.paper"
                     : "white",
                   display: "flex",
                   flexDirection: "column",
                   gap: 1,
                 }}
               >
-                <Typography sx={{ fontSize: `${fontSize}px` }}>
+                <Typography
+                  sx={{
+                    fontSize: `${fontSize}px`,
+                    color: mode === "dark" ? "white" : "black", // S'assurer que le texte est visible en mode sombre
+                  }}
+                >
                   "{selection.text}"
                 </Typography>
 
