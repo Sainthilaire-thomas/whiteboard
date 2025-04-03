@@ -36,6 +36,8 @@ export interface ClientResponseSectionProps {
   zoneColors: Record<string, string>;
   hasOriginalPostits: boolean;
   onCategorizeClick: (text: string) => void;
+  setSelectedClientText: (text: string) => void;
+  setSelectedConseillerText: (text: string) => void;
 }
 
 export interface SuggestionSectionProps {

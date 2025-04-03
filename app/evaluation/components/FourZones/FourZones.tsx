@@ -11,25 +11,29 @@ import {
   Snackbar,
   Alert,
   AlertColor,
-  Tabs,
-  Tab,
+  Stepper,
+  Step,
+  StepLabel,
+  Paper,
+  IconButton,
 } from "@mui/material";
+import MicIcon from "@mui/icons-material/Mic";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import WarningIcon from "@mui/icons-material/Warning";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { useThemeMode } from "@/app/components/common/Theme/ThemeProvider";
 
 // Import des composants factorisés
 import { DroppableZone } from "./components/DroppableZone";
 import { ClientResponseSection } from "./components/ClientResponseSection";
-
 import { ImprovementSection } from "./components/ImprovementSection";
 import {
   EditPostitDialog,
   CategoryDialog,
 } from "./components/DialogComponents";
-
 import DynamicSpeechToTextForFourZones from "./components/DynamicSpeechToTextForFourZones";
 
 // Import des types, constantes et utilitaires
@@ -58,7 +62,6 @@ import { sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
 
 const FourZones: React.FC = () => {
   const { mode } = useThemeMode();
-  // Utilisez un cast explicite pour résoudre le conflit
   const callDataContext = useCallData();
   const {
     selectedCall,
@@ -67,6 +70,15 @@ const FourZones: React.FC = () => {
     saveRolePlayData,
     isLoadingRolePlay,
   } = callDataContext as unknown as CallDataContextType;
+
+  // État pour les étapes
+  const [activeStep, setActiveStep] = useState<number>(0);
+  const steps = [
+    "Sélection du contexte",
+    "Jeu de rôle",
+    "Suggestions d'amélioration",
+    "Lecture finale",
+  ];
 
   // États pour les post-its et textes
   const [selectedClientText, setSelectedClientText] = useState<string>("");
@@ -91,6 +103,14 @@ const FourZones: React.FC = () => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [targetZone, setTargetZone] = useState<string>("");
 
+  // Etat pour la reconnaissance vocale
+  const [speechToTextVisible, setSpeechToTextVisible] = useState(false);
+
+  // Add a handler to toggle the speech-to-text component
+  const toggleSpeechToText = () => {
+    setSpeechToTextVisible((prev) => !prev);
+  };
+
   // État pour les notifications
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>("");
@@ -99,9 +119,8 @@ const FourZones: React.FC = () => {
   // État pour le drag and drop
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  // État pour la taille de la police et les onglets
+  // État pour la taille de la police
   const [fontSize, setFontSize] = useState<number>(14);
-  const [tabValue, setTabValue] = useState<number>(0);
 
   // Configurer les sensors pour dnd-kit
   const sensors = useSensors(
@@ -162,6 +181,37 @@ const FourZones: React.FC = () => {
   const decreaseFontSize = () =>
     setFontSize((current) => Math.max(current - 1, 10));
 
+  // Navigation entre les étapes
+  const handleNext = () => {
+    setActiveStep((prevActiveStep) =>
+      Math.min(prevActiveStep + 1, steps.length - 1)
+    );
+  };
+
+  const handleBack = () => {
+    setActiveStep((prevActiveStep) => Math.max(prevActiveStep - 1, 0));
+  };
+
+  // Vérifier si on peut passer à l'étape suivante
+  const canProceedToNextStep = () => {
+    switch (activeStep) {
+      case 0:
+        // Nécessite au moins un texte client et une réponse conseiller
+        return (
+          selectedClientText.trim() !== "" &&
+          selectedConseillerText.trim() !== ""
+        );
+      case 1:
+        // Nécessite au moins un post-it dans n'importe quelle zone
+        return postits.length > 0;
+      case 2:
+        // Peut toujours passer à l'étape de lecture
+        return true;
+      default:
+        return false;
+    }
+  };
+
   // Fonctions pour gérer les post-its
   const addPostitToZone = (zone: string, content: string) => {
     const newPostit: PostitType = {
@@ -193,6 +243,11 @@ const FourZones: React.FC = () => {
     setShowCategoryDialog(false);
     setTextToCategorizze("");
     setSelectedCategory("");
+
+    // Aller automatiquement à l'étape de jeu de rôle après catégorisation
+    if (activeStep === 0) {
+      handleNext();
+    }
   };
 
   const addSelectedTextAsPostit = (zone: string) => {
@@ -235,8 +290,8 @@ const FourZones: React.FC = () => {
     setEditPostitId(null);
     setEditPostitContent("");
   };
+
   //fonction pour ajouter postit depuis la reconnaissance vocale
-  // Dans FourZones.tsx
   const addPostitsFromSpeech = (newPostits: PostitType[]) => {
     setPostits([...postits, ...newPostits]);
   };
@@ -291,7 +346,7 @@ const FourZones: React.FC = () => {
     }
   };
 
-  // Gestionnaires pour le menu et les onglets
+  // Gestionnaires pour le menu contextuel
   const handleOpenZoneMenu = (
     event: React.MouseEvent<HTMLElement>,
     zone: string
@@ -303,10 +358,6 @@ const FourZones: React.FC = () => {
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
     setTargetZone("");
-  };
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
   };
 
   const handleSnackbarClose = () => {
@@ -357,30 +408,324 @@ const FourZones: React.FC = () => {
   // Vérification pour l'affichage du bouton de catégorisation
   const hasOriginalPostits = postits.some((p) => p.isOriginal);
 
+  // Rendu des zones de drop
+  const renderDropZones = () => (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+    >
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gridTemplateRows: "1fr 1fr",
+          gap: 1,
+          flex: 1,
+          minHeight: "400px", // Hauteur minimale pour les zones
+        }}
+      >
+        {/* Zone "Ce que je fais" (VERT) */}
+        <DroppableZone
+          id={ZONES.JE_FAIS}
+          title="Ce que je fais"
+          backgroundColor={zoneColors[ZONES.JE_FAIS]}
+          postits={getPostitsByZone(ZONES.JE_FAIS)}
+          fontSize={fontSize}
+          onEdit={openEditDialog}
+          onDelete={deletePostit}
+          onAddClick={(zone, content) =>
+            addPostitToZone(ZONES.JE_FAIS, content)
+          }
+        />
+        {/* Zone "Ce qu'a fait le client" (VERT) */}
+        <DroppableZone
+          id={ZONES.VOUS_AVEZ_FAIT}
+          title="Ce qu'a fait le client"
+          backgroundColor={zoneColors[ZONES.VOUS_AVEZ_FAIT]}
+          postits={getPostitsByZone(ZONES.VOUS_AVEZ_FAIT)}
+          fontSize={fontSize}
+          onEdit={openEditDialog}
+          onDelete={deletePostit}
+          onAddClick={(zone, content) =>
+            addPostitToZone(ZONES.VOUS_AVEZ_FAIT, content)
+          }
+        />
+
+        {/* Zone "Ce que fait l'entreprise" (ROUGE) */}
+        <DroppableZone
+          id={ZONES.ENTREPRISE_FAIT}
+          title="Ce que fait l'entreprise"
+          backgroundColor={zoneColors[ZONES.ENTREPRISE_FAIT]}
+          postits={getPostitsByZone(ZONES.ENTREPRISE_FAIT)}
+          fontSize={fontSize}
+          onEdit={openEditDialog}
+          onDelete={deletePostit}
+          onAddClick={(zone, content) =>
+            addPostitToZone(ZONES.ENTREPRISE_FAIT, content)
+          }
+          isEntrepriseZone={true}
+        />
+
+        {/* Zone "Ce que fera le client" (VERT) */}
+        <DroppableZone
+          id={ZONES.VOUS_FEREZ}
+          title="Ce que fera le client"
+          backgroundColor={zoneColors[ZONES.VOUS_FEREZ]}
+          postits={getPostitsByZone(ZONES.VOUS_FEREZ)}
+          fontSize={fontSize}
+          onEdit={openEditDialog}
+          onDelete={deletePostit}
+          onAddClick={(zone, content) =>
+            addPostitToZone(ZONES.VOUS_FEREZ, content)
+          }
+        />
+      </Box>
+
+      {/* DragOverlay pour afficher le post-it en cours de déplacement */}
+      <DragOverlay>
+        {activePostit ? (
+          <Box
+            sx={{
+              mb: 1,
+              bgcolor: activePostit.color,
+              fontSize: fontSize,
+              width: "250px",
+              opacity: 0.8,
+              p: 1,
+              borderRadius: 1,
+              boxShadow: 3,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "flex-start" }}>
+              <Typography sx={{ flex: 1, fontSize: `${fontSize}px` }}>
+                {activePostit.content}
+              </Typography>
+            </Box>
+          </Box>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+
+  // Légende des zones
+  const renderZoneLegend = () => (
+    <Box sx={{ mb: 2 }}>
+      <Typography
+        variant="caption"
+        sx={{ display: "flex", alignItems: "center" }}
+      >
+        <WarningIcon sx={{ color: "#c0392b", mr: 0.5, fontSize: "small" }} />
+        Zone rouge: à limiter &nbsp;&nbsp;
+        <CheckCircleIcon
+          sx={{ color: "#27ae60", mr: 0.5, fontSize: "small" }}
+        />
+        Zones vertes: à privilégier
+      </Typography>
+    </Box>
+  );
+
+  // Rendu du contenu en fonction de l'étape active
+  const renderStepContent = () => {
+    switch (activeStep) {
+      case 0:
+        // Étape 1: Sélection du contexte
+        return (
+          <>
+            <ClientResponseSection
+              selectionMode={selectionMode}
+              onSelectionModeChange={setSelectionMode}
+              selectedClientText={selectedClientText}
+              selectedConseillerText={selectedConseillerText}
+              fontSize={fontSize}
+              zoneColors={zoneColors}
+              hasOriginalPostits={hasOriginalPostits}
+              onCategorizeClick={(text) => {
+                setTextToCategorizze(text);
+                setShowCategoryDialog(true);
+              }}
+              setSelectedClientText={setSelectedClientText}
+              setSelectedConseillerText={setSelectedConseillerText}
+            />
+          </>
+        );
+      case 1:
+        // Étape 2: Jeu de rôle
+        return (
+          <>
+            <Box sx={{ mb: 1 }}>
+              <Paper
+                elevation={1}
+                sx={{
+                  p: 1,
+                  bgcolor: "background.paper",
+                  borderRadius: 1,
+                  mb: 1,
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Le client dit:</strong> {selectedClientText}
+                    </Typography>
+                  </Box>
+
+                  {/* Bouton pour déclencher l'enregistrement vocal */}
+                  <IconButton
+                    color="primary"
+                    onClick={toggleSpeechToText}
+                    sx={{
+                      ml: 1,
+                      bgcolor: speechToTextVisible
+                        ? "rgba(25, 118, 210, 0.1)"
+                        : "transparent",
+                      "&:hover": {
+                        bgcolor: "rgba(25, 118, 210, 0.2)",
+                      },
+                    }}
+                    title="Enregistrer la réponse du conseiller"
+                  >
+                    <MicIcon />
+                  </IconButton>
+                </Box>
+
+                {/* Composant de reconnaissance vocale contextuel */}
+                {speechToTextVisible && (
+                  <Box
+                    sx={{
+                      mt: 1,
+                      p: 1,
+                      bgcolor: "rgba(0,0,0,0.03)",
+                      borderRadius: 1,
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{ display: "block", mb: 1 }}
+                    >
+                      Enregistrez votre réponse en tant que conseiller:
+                    </Typography>
+                    <DynamicSpeechToTextForFourZones
+                      onAddPostits={addPostitsFromSpeech}
+                      isContextual={true} // Pass a prop to indicate contextual mode
+                    />
+                  </Box>
+                )}
+              </Paper>
+            </Box>
+
+            {renderZoneLegend()}
+            {renderDropZones()}
+
+            <Box sx={{ mt: 2 }}>
+              <DynamicSpeechToTextForFourZones
+                onAddPostits={addPostitsFromSpeech}
+              />
+            </Box>
+          </>
+        );
+      case 2:
+        // Étape 3: Suggestions d'amélioration
+        return (
+          <>
+            <ImprovementSection
+              selectedClientText={selectedClientText}
+              newPostitContent={newPostitContent}
+              onNewPostitContentChange={setNewPostitContent}
+              currentZone={currentZone}
+              onCurrentZoneChange={setCurrentZone}
+              onAddPostit={() => {
+                if (!currentZone) {
+                  setSnackbarMessage("Veuillez sélectionner une zone");
+                  setSnackbarSeverity("warning");
+                  setSnackbarOpen(true);
+                  return;
+                }
+                addSelectedTextAsPostit(currentZone);
+              }}
+              fontSize={fontSize}
+              zoneColors={zoneColors}
+            />
+
+            {renderZoneLegend()}
+            {renderDropZones()}
+          </>
+        );
+      case 3:
+        // Étape 4: Lecture finale
+        return (
+          <Box sx={{ p: 3, textAlign: "center" }}>
+            <Typography variant="h6" gutterBottom>
+              Lecture finale de la réponse
+            </Typography>
+            <Typography variant="body1" paragraph>
+              Cette section permettra de lire en text-to-speech le résultat
+              final du jeu de rôle.
+            </Typography>
+            <Paper
+              elevation={2}
+              sx={{
+                p: 3,
+                mt: 2,
+                mb: 2,
+                minHeight: "300px",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                bgcolor:
+                  mode === "dark"
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.02)",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                Le contenu de lecture finale sera implémenté dans cette section.
+              </Typography>
+              <Button variant="outlined" sx={{ mt: 2 }} disabled>
+                Lire à haute voix
+              </Button>
+            </Paper>
+          </Box>
+        );
+      default:
+        return <Typography>Étape inconnue</Typography>;
+    }
+  };
+
   return (
-    <div
-      style={{
+    <Box
+      sx={{
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        gap: "8px",
+        gap: "12px",
       }}
     >
       {/* Barre d'outils supérieure */}
-      <Box
+      <Paper
+        elevation={1}
         sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          p: 1,
+          p: 1.5,
           bgcolor: mode === "dark" ? "background.default" : "#f5f5f5",
           borderRadius: 1,
         }}
       >
-        <Typography variant="subtitle1" fontWeight="bold">
+        <Typography variant="h6" fontWeight="bold">
           {selectedPostitForRolePlay
             ? `Jeu de rôle: ${selectedPostitForRolePlay.pratique || "Passage"}`
-            : "Jeu de rôle avec 5 zones"}
+            : "Jeu de rôle avec 4 zones"}
         </Typography>
         <Box>
           <Button
@@ -397,190 +742,84 @@ const FourZones: React.FC = () => {
             size="small"
             startIcon={<AddIcon />}
             onClick={increaseFontSize}
+            sx={{ mr: 2 }}
           >
             A+
           </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={saveRolePlay}
+            disabled={isLoadingRolePlay}
+          >
+            Sauvegarder
+          </Button>
         </Box>
+      </Paper>
+
+      {/* Stepper pour suivre la progression */}
+      <Stepper
+        activeStep={activeStep}
+        sx={{
+          p: 1,
+          bgcolor: mode === "dark" ? "background.paper" : "#ffffff",
+          borderRadius: 1,
+        }}
+      >
+        {steps.map((label) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
+        ))}
+      </Stepper>
+
+      {/* Contenu principal basé sur l'étape active */}
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflowY: "auto",
+          p: 1,
+        }}
+      >
+        {renderStepContent()}
       </Box>
 
-      {/* Onglets pour naviguer entre analyse et jeu de rôle */}
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs value={tabValue} onChange={handleTabChange} centered>
-          <Tab label="Analyse de l'existant" />
-          <Tab label="Jeu de rôle et suggestions" />
-        </Tabs>
-      </Box>
-
-      {/* Panel de sélection du texte (visible dans le premier onglet) */}
-      {tabValue === 0 && (
-        <>
-          {" "}
-          <ClientResponseSection
-            selectionMode={selectionMode}
-            onSelectionModeChange={setSelectionMode}
-            selectedClientText={selectedClientText}
-            selectedConseillerText={selectedConseillerText}
-            fontSize={fontSize}
-            zoneColors={zoneColors}
-            hasOriginalPostits={hasOriginalPostits}
-            onCategorizeClick={(text) => {
-              setTextToCategorizze(text);
-              setShowCategoryDialog(true);
-            }}
-          />
-          <DynamicSpeechToTextForFourZones
-            onAddPostits={addPostitsFromSpeech}
-          />
-        </>
-      )}
-
-      {/* Zone pour les suggestions (visible dans le second onglet) */}
-      {tabValue === 1 && (
-        <ImprovementSection
-          selectedClientText={selectedClientText}
-          newPostitContent={newPostitContent}
-          onNewPostitContentChange={setNewPostitContent}
-          currentZone={currentZone}
-          onCurrentZoneChange={setCurrentZone}
-          onAddPostit={() => {
-            if (!currentZone) {
-              setSnackbarMessage("Veuillez sélectionner une zone");
-              setSnackbarSeverity("warning");
-              setSnackbarOpen(true);
-              return;
-            }
-            addSelectedTextAsPostit(currentZone);
-          }}
-          fontSize={fontSize}
-          zoneColors={zoneColors}
-        />
-      )}
-
-      <Typography variant="subtitle2" fontWeight="bold" sx={{ mt: 2 }}>
-        Construction de la réponse améliorée:
-      </Typography>
-      <Typography
-        variant="caption"
-        sx={{ mb: 1, display: "flex", alignItems: "center" }}
+      {/* Barre de navigation entre les étapes */}
+      <Paper
+        elevation={1}
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          p: 1.5,
+          mt: 1,
+          bgcolor: mode === "dark" ? "background.paper" : "#ffffff",
+          borderRadius: 1,
+        }}
       >
-        <WarningIcon sx={{ color: "#c0392b", mr: 0.5, fontSize: "small" }} />
-        Zone rouge: à limiter &nbsp;&nbsp;
-        <CheckCircleIcon
-          sx={{ color: "#27ae60", mr: 0.5, fontSize: "small" }}
-        />
-        Zones vertes: à privilégier
-      </Typography>
-
-      {/* DndContext pour les zones */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onDragOver={handleDragOver}
-      >
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gridTemplateRows: "1fr 1fr",
-            gap: 1,
-            flex: 1,
-          }}
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
+          disabled={activeStep === 0}
         >
-          {/* Zone "Ce que je fais" (VERT) */}
-          <DroppableZone
-            id={ZONES.JE_FAIS}
-            title="Ce que je fais"
-            backgroundColor={zoneColors[ZONES.JE_FAIS]}
-            postits={getPostitsByZone(ZONES.JE_FAIS)}
-            fontSize={fontSize}
-            onEdit={openEditDialog}
-            onDelete={deletePostit}
-            onAddClick={(zone, content) =>
-              addPostitToZone(ZONES.JE_FAIS, content)
-            }
-          />
-          {/* Zone "Ce qu'a fait le client" (VERT) */}
-          <DroppableZone
-            id={ZONES.VOUS_AVEZ_FAIT}
-            title="Ce qu'a fait le client"
-            backgroundColor={zoneColors[ZONES.VOUS_AVEZ_FAIT]}
-            postits={getPostitsByZone(ZONES.VOUS_AVEZ_FAIT)}
-            fontSize={fontSize}
-            onEdit={openEditDialog}
-            onDelete={deletePostit}
-            onAddClick={(zone, content) =>
-              addPostitToZone(ZONES.VOUS_AVEZ_FAIT, content)
-            }
-          />
+          Précédent
+        </Button>
 
-          {/* Zone "Ce que fait l'entreprise" (ROUGE) */}
-          <DroppableZone
-            id={ZONES.ENTREPRISE_FAIT}
-            title="Ce que fait l'entreprise"
-            backgroundColor={zoneColors[ZONES.ENTREPRISE_FAIT]}
-            postits={getPostitsByZone(ZONES.ENTREPRISE_FAIT)}
-            fontSize={fontSize}
-            onEdit={openEditDialog}
-            onDelete={deletePostit}
-            onAddClick={(zone, content) =>
-              addPostitToZone(ZONES.ENTREPRISE_FAIT, content)
-            }
-            isEntrepriseZone={true}
-          />
+        <Typography variant="body2">
+          Étape {activeStep + 1} sur {steps.length}
+        </Typography>
 
-          {/* Zone "Ce que fera le client" (VERT) */}
-          <DroppableZone
-            id={ZONES.VOUS_FEREZ}
-            title="Ce que fera le client"
-            backgroundColor={zoneColors[ZONES.VOUS_FEREZ]}
-            postits={getPostitsByZone(ZONES.VOUS_FEREZ)}
-            fontSize={fontSize}
-            onEdit={openEditDialog}
-            onDelete={deletePostit}
-            onAddClick={(zone, content) =>
-              addPostitToZone(ZONES.VOUS_FEREZ, content)
-            }
-          />
-        </Box>
-
-        {/* DragOverlay pour afficher le post-it en cours de déplacement */}
-        <DragOverlay>
-          {activePostit ? (
-            <Box
-              sx={{
-                mb: 1,
-                bgcolor: activePostit.color,
-                fontSize: fontSize,
-                width: "250px",
-                opacity: 0.8,
-                p: 1,
-                borderRadius: 1,
-                boxShadow: 3,
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "flex-start" }}>
-                <Typography sx={{ flex: 1, fontSize: `${fontSize}px` }}>
-                  {activePostit.content}
-                </Typography>
-              </Box>
-            </Box>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
-
-      {/* Bouton de sauvegarde */}
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={saveRolePlay}
-        disabled={isLoadingRolePlay}
-        sx={{ mt: 2 }}
-        fullWidth
-      >
-        Sauvegarder le jeu de rôle
-      </Button>
+        <Button
+          variant="contained"
+          endIcon={<ArrowForwardIcon />}
+          onClick={handleNext}
+          disabled={activeStep === steps.length - 1 || !canProceedToNextStep()}
+        >
+          Suivant
+        </Button>
+      </Paper>
 
       {/* Menu contextuel pour l'ajout à une zone */}
       <Menu
@@ -636,7 +875,7 @@ const FourZones: React.FC = () => {
           {snackbarMessage}
         </Alert>
       </Snackbar>
-    </div>
+    </Box>
   );
 };
 

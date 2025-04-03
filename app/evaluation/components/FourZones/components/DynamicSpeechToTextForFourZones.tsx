@@ -6,6 +6,7 @@ import { PostitType } from "../types/types";
 // Définir le type pour les props
 interface DynamicSpeechToTextForFourZonesProps {
   onAddPostits: (postits: PostitType[]) => void;
+  isContextual?: boolean;
 }
 
 // Charger le composant de manière dynamique côté client uniquement
@@ -17,10 +18,11 @@ const DynamicSpeechToTextForFourZones =
       loading: () => (
         <div
           style={{
-            padding: "16px",
+            padding: (isContextual) => (isContextual ? "8px" : "16px"),
             border: "1px solid #e0e0e0",
             borderRadius: "4px",
-            margin: "16px 0",
+            margin: (isContextual) => (isContextual ? "8px 0" : "16px 0"),
+            fontSize: (isContextual) => (isContextual ? "0.875rem" : "1rem"),
           }}
         >
           Chargement du module de reconnaissance vocale...

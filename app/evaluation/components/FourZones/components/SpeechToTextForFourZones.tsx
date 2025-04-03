@@ -37,10 +37,12 @@ interface TextSelection {
 // Type pour les props du composant
 interface SpeechToTextForFourZonesProps {
   onAddPostits: (postits: PostitType[]) => void;
+  isContextual?: boolean;
 }
 
 const SpeechToTextForFourZones: React.FC<SpeechToTextForFourZonesProps> = ({
   onAddPostits,
+  isContextual = false,
 }) => {
   const { mode } = useThemeMode();
 
@@ -290,147 +292,211 @@ const SpeechToTextForFourZones: React.FC<SpeechToTextForFourZonesProps> = ({
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
-      <Typography variant="h6" component="h2" gutterBottom>
-        Assistant de saisie vocale (Whisper API)
-      </Typography>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: isContextual ? 1 : 2,
+        p: isContextual ? 1 : 2,
+      }}
+    >
+      {!isContextual && (
+        <Typography variant="h6" component="h2" gutterBottom>
+          Assistant de saisie vocale (Whisper API)
+        </Typography>
+      )}
 
-      {/* Section d'enregistrement */}
-      <Paper elevation={2} sx={{ p: 2 }}>
+      {/* Section d'enregistrement - plus compacte en mode contextuel */}
+      <Paper
+        elevation={isContextual ? 0 : 2}
+        sx={{
+          p: isContextual ? 1 : 2,
+          backgroundColor: isContextual ? "transparent" : undefined,
+        }}
+      >
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            mb: 2,
+            mb: isContextual ? 1 : 2,
           }}
         >
-          <Typography variant="subtitle1">Enregistrer votre réponse</Typography>
-          <Box sx={{ display: "flex", gap: 1 }}>
+          {!isContextual && (
+            <Typography variant="subtitle1">
+              Enregistrer votre réponse
+            </Typography>
+          )}
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              ...(isContextual ? { width: "100%" } : {}),
+            }}
+          >
             <Button
               variant={isRecording ? "contained" : "outlined"}
               color={isRecording ? "error" : "primary"}
               startIcon={isRecording ? <StopIcon /> : <MicIcon />}
               onClick={toggleRecording}
               disabled={isProcessing}
+              size={isContextual ? "small" : "medium"}
+              fullWidth={isContextual}
             >
-              {isRecording ? "Arrêter" : "Démarrer"}
+              {isRecording
+                ? "Arrêter"
+                : isContextual
+                ? "Enregistrer votre réponse"
+                : "Démarrer"}
             </Button>
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={clearAll}
-              disabled={isProcessing || isRecording}
-            >
-              Effacer
-            </Button>
+            {!isContextual && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={clearAll}
+                disabled={isProcessing || isRecording}
+              >
+                Effacer
+              </Button>
+            )}
           </Box>
         </Box>
 
-        {/* Zone de transcription - utiliser uniquement onMouseUp pour la sélection */}
-        <Paper
-          elevation={1}
-          sx={{
-            p: 2,
-            minHeight: "150px",
-            maxHeight: "250px",
-            overflow: "auto",
-            bgcolor: mode === "dark" ? "background.default" : "#f5f5f5",
-            cursor: "text",
-            position: "relative",
-          }}
-          onMouseUp={handleTextSelection} // Garder uniquement cet événement, pas onClick
-        >
-          {isProcessing && (
-            <Box
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(255, 255, 255, 0.7)",
-                zIndex: 1,
-              }}
-            >
+        {/* Zone de transcription - plus compacte en mode contextuel */}
+        {(transcription || !isContextual) && (
+          <Paper
+            elevation={1}
+            sx={{
+              p: isContextual ? 1 : 2,
+              minHeight: isContextual ? "80px" : "150px",
+              maxHeight: isContextual ? "150px" : "250px",
+              overflow: "auto",
+              bgcolor: mode === "dark" ? "background.default" : "#f5f5f5",
+              cursor: "text",
+              position: "relative",
+            }}
+            onMouseUp={handleTextSelection}
+          >
+            {isProcessing && (
               <Box
                 sx={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
                   display: "flex",
-                  flexDirection: "column",
                   alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(255, 255, 255, 0.7)",
+                  zIndex: 1,
                 }}
               >
-                <CircularProgress size={40} />
-                <Typography sx={{ mt: 2 }}>
-                  Transcription en cours...
-                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                  }}
+                >
+                  <CircularProgress size={isContextual ? 24 : 40} />
+                  <Typography
+                    sx={{
+                      mt: 1,
+                      fontSize: isContextual ? "0.75rem" : undefined,
+                    }}
+                  >
+                    Transcription en cours...
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          )}
+            )}
 
-          {transcription ? (
-            <Typography
-              sx={{ whiteSpace: "pre-wrap", fontSize: `${fontSize}px` }}
-            >
-              {transcription}
-            </Typography>
-          ) : (
-            <Typography color="text.secondary" sx={{ fontStyle: "italic" }}>
-              La transcription de votre parole apparaîtra ici. Cliquez sur
-              "Démarrer" pour commencer l'enregistrement.
-            </Typography>
-          )}
-        </Paper>
+            {transcription ? (
+              <Typography
+                sx={{ whiteSpace: "pre-wrap", fontSize: `${fontSize}px` }}
+              >
+                {transcription}
+              </Typography>
+            ) : (
+              <Typography
+                color="text.secondary"
+                sx={{
+                  fontStyle: "italic",
+                  fontSize: isContextual ? "0.875rem" : undefined,
+                }}
+              >
+                {isContextual
+                  ? 'Cliquez sur "Enregistrer" pour commencer'
+                  : 'La transcription de votre parole apparaîtra ici. Cliquez sur "Démarrer" pour commencer l\'enregistrement.'}
+              </Typography>
+            )}
+          </Paper>
+        )}
       </Paper>
 
-      {/* Guide des zones */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
-        <Typography variant="body2" fontWeight="medium">
-          Zones:
-        </Typography>
-        <CheckCircleIcon sx={{ color: "#27ae60", fontSize: "small" }} />
-        <Typography variant="body2" sx={{ color: "#27ae60" }}>
-          Vertes à privilégier
-        </Typography>
-        <WarningIcon sx={{ color: "#c0392b", fontSize: "small", ml: 1 }} />
-        <Typography variant="body2" sx={{ color: "#c0392b" }}>
-          Rouge à limiter
-        </Typography>
-      </Box>
-
-      {/* Sélections de texte */}
-      {selections.length > 0 && (
-        <Paper elevation={2} sx={{ p: 2, mt: 2 }}>
-          <Typography variant="subtitle1" gutterBottom>
-            Textes sélectionnés
+      {/* Guide des zones - seulement en mode non contextuel */}
+      {!isContextual && (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
+          <Typography variant="body2" fontWeight="medium">
+            Zones:
           </Typography>
-          <Divider sx={{ mb: 2 }} />
+          <CheckCircleIcon sx={{ color: "#27ae60", fontSize: "small" }} />
+          <Typography variant="body2" sx={{ color: "#27ae60" }}>
+            Vertes à privilégier
+          </Typography>
+          <WarningIcon sx={{ color: "#c0392b", fontSize: "small", ml: 1 }} />
+          <Typography variant="body2" sx={{ color: "#c0392b" }}>
+            Rouge à limiter
+          </Typography>
+        </Box>
+      )}
 
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {/* Sélections de texte - plus compactes en mode contextuel */}
+      {selections.length > 0 && (
+        <Paper
+          elevation={isContextual ? 0 : 2}
+          sx={{ p: isContextual ? 1 : 2, mt: isContextual ? 1 : 2 }}
+        >
+          {!isContextual && (
+            <>
+              <Typography variant="subtitle1" gutterBottom>
+                Textes sélectionnés
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+            </>
+          )}
+
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: isContextual ? 1 : 2,
+            }}
+          >
             {selections.map((selection) => (
               <Box
                 key={selection.id}
                 sx={{
-                  p: 1,
+                  p: isContextual ? 0.5 : 1,
                   border: "1px solid #e0e0e0",
                   borderRadius: 1,
                   bgcolor: selection.zone
-                    ? `${zoneColors[selection.zone]}80` // Ajout d'une transparence pour meilleure lisibilité
+                    ? `${zoneColors[selection.zone]}80`
                     : mode === "dark"
                     ? "background.paper"
                     : "white",
                   display: "flex",
                   flexDirection: "column",
-                  gap: 1,
+                  gap: isContextual ? 0.5 : 1,
                 }}
               >
                 <Typography
                   sx={{
-                    fontSize: `${fontSize}px`,
-                    color: mode === "dark" ? "white" : "black", // S'assurer que le texte est visible en mode sombre
+                    fontSize: isContextual
+                      ? `${fontSize - 2}px`
+                      : `${fontSize}px`,
+                    color: mode === "dark" ? "white" : "black",
                   }}
                 >
                   "{selection.text}"
@@ -461,7 +527,7 @@ const SpeechToTextForFourZones: React.FC<SpeechToTextForFourZonesProps> = ({
                     </IconButton>
                   </Box>
                 ) : (
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                     {Object.entries(ZONES).map(([key, value]) => (
                       <Chip
                         key={key}
@@ -471,14 +537,27 @@ const SpeechToTextForFourZones: React.FC<SpeechToTextForFourZonesProps> = ({
                           value === ZONES.ENTREPRISE_FAIT ? "error" : "success"
                         }
                         size="small"
-                        sx={{ cursor: "pointer" }}
+                        sx={{
+                          cursor: "pointer",
+                          ...(isContextual
+                            ? {
+                                height: "24px",
+                                "& .MuiChip-label": {
+                                  fontSize: "0.7rem",
+                                  px: 0.5,
+                                },
+                              }
+                            : {}),
+                        }}
                       />
                     ))}
                     <IconButton
                       size="small"
                       onClick={() => deleteSelection(selection.id)}
                     >
-                      <DeleteIcon fontSize="small" />
+                      <DeleteIcon
+                        fontSize={isContextual ? "inherit" : "small"}
+                      />
                     </IconButton>
                   </Box>
                 )}
@@ -491,16 +570,17 @@ const SpeechToTextForFourZones: React.FC<SpeechToTextForFourZonesProps> = ({
             color="primary"
             startIcon={<AddIcon />}
             onClick={convertSelectionsToPostits}
-            sx={{ mt: 2 }}
+            sx={{ mt: isContextual ? 1 : 2 }}
             disabled={!selections.some((s) => s.zone)}
             fullWidth
+            size={isContextual ? "small" : "medium"}
           >
-            Ajouter les textes aux zones
+            Ajouter aux zones
           </Button>
         </Paper>
       )}
 
-      {/* Notification */}
+      {/* Notification reste inchangée */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={4000}
