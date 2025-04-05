@@ -62,7 +62,7 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
 
-const FourZones: React.FC = () => {
+const FourZones_old: React.FC = () => {
   const { mode } = useThemeMode();
   const callDataContext = useCallData();
   const {
@@ -898,4 +898,4 @@ const FourZones: React.FC = () => {
   );
 };
 
-export default FourZones;
+export default FourZones_old;

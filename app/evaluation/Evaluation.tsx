@@ -11,7 +11,7 @@ import EvaluationTranscript from "./components/EvaluationTranscript";
 import SyntheseEvaluation from "./components/SyntheseEvaluation/index";
 import SelectionEntrepriseEtAppel from "../components/common/SelectionEntrepriseEtAppel";
 import Postit from "./components/Postit";
-import FourZones from "./components/FourZones/FourZones"; // Importation du composant FourZones
+import FourZones from "./components/FourZones/";
 import { EvaluationProps } from "@/types/types";
 import ActivitySidebar from "../components/navigation/ActivitySidebar";
 import { useSearchParams } from "next/navigation";

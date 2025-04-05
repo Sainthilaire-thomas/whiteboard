@@ -1,0 +1,237 @@
+import React, { JSX } from "react";
+import { Box, Typography, Paper, IconButton } from "@mui/material";
+import { PlayArrow } from "@mui/icons-material";
+import MicIcon from "@mui/icons-material/Mic";
+import DynamicSpeechToTextForFourZones from "../components/DynamicSpeechToTextForFourZones";
+import { ZoneLegend } from "../components/ZoneLegend";
+import { ClientResponseSection } from "../components/ClientResponseSection";
+import { ImprovementSection } from "../components/ImprovementSection";
+import { FinalReviewStep } from "../components/FinalReviewStep";
+import { PostitType } from "../types/types";
+
+/**
+ * Type pour les paramètres de renderStepContent
+ */
+interface RenderStepContentParams {
+  activeStep: number;
+  selectionMode: string;
+  setSelectionMode: (mode: string) => void;
+  selectedClientText: string;
+  selectedConseillerText: string;
+  fontSize: number;
+  zoneColors: Record<string, string>;
+  hasOriginalPostits: boolean;
+  setSelectedClientText: (text: string) => void;
+  setSelectedConseillerText: (text: string) => void;
+  newPostitContent: string;
+  setNewPostitContent: (content: string) => void;
+  currentZone: string;
+  setCurrentZone: (zone: string) => void;
+  setTextToCategorizze: (text: string) => void;
+  setShowCategoryDialog: (show: boolean) => void;
+  audioSrc: string | null;
+  seekTo: (time: number) => void;
+  play: () => void;
+  speechToTextVisible: boolean;
+  toggleSpeechToText: () => void;
+  addPostitsFromSpeech: (postits: PostitType[]) => void;
+  showNotification: (message: string, severity?: string) => void;
+  renderDropZones: () => JSX.Element;
+  addSelectedTextAsPostit: (zone: string) => void;
+  mode: string;
+  handleOpenZoneMenu?: (
+    event: React.MouseEvent<HTMLElement>,
+    zone: string
+  ) => void;
+}
+
+/**
+ * Fonction utilitaire pour le rendu du contenu en fonction de l'étape active
+ */
+export const renderStepContent = ({
+  activeStep,
+  selectionMode,
+  setSelectionMode,
+  selectedClientText,
+  selectedConseillerText,
+  fontSize,
+  zoneColors,
+  hasOriginalPostits,
+  setSelectedClientText,
+  setSelectedConseillerText,
+  newPostitContent,
+  setNewPostitContent,
+  currentZone,
+  setCurrentZone,
+  setTextToCategorizze,
+  setShowCategoryDialog,
+  audioSrc,
+  seekTo,
+  play,
+  speechToTextVisible,
+  toggleSpeechToText,
+  addPostitsFromSpeech,
+  showNotification,
+  renderDropZones,
+  addSelectedTextAsPostit,
+  mode,
+  handleOpenZoneMenu,
+}: RenderStepContentParams) => {
+  // Rendu de l'étape 1: Sélection du contexte
+  const renderStep0 = () => (
+    <>
+      <ClientResponseSection
+        selectionMode={selectionMode}
+        onSelectionModeChange={setSelectionMode}
+        selectedClientText={selectedClientText}
+        selectedConseillerText={selectedConseillerText}
+        fontSize={fontSize}
+        zoneColors={zoneColors}
+        hasOriginalPostits={hasOriginalPostits}
+        onCategorizeClick={(text) => {
+          setTextToCategorizze(text);
+          setShowCategoryDialog(true);
+        }}
+        setSelectedClientText={setSelectedClientText}
+        setSelectedConseillerText={setSelectedConseillerText}
+      />
+    </>
+  );
+
+  // Rendu de l'étape 2: Jeu de rôle
+  const renderStep1 = () => (
+    <>
+      <Box sx={{ mb: 1 }}>
+        <Paper
+          elevation={1}
+          sx={{
+            p: 1,
+            bgcolor: "background.paper",
+            borderRadius: 1,
+            mb: 1,
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Le client dit:</strong> {selectedClientText}
+              </Typography>
+              {selectedClientText && audioSrc && (
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={() => {
+                    // Commencer à 0 pour l'instant
+                    seekTo(0);
+                    play();
+                  }}
+                  title="Écouter le passage"
+                >
+                  <PlayArrow fontSize="small" />
+                </IconButton>
+              )}
+            </Box>
+
+            {/* Bouton pour déclencher l'enregistrement vocal */}
+            <IconButton
+              color="primary"
+              onClick={toggleSpeechToText}
+              sx={{
+                ml: 1,
+                bgcolor: speechToTextVisible
+                  ? "rgba(25, 118, 210, 0.1)"
+                  : "transparent",
+                "&:hover": {
+                  bgcolor: "rgba(25, 118, 210, 0.2)",
+                },
+              }}
+              title="Enregistrer la réponse du conseiller"
+            >
+              <MicIcon />
+            </IconButton>
+          </Box>
+
+          {/* Composant de reconnaissance vocale contextuel */}
+          {speechToTextVisible && (
+            <Box
+              sx={{
+                mt: 1,
+                p: 1,
+                bgcolor: "rgba(0,0,0,0.03)",
+                borderRadius: 1,
+              }}
+            >
+              <Typography variant="caption" sx={{ display: "block", mb: 1 }}>
+                Enregistrez votre réponse en tant que conseiller:
+              </Typography>
+              <DynamicSpeechToTextForFourZones
+                onAddPostits={addPostitsFromSpeech}
+                isContextual={true}
+              />
+            </Box>
+          )}
+        </Paper>
+      </Box>
+
+      <ZoneLegend />
+      {renderDropZones()}
+    </>
+  );
+
+  // Rendu de l'étape 3: Suggestions d'amélioration
+  const renderStep2 = () => (
+    <>
+      <ImprovementSection
+        selectedClientText={selectedClientText}
+        newPostitContent={newPostitContent}
+        onNewPostitContentChange={setNewPostitContent}
+        currentZone={currentZone}
+        onCurrentZoneChange={setCurrentZone}
+        onAddSuggestion={(zone, content) => {
+          if (!zone) {
+            showNotification("Veuillez sélectionner une zone", "warning");
+            return;
+          }
+          // Ici nous utilisons le paramètre zone passé à la fonction
+          // au lieu de currentZone, et nous ignorons le content pour l'instant
+          // car votre fonction addSelectedTextAsPostit n'utilise que la zone
+          addSelectedTextAsPostit(zone);
+        }}
+        fontSize={fontSize}
+        zoneColors={zoneColors}
+      />
+
+      <ZoneLegend />
+      {renderDropZones()}
+    </>
+  );
+
+  // Rendu de l'étape 4: Lecture finale
+  const renderStep3 = () => (
+    <FinalReviewStep
+      mode={mode}
+      selectedClientText={selectedClientText}
+      selectedConseillerText={selectedConseillerText}
+    />
+  );
+
+  // Sélectionner le rendu en fonction de l'étape active
+  switch (activeStep) {
+    case 0:
+      return renderStep0();
+    case 1:
+      return renderStep1();
+    case 2:
+      return renderStep2();
+    case 3:
+      return renderStep3();
+    default:
+      return <Typography>Étape inconnue</Typography>;
+  }
+};

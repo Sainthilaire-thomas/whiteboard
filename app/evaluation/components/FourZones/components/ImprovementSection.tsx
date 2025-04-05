@@ -23,15 +23,7 @@ import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
 import { ZONES } from "../constants/zone";
-
-interface ImprovementSectionProps {
-  selectedClientText: string;
-  originalConseillerText: string;
-  onAddSuggestion: (zone: string, content: string) => void;
-  fontSize: number;
-  zoneColors: Record<string, string>;
-}
-
+import { ImprovementSectionProps } from "../types/types";
 export const ImprovementSection: React.FC<ImprovementSectionProps> = ({
   selectedClientText,
   originalConseillerText,

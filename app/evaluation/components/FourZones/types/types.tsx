@@ -1,4 +1,8 @@
-// types.ts
+import { AlertColor } from "@mui/material";
+
+/**
+ * Type pour représenter un post-it dans le jeu de rôle
+ */
 export interface PostitType {
   id: string;
   content: string;
@@ -7,14 +11,77 @@ export interface PostitType {
   isOriginal: boolean;
 }
 
-export interface SortablePostitProps {
-  postit: PostitType;
-  fontSize: number;
-  onEdit: (id: string, content: string) => void;
-  onDelete: (id: string) => void;
-  isOriginal?: boolean;
+/**
+ * Type représentant les données d'un appel
+ */
+export interface CallData {
+  callid: string;
+  date: string;
+  title?: string;
+  duration?: number;
+  agent?: string;
+  transcription?: string;
+  // Autres propriétés d'un appel
 }
 
+/**
+ * Type représentant un post-it sélectionné pour le jeu de rôle
+ */
+export interface SelectedPostitType {
+  id: string;
+  text: string;
+  pratique?: string;
+  timestamp?: number;
+  // Autres propriétés du post-it
+}
+
+/**
+ * Type pour les données du jeu de rôle
+ */
+export interface RolePlayData {
+  postits: PostitType[];
+  clientText?: string;
+  conseillerText?: string;
+}
+
+/**
+ * Type étendu pour les données du jeu de rôle avec des informations supplémentaires
+ */
+export interface ExtendedRolePlayData extends RolePlayData {
+  callId: string;
+  date: string;
+}
+
+/**
+ * Type pour le contexte des données d'appel
+ */
+export interface CallDataContextType {
+  selectedCall: CallData | null;
+  selectedPostitForRolePlay: SelectedPostitType | null;
+  rolePlayData: ExtendedRolePlayData | null;
+  saveRolePlayData: (
+    data: ExtendedRolePlayData,
+    postitId: string
+  ) => Promise<any>;
+  isLoadingRolePlay: boolean;
+}
+
+/**
+ * Type pour le contexte audio
+ */
+export interface AudioContextType {
+  audioSrc: string | null;
+  play: () => void;
+  pause: () => void;
+  seekTo: (time: number) => void;
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+}
+
+/**
+ * Interface pour les propriétés de la zone de drop
+ */
 export interface DroppableZoneProps {
   id: string;
   title: string;
@@ -27,9 +94,12 @@ export interface DroppableZoneProps {
   isEntrepriseZone?: boolean;
 }
 
+/**
+ * Interface pour les propriétés de la section de réponse client
+ */
 export interface ClientResponseSectionProps {
   selectionMode: string;
-  onSelectionModeChange: (value: string) => void;
+  onSelectionModeChange: (mode: string) => void;
   selectedClientText: string;
   selectedConseillerText: string;
   fontSize: number;
@@ -40,78 +110,141 @@ export interface ClientResponseSectionProps {
   setSelectedConseillerText: (text: string) => void;
 }
 
-export interface SuggestionSectionProps {
+/**
+ * Interface pour les propriétés de la section d'amélioration
+ */
+export interface ImprovementSectionProps {
   selectedClientText: string;
+  originalConseillerText?: string;
   newPostitContent: string;
-  onNewPostitContentChange: (value: string) => void;
+  onNewPostitContentChange: (content: string) => void;
   currentZone: string;
-  onCurrentZoneChange: (value: string) => void;
-  onAddPostit: () => void;
+  onCurrentZoneChange: (zone: string) => void;
+  onAddSuggestion: (zone: string, content: string) => void;
   fontSize: number;
   zoneColors: Record<string, string>;
 }
 
-export interface EditDialogProps {
+/**
+ * Interface pour les propriétés de la boîte de dialogue d'édition
+ */
+export interface EditPostitDialogProps {
   open: boolean;
   content: string;
-  onContentChange: (value: string) => void;
+  onContentChange: (content: string) => void;
   onClose: () => void;
   onSave: () => void;
 }
 
+/**
+ * Interface pour les propriétés de la boîte de dialogue de catégorie
+ */
 export interface CategoryDialogProps {
   open: boolean;
   text: string;
   selectedCategory: string;
-  onCategoryChange: (value: string) => void;
+  onCategoryChange: (category: string) => void;
   onClose: () => void;
   onSave: () => void;
 }
 
-interface ExtendedRolePlayData {
-  callId: number;
-  postits: PostitType[];
-  clientText: string;
-  conseillerText: string;
-  date: string;
-  clientTextStartTimestamp?: number; // Ajout du timestamp de début
+/**
+ * Interface pour les propriétés du composant de reconnaissance vocale
+ */
+export interface SpeechToTextProps {
+  onAddPostits: (postits: PostitType[]) => void;
+  isContextual?: boolean;
 }
 
-export interface CallDataContextType {
-  selectedCall: { callid: string } | null;
-  selectedPostitForRolePlay: {
-    id: string;
-    text?: string;
-    pratique?: string;
-  } | null;
-  rolePlayData: ExtendedRolePlayData | null;
-  saveRolePlayData: (data: ExtendedRolePlayData, id: string) => Promise<void>;
-  fetchRolePlayData: () => Promise<void>;
-  zoneTexts: any;
-  selectTextForZone: any;
-  isLoadingRolePlay: boolean;
-  transcriptSelection: {
-    text: string;
-    startTimestamp: number;
-    wordId?: number;
-  } | null;
-  setTranscriptSelection: (
-    selection: {
-      text: string;
-      startTimestamp: number;
-      wordId?: number;
-    } | null
-  ) => void;
-}
-
-// Dans le fichier où ImprovementSection est défini
-interface ImprovementSectionProps {
-  selectedClientText: string;
-  newPostitContent: string; // Ajoutez cette propriété
-  onNewPostitContentChange: React.Dispatch<React.SetStateAction<string>>;
-  currentZone: string;
-  onCurrentZoneChange: React.Dispatch<React.SetStateAction<string>>;
-  onAddPostit: () => void;
+/**
+ * Interface pour les propriétés de la barre d'outils
+ */
+export interface ToolBarProps {
+  title: string;
   fontSize: number;
+  increaseFontSize: () => void;
+  decreaseFontSize: () => void;
+  onSave: () => void;
+  isLoading: boolean;
+  mode: string;
+}
+
+/**
+ * Interface pour les propriétés de l'en-tête des étapes
+ */
+export interface StepperHeaderProps {
+  steps: string[];
+  activeStep: number;
+  mode: string;
+}
+
+/**
+ * Interface pour les propriétés de la navigation entre étapes
+ */
+export interface StepNavigationProps {
+  activeStep: number;
+  stepsLength: number;
+  handleBack: () => void;
+  handleNext: () => void;
+  canProceedToNextStep: boolean;
+  mode: string;
+}
+
+/**
+ * Interface pour les propriétés de l'étape finale
+ */
+export interface FinalReviewStepProps {
+  mode: string;
+}
+
+/**
+ * Interface pour les propriétés du hook usePostits
+ */
+export interface UsePostitsProps {
   zoneColors: Record<string, string>;
+  rolePlayData: ExtendedRolePlayData | null;
+  selectedPostitForRolePlay: SelectedPostitType | null;
+}
+
+/**
+ * Interface pour les propriétés du hook useDragAndDrop
+ */
+export interface UseDragAndDropProps {
+  postits: PostitType[];
+  setPostits: React.Dispatch<React.SetStateAction<PostitType[]>>;
+  zoneColors: Record<string, string>;
+}
+
+/**
+ * Interface pour les propriétés du hook useStepNavigation
+ */
+export interface UseStepNavigationProps {
+  steps: string[];
+  postitsState: {
+    postits: PostitType[];
+    selectedClientText: string;
+    selectedConseillerText: string;
+  };
+}
+
+/**
+ * Interface pour l'état et les fonctions retournées par le hook useStepNavigation
+ */
+export interface StepNavigationState {
+  activeStep: number;
+  setActiveStep: React.Dispatch<React.SetStateAction<number>>;
+  handleNext: () => void;
+  handleBack: () => void;
+  canProceedToNextStep: () => boolean;
+}
+
+/**
+ * Interface pour l'état et les fonctions retournées par le hook useNotifications
+ */
+export interface NotificationState {
+  snackbarOpen: boolean;
+  snackbarMessage: string;
+  snackbarSeverity: AlertColor;
+  showNotification: (message: string, severity?: AlertColor) => void;
+  handleSnackbarClose: () => void;
 }
