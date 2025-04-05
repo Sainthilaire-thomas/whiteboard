@@ -1,30 +1,39 @@
-import { useEffect } from "react";
+import React from "react";
 import { Box, Slider, Tooltip } from "@mui/material";
-import {
-  TimeLineAudioProps,
-  TimelineMarker,
-  Postit as PostitType, // ✅ Utilisation correcte du type
-} from "@/types/types";
+import { useRouter } from "next/navigation";
 import { useCallData } from "@/context/CallDataContext";
 import { useAppContext } from "@/context/AppContext";
-import { useRouter } from "next/navigation";
 
+export interface TimelineMarker {
+  id: number;
+  time: number;
+  label: string;
+}
+
+export interface TimeLineAudioProps {
+  duration: number;
+  currentTime: number;
+  markers: TimelineMarker[];
+  onSeek: (time: number) => void;
+  onMarkerClick?: (id: number) => void; // Optional callback for marker clicks
+}
+
+/**
+ * TimeLineAudio - Displays an interactive audio timeline with post-it markers
+ *
+ * This component handles the timeline visualization with markers.
+ * It's been optimized to avoid duplication with AudioPlayer.
+ */
 const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
   duration,
   currentTime,
   markers,
   onSeek,
+  onMarkerClick,
 }) => {
-  const { fetchAllPostits, appelPostits } = useCallData(); // ou usePostits
+  const { appelPostits } = useCallData();
   const router = useRouter();
-
-  // ✅ État pour stocker le post-it sélectionné
-  const { selectedPostit, setSelectedPostit } = useAppContext();
-
-  // ✅ Fermer le post-it
-  const handleClosePostit = () => {
-    setSelectedPostit(null);
-  };
+  const { setSelectedPostit } = useAppContext();
 
   const handleMarkerClick = (
     event: React.MouseEvent<HTMLElement>,
@@ -32,10 +41,10 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
   ) => {
     event.stopPropagation();
 
-    // 🔍 Trouver le post-it correspondant
+    // Find the corresponding post-it
     const matchingPostit = appelPostits.find((p) => p.id === marker.id);
     if (!matchingPostit) {
-      console.warn("⚠ Aucun post-it trouvé pour cet ID:", marker.id);
+      console.warn("⚠️ Aucun post-it trouvé pour cet ID:", marker.id);
       return;
     }
 
@@ -44,6 +53,7 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
       matchingPostit
     );
 
+    // Set the selected post-it in the app context
     setSelectedPostit({
       id: matchingPostit.id,
       timestamp: matchingPostit.timestamp,
@@ -56,21 +66,32 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
       pratique: matchingPostit.pratique,
       callid: matchingPostit.callid,
     });
+
+    // Navigate to postit view
     router.push("/evaluation?view=postit");
+
+    // If external handler provided, also call it
+    if (onMarkerClick) {
+      onMarkerClick(marker.id);
+    }
+
+    // Seek to the marker position
     onSeek(marker.time);
   };
 
-  useEffect(() => {
-    fetchAllPostits();
-  }, []);
-
   return (
-    <Box sx={{ width: "100%", position: "relative", padding: "10px" }}>
-      {/* Barre de progression */}
+    <Box
+      sx={{
+        width: "100%",
+        position: "relative",
+        padding: "10px 0",
+      }}
+    >
+      {/* Progress bar */}
       <Slider
         value={currentTime}
         min={0}
-        max={duration}
+        max={duration || 100} // Fallback to 100 if duration is not available
         onChange={(_, newValue) =>
           typeof newValue === "number" && onSeek(newValue)
         }
@@ -78,25 +99,41 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
         sx={{ color: "primary.main" }}
       />
 
-      {/* Marqueurs de post-its */}
-      {markers.map((marker: TimelineMarker) => (
-        <Tooltip key={marker.id} title={marker.label} placement="top">
-          <Box
-            sx={{
-              position: "absolute",
-              left: `${(marker.time / duration) * 100}%`,
-              transform: "translateX(-50%)",
-              top: "-10px",
-              width: "10px",
-              height: "10px",
-              borderRadius: "50%",
-              backgroundColor: "red",
-              cursor: "pointer",
-            }}
-            onClick={(e) => handleMarkerClick(e, marker)}
-          />
-        </Tooltip>
-      ))}
+      {/* Post-it markers */}
+      {markers &&
+        markers.length > 0 &&
+        markers.map((marker: TimelineMarker) => {
+          // Calculate the relative position (as %)
+          const position = (marker.time / (duration || 1)) * 100;
+
+          return (
+            <Tooltip key={marker.id} title={marker.label} placement="top">
+              <Box
+                id={`marker-${marker.id}`} // Add ID for reference in Popover positioning
+                sx={{
+                  position: "absolute",
+                  left: `${position}%`,
+                  top: "0px",
+                  transform: "translateX(-50%)",
+                  width: "12px",
+                  height: "12px",
+                  borderRadius: "50%",
+                  backgroundColor: "red",
+                  border: "2px solid white",
+                  boxShadow: "0 0 4px rgba(0,0,0,0.3)",
+                  cursor: "pointer",
+                  zIndex: 2,
+                  "&:hover": {
+                    transform: "translateX(-50%) scale(1.2)",
+                    transition: "transform 0.2s",
+                    boxShadow: "0 0 6px rgba(0,0,0,0.5)",
+                  },
+                }}
+                onClick={(e) => handleMarkerClick(e, marker)}
+              />
+            </Tooltip>
+          );
+        })}
     </Box>
   );
 };

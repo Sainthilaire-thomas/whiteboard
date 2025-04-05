@@ -222,16 +222,20 @@ import { RefObject } from "react";
 export interface AudioContextType {
   audioSrc: string | null;
   setAudioSrc: (src: string | null) => void;
-  playAudioAtTimestamp: (timestamp: number) => void;
-  playerRef: React.RefObject<HTMLAudioElement | null>; // Modifiez ici pour accepter `null`
   isPlaying: boolean;
-  setTime: (time: number) => void;
+  currentTime: number;
+  duration: number;
+  currentWordIndex: number;
   play: () => void;
   pause: () => void;
-  seek: (time: number) => void;
+  seekTo: (time: number) => void;
   setVolume: (volume: number) => void;
-  currentWordIndex: number;
-  updateCurrentWordIndex: (transcription: Word[], currentTime: number) => void; // Ajout de cette méthode
+  setTime?: (time: number) => void; // Gardé pour compatibilité
+  seek?: (time: number) => void; // Gardé pour compatibilité
+  playAudioAtTimestamp: (timestamp: number) => void;
+  updateCurrentWordIndex: (words: Word[], time: number) => void;
+  audioRef: React.RefObject<HTMLAudioElement>;
+  playerRef?: React.RefObject<HTMLAudioElement>; // Gardé pour compatibilité
 }
 export interface UseCallsResult {
   calls: Call[];
@@ -279,69 +283,84 @@ export interface EvaluationDrawerProps {
 
 // ✅ Types unifiés pour le contexte d'application
 export interface CallDataContextType {
+  // 📞 Appels
   calls: Call[];
   fetchCalls: (identreprise: number) => Promise<void>;
   selectedCall: Call | null;
   selectCall: (call: Call) => void;
+  setSelectedCall: React.Dispatch<React.SetStateAction<Call | null>>;
+  archiveCall: (callId: number) => Promise<void>;
+  deleteCall: (callId: number) => Promise<void>;
+  createAudioUrlWithToken: (filepath: string) => Promise<string | null>;
+  isLoadingCalls: boolean;
+
+  // 🗒️ Post-its
   allPostits: Postit[];
   appelPostits: Postit[];
   fetchAllPostits: () => Promise<void>;
   addPostit: (
     wordid: number,
-    word: string,
-    timestamp: number
-  ) => Promise<number | null>;
-
-  updatePostit: (
-    id: number,
-    updatedFields: Record<string, any>
+    text: string,
+    timestamp: number,
+    metadata: {
+      sujet?: string;
+      pratique?: string;
+      domaine?: string;
+    }
   ) => Promise<void>;
-  deletePostit: (postitId: number) => Promise<void>;
+  updatePostit: (postit: Postit) => Promise<void>;
+  deletePostit: (id: number) => Promise<void>;
+  postitToSujetMap: Record<number, string>;
+  updatePostitToSujetMap: (postitId: number, sujet: string) => void;
+  postitToPratiqueMap: Record<number, string>;
+  updatePostitToPratiqueMap: (postitId: number, pratique: string) => void;
+
+  // 📚 Transcription
   transcription: Transcription | null;
   fetchTranscription: (callId: number) => Promise<void>;
-  domains: Domaine[];
+
+  // 🧠 Zones
+  zoneTexts: Record<string, string>;
+  selectTextForZone: (zone: string, text: string) => void;
+
+  // 🌍 Domaines
+  domains: Domain[];
   domainNames: Record<number, string>;
   fetchDomains: () => Promise<void>;
-  audioSrc: string | null;
-  setAudioSrc: (src: string | null) => void;
+
+  // 🎧 Audio - SIMPLIFIÉ
+  loadCallAudio: (callId: number, filepath: string) => Promise<boolean>;
   playAudioAtTimestamp: (timestamp: number) => void;
   playerRef: React.RefObject<HTMLAudioElement>;
-  zoneTexts: ZoneTexts;
-  selectTextForZone: (text: string, zone: keyof ZoneTexts) => void;
-  createAudioUrlWithToken: (filepath: string) => Promise<string | null>;
+
+  // 🗣️ Word tracking
   currentWord: Word | null;
   updateCurrentWord: (word: Word | null) => void;
-  idCallActivite: number | null; // Ajoute cette ligne si 'idCallActivite' est nécessaire
 
-  postitToSujetMap: Record<number, number | null>;
-  updatePostitToSujetMap: (postitId: number, sujetId: number | null) => void;
-  postitToPratiqueMap: Record<number, string | null>;
-  updatePostitToPratiqueMap: (
-    postitId: number,
-    pratique: string | null
-  ) => void;
+  // 🔄 Activité liée à l'appel
+  idCallActivite: number | null;
+  fetchActivitiesForCall: (callId: number) => Promise<void>;
+  createActivityForCall: (activity: {
+    callid: number;
+    nature?: string;
+  }) => Promise<void>;
+  removeActivityForCall: (activityId: number) => Promise<void>;
+  getActivityIdFromCallId: (callId: number) => number | null;
 
-  isLoadingCalls: boolean;
-  createActivityForCall: (
-    callId: number,
-    activityType: "evaluation" | "coaching",
-    idConseiller: number
-  ) => Promise<void>;
-  archiveCall: (callId: number) => Promise<void>;
-  deleteCall: (callId: number) => Promise<void>;
-  removeActivityForCall: (callId: number) => Promise<void>;
-
+  // 🎮 Jeu de rôle coaching
   selectedPostitForRolePlay: Postit | null;
-  setSelectedPostitForRolePlay: (postit: Postit | null) => void;
+  setSelectedPostitForRolePlay: React.Dispatch<
+    React.SetStateAction<Postit | null>
+  >;
   rolePlayData: RolePlayData | null;
   saveRolePlayData: (data: RolePlayData, postitId: number) => Promise<void>;
-  fetchRolePlayData: (callId: number, postitId: number) => Promise<void>;
-  deleteRolePlayData: (rolePlayId: number) => Promise<void>;
+  fetchRolePlayData: (postitId: number | null) => Promise<void>;
+  deleteRolePlayData: (postitId: number) => Promise<void>;
   getRolePlaysByCallId: (
     callId: number
-  ) => Promise<{ id: number; postit_id: number; note: RolePlayData }[]>;
+  ) => Promise<Record<number, RolePlayData>>;
   isLoadingRolePlay: boolean;
-  rolePlayError: Error | null;
+  rolePlayError: any;
 }
 
 export interface UIContextType {

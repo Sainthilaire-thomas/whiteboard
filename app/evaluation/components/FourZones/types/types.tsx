@@ -68,12 +68,13 @@ export interface CategoryDialogProps {
   onSave: () => void;
 }
 
-export interface ExtendedRolePlayData {
-  callId: string;
+interface ExtendedRolePlayData {
+  callId: number;
   postits: PostitType[];
-  clientText?: string;
-  conseillerText?: string;
+  clientText: string;
+  conseillerText: string;
   date: string;
+  clientTextStartTimestamp?: number; // Ajout du timestamp de début
 }
 
 export interface CallDataContextType {
@@ -89,6 +90,18 @@ export interface CallDataContextType {
   zoneTexts: any;
   selectTextForZone: any;
   isLoadingRolePlay: boolean;
+  transcriptSelection: {
+    text: string;
+    startTimestamp: number;
+    wordId?: number;
+  } | null;
+  setTranscriptSelection: (
+    selection: {
+      text: string;
+      startTimestamp: number;
+      wordId?: number;
+    } | null
+  ) => void;
 }
 
 // Dans le fichier où ImprovementSection est défini

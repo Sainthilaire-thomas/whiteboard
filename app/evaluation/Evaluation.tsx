@@ -6,6 +6,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
+import { useAudio } from "@/context/AudioContext";
 import EvaluationTranscript from "./components/EvaluationTranscript";
 import SyntheseEvaluation from "./components/SyntheseEvaluation/index";
 import SelectionEntrepriseEtAppel from "../components/common/SelectionEntrepriseEtAppel";
@@ -50,7 +51,8 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
   const [showRightPanel, setShowRightPanel] = useState(true);
 
   const { user, isAuthenticated } = useAuth0();
-  const { selectedCall, setAudioSrc, calls, selectCall } = useCallData();
+  const { selectedCall, calls, selectCall } = useCallData();
+  const { setAudioSrc } = useAudio();
   const {
     resetSelectedState,
     entreprises,

@@ -3,6 +3,7 @@
 // app/layout.tsx (Root Layout)
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import CustomThemeProvider from "@/app/components/common/Theme/ThemeProvider";
+
 import { CurrentViewProvider } from "@/hooks/whiteboard/useCurrentView";
 import RootProvider from "@/context/RootProvider";
 import { ZohoProvider } from "@/context/ZohoContext";

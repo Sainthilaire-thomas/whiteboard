@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useCallData } from "@/context/CallDataContext";
+import { useAudio } from "@/context/AudioContext";
 import {
   Button,
   Box,
@@ -19,6 +20,7 @@ import {
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
 import AddIcon from "@mui/icons-material/Add";
+import { PlayArrow } from "@mui/icons-material";
 import RemoveIcon from "@mui/icons-material/Remove";
 import WarningIcon from "@mui/icons-material/Warning";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -70,6 +72,7 @@ const FourZones: React.FC = () => {
     saveRolePlayData,
     isLoadingRolePlay,
   } = callDataContext as unknown as CallDataContextType;
+  const { audioSrc, play, seekTo } = useAudio();
 
   // État pour les étapes
   const [activeStep, setActiveStep] = useState<number>(0);
@@ -576,6 +579,22 @@ const FourZones: React.FC = () => {
                     <Typography variant="body2" sx={{ mb: 1 }}>
                       <strong>Le client dit:</strong> {selectedClientText}
                     </Typography>
+                    {selectedClientText && (
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => {
+                          if (audioSrc) {
+                            // Commencer à 0 pour l'instant
+                            seekTo(0);
+                            play();
+                          }
+                        }}
+                        title="Écouter le passage"
+                      >
+                        <PlayArrow fontSize="small" />
+                      </IconButton>
+                    )}
                   </Box>
 
                   {/* Bouton pour déclencher l'enregistrement vocal */}

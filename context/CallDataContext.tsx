@@ -14,7 +14,6 @@ import { useCalls } from "@/hooks/CallDataContext/useCalls";
 import { usePostits } from "@/hooks/CallDataContext/usePostits";
 import { useTranscriptions } from "@/hooks/CallDataContext/useTranscriptions";
 import { useDomains } from "@/hooks/useDomains";
-import { useAudio } from "@/hooks/CallDataContext/useAudio";
 import { useZones } from "@/hooks/CallDataContext/useZones";
 import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
 import { useRolePlay } from "@/hooks/CallDataContext/useRolePlay";
@@ -97,15 +96,6 @@ export const CallDataProvider = ({
   // 🌍 Domaines
   const { domains, domainNames, fetchDomains } = useDomains();
 
-  // 🎧 Audio
-  const { audioSrc, setAudioSrc, playAudioAtTimestamp, playerRef } =
-    useAudio() as {
-      audioSrc: string | null;
-      setAudioSrc: (src: string | null) => void;
-      playAudioAtTimestamp: (timestamp: number) => void;
-      playerRef: React.RefObject<HTMLAudioElement>;
-    };
-
   // 🧠 Zones
   const { zoneTexts, selectTextForZone } = useZones();
 
@@ -169,12 +159,6 @@ export const CallDataProvider = ({
         domains,
         domainNames,
         fetchDomains,
-
-        // 🎧 Audio
-        audioSrc,
-        setAudioSrc,
-        playAudioAtTimestamp,
-        playerRef,
 
         // 🗣️ Word tracking
         currentWord,

@@ -11,8 +11,9 @@ import {
 } from "@mui/material";
 import AddPostitButton from "./AddPostitButton";
 import { Word } from "@/types/types";
-import { useAudio } from "@/hooks/CallDataContext/useAudio"; // Utilisation du hook
+import { useAudio } from "@/context/AudioContext";
 import TimelineAudio from "./TimeLineAudio";
+import AudioPlayer from "./AudioPlayer";
 import Postit from "./Postit";
 interface TranscriptProps {
   callId: number;
@@ -34,10 +35,10 @@ const Transcript = ({ callId }: TranscriptProps) => {
 
   const {
     isPlaying,
-    playerRef,
+    audioRef,
     play,
     pause,
-    setTime,
+    seekTo,
     audioSrc,
     setAudioSrc,
     currentWordIndex,
@@ -95,39 +96,33 @@ const Transcript = ({ callId }: TranscriptProps) => {
   //   }
   // };
 
-  const handleWordClick = async (word: Word, index: number) => {
-    if (!playerRef.current) return;
+  const handleWordClick = (word: Word, index: number) => {
+    if (!audioRef.current) return;
 
-    const player = playerRef.current;
-
-    // ✅ Vérifie si l'audio est bien prêt
-    if (player.readyState < 2) {
-      console.warn("⏳ Audio pas encore prêt, tentative annulée.");
-      return;
-    }
-
-    // ✅ Déplace la lecture AVANT de jouer ou de mettre en pause
-    setTime(word.startTime);
-
-    // ✅ Attendre un court instant pour éviter les conflits play/pause
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Vérifiez d'abord si l'audio est en cours de lecture
+    console.log("État isPlaying avant clic:", isPlaying); // Ajoutez ce log pour déboguer
 
     if (isPlaying) {
+      // Si c'est en lecture, mettez en pause immédiatement sans délai
       pause();
+      console.log("Pause appelée"); // Log pour déboguer
     } else {
+      // Si c'est en pause, positionnez et démarrez
+      seekTo(word.startTime);
       play();
+      console.log("Play appelé"); // Log pour déboguer
     }
   };
 
   const handleAddPostit = () => {
-    if (!currentWord || !playerRef.current || !selectedCall?.callid) {
+    if (!currentWord || !audioRef.current || !selectedCall?.callid) {
       console.warn("Impossible de créer un post-it, données insuffisantes.");
       return;
     }
 
     const wordid = currentWord.wordid ?? 0;
     const wordText = currentWord.text ?? "Post-it";
-    const timestamp = Math.floor(playerRef.current.currentTime);
+    const timestamp = Math.floor(audioRef.current.currentTime);
 
     addPostit(wordid, wordText, timestamp, {
       sujet: "Non assigné",
@@ -142,7 +137,7 @@ const Transcript = ({ callId }: TranscriptProps) => {
 
   useEffect(() => {
     const onTimeUpdate = () => {
-      const currentTime = playerRef.current?.currentTime || 0;
+      const currentTime = audioRef.current?.currentTime || 0;
 
       // Mise à jour de l'index si la transcription est disponible
       if (transcription?.words) {
@@ -150,7 +145,7 @@ const Transcript = ({ callId }: TranscriptProps) => {
       }
     };
 
-    const player = playerRef.current;
+    const player = audioRef.current;
     if (audioSrc && player) {
       player.addEventListener("timeupdate", onTimeUpdate);
 
@@ -216,17 +211,47 @@ const Transcript = ({ callId }: TranscriptProps) => {
       />
 
       {/* ✅ Timeline placée au-dessus du lecteur audio */}
-      {audioSrc && (
-        <Box sx={{ marginBottom: 2 }}>
-          <TimelineAudio
-            duration={playerRef.current?.duration || 0} // Durée totale de l'audio
-            currentTime={playerRef.current?.currentTime || 0} // Temps de lecture actuel
-            markers={postitMarkers} // Marqueurs issus des post-its
-            onSeek={setTime} // ✅ Met à jour le player audio quand on clique sur la timeline
-            handlePostitClick={handlePostitClick} // ✅ Gestion du clic sur un marqueur
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mt: 1,
+        }}
+      >
+        {audioSrc ? (
+          <AudioPlayer
+            markers={postitMarkers}
+            onMarkerClick={(id) => {
+              // Trouver le post-it correspondant à cet ID
+              const postit = appelPostits.find((p) => p.id === id);
+              if (postit) {
+                // Utiliser votre logique existante pour ouvrir le popover
+                const event = {
+                  currentTarget:
+                    document.getElementById(`marker-${id}`) || null,
+                };
+                handlePostitClick(
+                  event as React.MouseEvent<HTMLElement>,
+                  postit
+                );
+              }
+            }}
           />
+        ) : (
+          <Typography variant="body2" color="textSecondary">
+            Aucun audio disponible pour cette transcription.
+          </Typography>
+        )}
+
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+          {currentWord && selectedCall && (
+            <AddPostitButton
+              timestamp={Math.floor(audioRef.current?.currentTime || 0)}
+            />
+          )}
         </Box>
-      )}
+      </Box>
       <Popover
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
@@ -268,31 +293,6 @@ const Transcript = ({ callId }: TranscriptProps) => {
           )}
         </Box>
       </Paper>
-
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          mt: 1,
-        }}
-      >
-        {audioSrc ? (
-          <audio id="audioPlayer" ref={playerRef} controls src={audioSrc} />
-        ) : (
-          <Typography variant="body2" color="textSecondary">
-            Aucun audio disponible pour cette transcription.
-          </Typography>
-        )}
-
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-          {currentWord && selectedCall && (
-            <AddPostitButton
-              timestamp={Math.floor(playerRef.current?.currentTime || 0)}
-            />
-          )}
-        </Box>
-      </Box>
     </Box>
   );
 };
