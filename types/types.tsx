@@ -12,6 +12,7 @@ export interface CallActivityRelation {
 }
 
 export interface Call {
+  audiourl: null;
   callid: number;
   filename: string;
   description?: string;
@@ -281,6 +282,14 @@ export interface EvaluationDrawerProps {
   setDarkMode: (mode: boolean) => void;
 }
 
+export interface TextSelection {
+  text: string;
+  startTime: number;
+  endTime?: number;
+  wordIndex: number;
+  speaker: "client" | "conseiller";
+}
+
 // ✅ Types unifiés pour le contexte d'application
 export interface CallDataContextType {
   // 📞 Appels
@@ -293,6 +302,14 @@ export interface CallDataContextType {
   deleteCall: (callId: number) => Promise<void>;
   createAudioUrlWithToken: (filepath: string) => Promise<string | null>;
   isLoadingCalls: boolean;
+
+  //TextSelection
+  selectionMode: "client" | "conseiller" | null;
+  setSelectionMode: (mode: "client" | "conseiller" | null) => void;
+  clientSelection: TextSelection | null;
+  setClientSelection: (selection: TextSelection | null) => void;
+  conseillerSelection: TextSelection | null;
+  setConseillerSelection: (selection: TextSelection | null) => void;
 
   // 🗒️ Post-its
   allPostits: Postit[];

@@ -18,7 +18,13 @@ import { useZones } from "@/hooks/CallDataContext/useZones";
 import { useCallActivity } from "@/hooks/CallDataContext/useCallActivity";
 import { useRolePlay } from "@/hooks/CallDataContext/useRolePlay";
 
-import { CallDataContextType, Word, Postit, RolePlayData } from "@/types/types";
+import {
+  CallDataContextType,
+  Word,
+  Postit,
+  RolePlayData,
+  TextSelection,
+} from "@/types/types";
 
 interface CallDataProviderProps {
   children: ReactNode;
@@ -103,6 +109,16 @@ export const CallDataProvider = ({
   const [selectedPostitForRolePlay, setSelectedPostitForRolePlay] =
     useState<Postit | null>(null);
 
+  // Pour la sélection dans la transcription
+  const [transcriptSelectionMode, setTranscriptSelectionMode] = useState<
+    "client" | "conseiller" | null
+  >(null);
+  const [clientSelection, setClientSelection] = useState<TextSelection | null>(
+    null
+  );
+  const [conseillerSelection, setConseillerSelection] =
+    useState<TextSelection | null>(null);
+
   // 🎲 Jeu de rôle
   const {
     rolePlayData,
@@ -170,6 +186,14 @@ export const CallDataProvider = ({
         createActivityForCall,
         removeActivityForCall,
         getActivityIdFromCallId,
+
+        // Nouvelles valeurs pour la sélection de texte
+        transcriptSelectionMode,
+        setTranscriptSelectionMode,
+        clientSelection,
+        setClientSelection,
+        conseillerSelection,
+        setConseillerSelection,
 
         // 🎮 Jeu de rôle coaching
         selectedPostitForRolePlay,

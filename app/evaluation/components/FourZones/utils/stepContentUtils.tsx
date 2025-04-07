@@ -1,4 +1,5 @@
-import React, { JSX } from "react";
+import React, { JSX, useEffect } from "react";
+import { useCallData } from "@/context/CallDataContext";
 import { Box, Typography, Paper, IconButton } from "@mui/material";
 import { PlayArrow } from "@mui/icons-material";
 import MicIcon from "@mui/icons-material/Mic";
@@ -77,6 +78,18 @@ export const renderStepContent = ({
   mode,
   handleOpenZoneMenu,
 }: RenderStepContentParams) => {
+  const {
+    transcriptSelectionMode,
+    setTranscriptSelectionMode,
+    clientSelection,
+    conseillerSelection,
+  } = useCallData();
+
+  // Dans renderStepContent.tsx
+  useEffect(() => {
+    console.log("Current clientSelection:", clientSelection);
+  }, [clientSelection]);
+
   // Rendu de l'étape 1: Sélection du contexte
   const renderStep0 = () => (
     <>
@@ -127,8 +140,14 @@ export const renderStepContent = ({
                   size="small"
                   color="primary"
                   onClick={() => {
-                    // Commencer à 0 pour l'instant
-                    seekTo(0);
+                    console.log("clientSelection:", clientSelection);
+                    if (clientSelection && clientSelection.startTime) {
+                      console.log("Seeking to:", clientSelection.startTime);
+                      seekTo(clientSelection.startTime);
+                    } else {
+                      console.log("No startTime available, seeking to 0");
+                      seekTo(0);
+                    }
                     play();
                   }}
                   title="Écouter le passage"

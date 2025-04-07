@@ -21,6 +21,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { ZONES } from "../constants/zone";
 import { ClientResponseSectionProps } from "../types/types";
+import { useCallData } from "@/context/CallDataContext";
 
 export const ClientResponseSection: React.FC<ClientResponseSectionProps> = ({
   selectionMode,
@@ -40,6 +41,7 @@ export const ClientResponseSection: React.FC<ClientResponseSectionProps> = ({
   );
   const [isClientEditing, setIsClientEditing] = useState(false);
   const [isConseillerEditing, setIsConseillerEditing] = useState(false);
+  const { clientSelection, conseillerSelection } = useCallData();
 
   // Synchroniser les états locaux avec les props
   useEffect(() => {
@@ -81,6 +83,18 @@ export const ClientResponseSection: React.FC<ClientResponseSectionProps> = ({
     setIsConseillerEditing(false);
   };
 
+  // Logique pour appliquer les sélections
+  const applyClientSelection = () => {
+    if (clientSelection) {
+      setSelectedClientText(clientSelection.text);
+    }
+  };
+
+  const applyConseillerSelection = () => {
+    if (conseillerSelection) {
+      setSelectedConseillerText(conseillerSelection.text);
+    }
+  };
   // Fonction pour activer le mode client
   const activateClientMode = () => {
     onSelectionModeChange("client");
@@ -243,6 +257,50 @@ export const ClientResponseSection: React.FC<ClientResponseSectionProps> = ({
               </Typography>
             </Box>
           )}
+
+          {/* Ajout: Affichage de la sélection client disponible */}
+          {!isClientEditing &&
+            clientSelection &&
+            clientSelection.text !== selectedClientText && (
+              <Box
+                sx={{
+                  mt: 1,
+                  p: 1.5,
+                  bgcolor: "rgba(25, 118, 210, 0.1)",
+                  borderRadius: 1,
+                  border: "1px solid",
+                  borderColor: "primary.light",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 1,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Typography
+                  variant="body2"
+                  fontSize={fontSize - 1}
+                  sx={{ flex: 1 }}
+                >
+                  <b>Sélection disponible:</b>{" "}
+                  {clientSelection.text.length > 50
+                    ? `${clientSelection.text.substring(0, 50)}...`
+                    : clientSelection.text}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="primary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    applyClientSelection();
+                  }}
+                >
+                  Appliquer
+                </Button>
+              </Box>
+            )}
         </Paper>
 
         {/* Flèche indiquant le flux de conversation */}
@@ -397,6 +455,50 @@ export const ClientResponseSection: React.FC<ClientResponseSectionProps> = ({
               </Typography>
             </Box>
           )}
+
+          {/* Ajout: Affichage de la sélection conseiller disponible */}
+          {!isConseillerEditing &&
+            conseillerSelection &&
+            conseillerSelection.text !== selectedConseillerText && (
+              <Box
+                sx={{
+                  mt: 1,
+                  p: 1.5,
+                  bgcolor: "rgba(156, 39, 176, 0.1)",
+                  borderRadius: 1,
+                  border: "1px solid",
+                  borderColor: "secondary.light",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 1,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Typography
+                  variant="body2"
+                  fontSize={fontSize - 1}
+                  sx={{ flex: 1 }}
+                >
+                  <b>Sélection disponible:</b>{" "}
+                  {conseillerSelection.text.length > 50
+                    ? `${conseillerSelection.text.substring(0, 50)}...`
+                    : conseillerSelection.text}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    applyConseillerSelection();
+                  }}
+                >
+                  Appliquer
+                </Button>
+              </Box>
+            )}
 
           {selectedConseillerText && !hasOriginalPostits && (
             <Box

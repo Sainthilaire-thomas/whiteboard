@@ -73,7 +73,9 @@ const FourZones: React.FC = () => {
     rolePlayData,
     saveRolePlayData,
     isLoadingRolePlay,
+    setTranscriptSelectionMode,
   } = callDataContext as unknown as CallDataContextType;
+
   const { audioSrc, play, seekTo } = useAudio();
 
   // État de la taille de police
@@ -216,6 +218,17 @@ const FourZones: React.FC = () => {
     setTargetZone("");
   };
 
+  //synchronisation selection text Transcript
+  const handleSelectionModeChange = (mode: string) => {
+    setSelectionMode(mode);
+
+    // Convertir le mode en type pour transcriptSelectionMode
+    if (mode === "client" || mode === "conseiller") {
+      setTranscriptSelectionMode(mode);
+    } else {
+      setTranscriptSelectionMode(null);
+    }
+  };
   // Gérer la catégorisation
   const handleAddCategorizedText = () => {
     if (textToCategorizze.trim() === "" || !selectedCategory) {
@@ -448,7 +461,7 @@ const FourZones: React.FC = () => {
         {renderStepContent({
           activeStep,
           selectionMode,
-          setSelectionMode,
+          setSelectionMode: handleSelectionModeChange,
           selectedClientText,
           selectedConseillerText,
           fontSize,

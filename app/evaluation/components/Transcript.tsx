@@ -12,9 +12,9 @@ import {
 import AddPostitButton from "./AddPostitButton";
 import { Word } from "@/types/types";
 import { useAudio } from "@/context/AudioContext";
-import TimelineAudio from "./TimeLineAudio";
 import AudioPlayer from "./AudioPlayer";
 import Postit from "./Postit";
+
 interface TranscriptProps {
   callId: number;
 }
@@ -31,7 +31,12 @@ const Transcript = ({ callId }: TranscriptProps) => {
     updatePostit,
     appelPostits,
     currentWord,
+    transcriptSelectionMode,
+    setClientSelection,
+    setConseillerSelection,
   } = useCallData();
+
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const {
     isPlaying,
@@ -65,6 +70,110 @@ const Transcript = ({ callId }: TranscriptProps) => {
     setSelectedPostit(null);
     setAnchorEl(null);
   };
+
+  // Ajoutez cette fonction pour gérer la sélection de texte
+  const handleTextSelection = () => {
+    console.log("handleTextSelection called, mode:", transcriptSelectionMode);
+    console.log(
+      "wordRefs content:",
+      wordRefs.current.filter((ref) => ref !== null).length,
+      "non-null refs out of",
+      wordRefs.current.length
+    );
+    if (!transcriptSelectionMode || !transcription?.words) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const selectionText = selection.toString().trim();
+    if (!selectionText) return;
+
+    // Logique pour identifier les mots sélectionnés
+    const selectedIndices: number[] = [];
+    const range = selection.getRangeAt(0);
+
+    wordRefs.current.forEach((ref, idx) => {
+      if (ref) {
+        const isIntersecting = range.intersectsNode(ref);
+
+        // Si au moins un mot est sélectionné, loggez-le pour débogage
+        if (isIntersecting) {
+          console.log(
+            "Intersecting word:",
+            transcription.words[idx].text,
+            "turn:",
+            transcription.words[idx].turn
+          );
+        }
+      }
+      if (ref && range.intersectsNode(ref)) {
+        const word = transcription.words[idx];
+        console.log(
+          "Word with potential intersection:",
+          word.text,
+          "turn:",
+          word.turn
+        );
+        const isClientWord = word.turn === "turn2";
+        const isConseillerWord = word.turn === "turn1";
+
+        if (
+          (transcriptSelectionMode === "client" && isClientWord) ||
+          (transcriptSelectionMode === "conseiller" && isConseillerWord)
+        ) {
+          selectedIndices.push(idx);
+        }
+      }
+    });
+    console.log("Selected indices:", selectedIndices);
+    if (selectedIndices.length > 0) {
+      console.log("Indices found, preparing selection data");
+      // Trier les indices
+      selectedIndices.sort((a, b) => a - b);
+
+      const firstIdx = selectedIndices[0];
+      const lastIdx = selectedIndices[selectedIndices.length - 1];
+
+      const selectionData: TextSelection = {
+        text: selectionText,
+        startTime: transcription.words[firstIdx].startTime,
+        endTime:
+          transcription.words[lastIdx].endTime ||
+          transcription.words[lastIdx].startTime + 1,
+        wordIndex: firstIdx,
+        speaker: transcriptSelectionMode,
+      };
+
+      // Enregistrer la sélection dans le contexte
+      if (transcriptSelectionMode === "client") {
+        setClientSelection(selectionData);
+      } else {
+        setConseillerSelection(selectionData);
+      }
+      console.log("selectionData", selectionData);
+
+      // Afficher un feedback à l'utilisateur
+      // Vous pouvez ajouter une notification toast ou un autre élément UI
+
+      // Effacer la sélection
+      window.getSelection()?.removeAllRanges();
+    }
+  };
+
+  // Ajoutez un event listener pour détecter la fin de la sélection
+  useEffect(() => {
+    console.log("Setting up mouseup listener, mode:", transcriptSelectionMode);
+    if (!transcriptSelectionMode) return;
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener("mouseup", handleTextSelection);
+
+      return () => {
+        container.removeEventListener("mouseup", handleTextSelection);
+      };
+    }
+  }, [transcriptSelectionMode, transcription]);
 
   // ✅ 1️⃣ Charger la transcription uniquement si elle n'est pas déjà récupérée
   useEffect(() => {
@@ -199,6 +308,17 @@ const Transcript = ({ callId }: TranscriptProps) => {
       <Typography variant="h6" gutterBottom>
         Transcription
       </Typography>
+
+      {/* Indication du mode sélection si actif */}
+      {transcriptSelectionMode && (
+        <Typography variant="body2" color="primary" sx={{ mb: 1 }}>
+          Mode sélection:{" "}
+          {transcriptSelectionMode === "client"
+            ? "Texte client"
+            : "Texte conseiller"}{" "}
+          (sélectionnez le texte avec la souris)
+        </Typography>
+      )}
       {/* ✅ Ajout du Toggle pour changer le fond des mots en fonction de l'interlocuteur */}
       <FormControlLabel
         control={
@@ -273,15 +393,34 @@ const Transcript = ({ callId }: TranscriptProps) => {
           />
         )}
       </Popover>
-      <Paper sx={{ padding: 2, maxHeight: "400px", overflowY: "auto" }}>
+      <Paper
+        sx={{ padding: 2, maxHeight: "400px", overflowY: "auto" }}
+        ref={containerRef}
+      >
         <Box>
           {transcription?.words && transcription.words.length > 0 ? (
             transcription.words.map((word: Word, index: number) => (
               <span
                 key={index}
-                ref={(el) => (wordRefs.current[index] = el)} // 🔹 Stocke la référence du mot
-                style={getWordStyle(index, word)}
-                onClick={() => handleWordClick(word, index)}
+                ref={(el) => (wordRefs.current[index] = el)}
+                style={{
+                  ...getWordStyle(index, word),
+                  // Ajouter ces styles en mode sélection
+                  cursor: transcriptSelectionMode ? "text" : "pointer",
+                  userSelect: transcriptSelectionMode ? "text" : "none",
+                  // Surbrillance si c'est un mot du type recherché
+                  backgroundColor:
+                    transcriptSelectionMode === "client" &&
+                    word.turn === "turn1"
+                      ? "rgba(165, 141, 4, 0.3)"
+                      : transcriptSelectionMode === "conseiller" &&
+                        word.turn === "turn2"
+                      ? "rgba(6, 158, 208, 0.3)"
+                      : getWordStyle(index, word).backgroundColor,
+                }}
+                onClick={() =>
+                  !transcriptSelectionMode && handleWordClick(word, index)
+                }
               >
                 {word.text}{" "}
               </span>
