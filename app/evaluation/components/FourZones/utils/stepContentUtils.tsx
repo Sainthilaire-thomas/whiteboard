@@ -6,7 +6,6 @@ import MicIcon from "@mui/icons-material/Mic";
 import DynamicSpeechToTextForFourZones from "../components/DynamicSpeechToTextForFourZones";
 import { ZoneLegend } from "../components/ZoneLegend";
 import { ClientResponseSection } from "../components/ClientResponseSection";
-import { ImprovementSection } from "../components/ImprovementSection";
 import { FinalReviewStep } from "../components/FinalReviewStep";
 import { PostitType } from "../types/types";
 import { ZONES } from "../constants/zone";

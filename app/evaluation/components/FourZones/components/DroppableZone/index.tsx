@@ -1,5 +1,5 @@
 // components/DroppableZone/index.tsx
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Paper, Box, Typography, IconButton } from "@mui/material";
 import {
   SortableContext,
@@ -72,9 +72,68 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
     setSelectedPostitForAI(null);
   };
 
-  const handleAiImprovement = async (improvementType: string) => {
-    // Implémentation déplacée dans AiMenu
+  // État pour la suggestion d'IA
+  const [postitWithSuggestion, setPostitWithSuggestion] = useState<
+    string | null
+  >(null);
+  const [suggestedContent, setSuggestedContent] = useState<string>("");
+  const [originalContent, setOriginalContent] = useState<string>("");
+
+  // Fonction pour recevoir les suggestions d'IA
+  const handleSuggestImprovement = (
+    id: string,
+    content: string,
+    original: string
+  ) => {
+    setPostitWithSuggestion(id);
+    setSuggestedContent(content);
+    setOriginalContent(original);
   };
+
+  // Ajout des fonctions manquantes pour accepter/rejeter les suggestions
+  const handleAcceptSuggestion = () => {
+    if (postitWithSuggestion && suggestedContent) {
+      onEdit(postitWithSuggestion, suggestedContent);
+      // Réinitialiser
+      setPostitWithSuggestion(null);
+      setSuggestedContent("");
+      setOriginalContent("");
+    }
+  };
+
+  const handleRejectSuggestion = () => {
+    // Réinitialiser
+    setPostitWithSuggestion(null);
+    setSuggestedContent("");
+    setOriginalContent("");
+  };
+
+  // Référence à cette fonction pour les ImprovedPostits
+  const improvedPostitRefs = useRef<Record<string, any>>({});
+
+  // Mettre à jour les références quand les postits changent
+  useEffect(() => {
+    // Mise à jour des références
+  }, [postits]);
+
+  // Quand une suggestion est prête, la passer au composant post-it correspondant
+  useEffect(() => {
+    if (postitWithSuggestion && suggestedContent) {
+      const postitRef = improvedPostitRefs.current[postitWithSuggestion];
+      if (postitRef && postitRef.handleSuggestImprovement) {
+        postitRef.handleSuggestImprovement(
+          postitWithSuggestion,
+          suggestedContent,
+          originalContent
+        );
+
+        // Réinitialiser
+        setPostitWithSuggestion(null);
+        setSuggestedContent("");
+        setOriginalContent("");
+      }
+    }
+  }, [postitWithSuggestion, suggestedContent, originalContent]);
 
   return (
     <Paper
@@ -143,6 +202,12 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
               onDelete={onDelete}
               onAiMenu={handleOpenAiMenu}
               isLoading={isLoading}
+              // Prop pour afficher une suggestion
+              showSuggestion={postitWithSuggestion === postit.id}
+              suggestedContent={suggestedContent}
+              originalContent={originalContent}
+              onAcceptSuggestion={handleAcceptSuggestion}
+              onRejectSuggestion={handleRejectSuggestion}
             />
           ))
         ) : (
@@ -184,7 +249,7 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
           isLoading={isLoading}
           setIsLoading={setIsLoading}
           onClose={handleCloseAiMenu}
-          onEdit={onEdit}
+          onSuggestImprovement={handleSuggestImprovement}
         />
       )}
     </Paper>

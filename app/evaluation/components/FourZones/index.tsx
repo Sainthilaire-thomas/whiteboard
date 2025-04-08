@@ -32,7 +32,7 @@ import { sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
 // Import des composants factorisés
 import { DroppableZone } from "./components/DroppableZone/";
 import { ClientResponseSection } from "./components/ClientResponseSection";
-import { ImprovementSection } from "./components/ImprovementSection";
+
 import {
   EditPostitDialog,
   CategoryDialog,

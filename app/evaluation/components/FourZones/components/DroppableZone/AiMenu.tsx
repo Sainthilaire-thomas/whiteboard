@@ -10,7 +10,11 @@ interface AiMenuProps {
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   onClose: () => void;
-  onEdit: (id: string, content: string) => void;
+  onSuggestImprovement: (
+    id: string,
+    content: string,
+    originalContent: string
+  ) => void;
 }
 
 export const AiMenu: React.FC<AiMenuProps> = ({
@@ -19,7 +23,7 @@ export const AiMenu: React.FC<AiMenuProps> = ({
   isLoading,
   setIsLoading,
   onClose,
-  onEdit,
+  onSuggestImprovement,
 }) => {
   const handleAiImprovement = async (improvementType: string) => {
     if (!postit) return;
@@ -54,7 +58,7 @@ export const AiMenu: React.FC<AiMenuProps> = ({
     setIsLoading(true);
     try {
       const improvedContent = await improveTextWithAI(postit.content, prompt);
-      onEdit(postit.id, improvedContent);
+      onSuggestImprovement(postit.id, improvedContent, postit.content);
     } catch (error) {
       console.error("Erreur lors de l'amélioration du texte:", error);
     } finally {
