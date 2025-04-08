@@ -29,7 +29,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { useThemeMode } from "@/app/components/common/Theme/ThemeProvider";
 
 // Import des composants factorisés
-import { DroppableZone } from "./components/DroppableZone";
+import { DroppableZone } from "./components/DroppableZone_old";
 import { ClientResponseSection } from "./components/ClientResponseSection";
 import { ImprovementSection } from "./components/ImprovementSection";
 import {

@@ -30,7 +30,7 @@ import {
 import { sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
 
 // Import des composants factorisés
-import { DroppableZone } from "./components/DroppableZone";
+import { DroppableZone } from "./components/DroppableZone/";
 import { ClientResponseSection } from "./components/ClientResponseSection";
 import { ImprovementSection } from "./components/ImprovementSection";
 import {
@@ -317,7 +317,7 @@ const FourZones: React.FC = () => {
   };
 
   // Rendu des zones de drop
-  const renderDropZones = () => (
+  const renderDropZones = (improvementMode = false) => (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCorners}
@@ -344,12 +344,13 @@ const FourZones: React.FC = () => {
           fontSize={fontSize}
           onEdit={openEditDialog}
           onDelete={deletePostit}
-          onAddClick={(zone: string, content: string) =>
+          onAddClick={(zone, content) =>
             addPostitToZone(ZONES.JE_FAIS, content)
           }
+          improvementMode={improvementMode} // Nouveau prop pour indiquer le mode
         />
 
-        {/* Zone "Ce qu'a fait le client" (VERT) */}
+        {/* Autres zones avec le même pattern */}
         <DroppableZone
           id={ZONES.VOUS_AVEZ_FAIT}
           title="Ce qu'a fait le client"
@@ -358,12 +359,12 @@ const FourZones: React.FC = () => {
           fontSize={fontSize}
           onEdit={openEditDialog}
           onDelete={deletePostit}
-          onAddClick={(zone: string, content: string) =>
+          onAddClick={(zone, content) =>
             addPostitToZone(ZONES.VOUS_AVEZ_FAIT, content)
           }
+          improvementMode={improvementMode}
         />
 
-        {/* Zone "Ce que fait l'entreprise" (ROUGE) */}
         <DroppableZone
           id={ZONES.ENTREPRISE_FAIT}
           title="Ce que fait l'entreprise"
@@ -372,13 +373,13 @@ const FourZones: React.FC = () => {
           fontSize={fontSize}
           onEdit={openEditDialog}
           onDelete={deletePostit}
-          onAddClick={(zone: string, content: string) =>
+          onAddClick={(zone, content) =>
             addPostitToZone(ZONES.ENTREPRISE_FAIT, content)
           }
           isEntrepriseZone={true}
+          improvementMode={improvementMode}
         />
 
-        {/* Zone "Ce que fera le client" (VERT) */}
         <DroppableZone
           id={ZONES.VOUS_FEREZ}
           title="Ce que fera le client"
@@ -387,9 +388,10 @@ const FourZones: React.FC = () => {
           fontSize={fontSize}
           onEdit={openEditDialog}
           onDelete={deletePostit}
-          onAddClick={(zone: string, content: string) =>
+          onAddClick={(zone, content) =>
             addPostitToZone(ZONES.VOUS_FEREZ, content)
           }
+          improvementMode={improvementMode}
         />
       </Box>
 

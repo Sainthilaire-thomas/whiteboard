@@ -9,6 +9,7 @@ import { ClientResponseSection } from "../components/ClientResponseSection";
 import { ImprovementSection } from "../components/ImprovementSection";
 import { FinalReviewStep } from "../components/FinalReviewStep";
 import { PostitType } from "../types/types";
+import { ZONES } from "../constants/zone";
 
 /**
  * Type pour les paramètres de renderStepContent
@@ -210,39 +211,40 @@ export const renderStepContent = ({
   // Rendu de l'étape 3: Suggestions d'amélioration
   const renderStep2 = () => (
     <>
-      <ImprovementSection
-        selectedClientText={selectedClientText}
-        postits={postits}
-        onAddSuggestion={(zone, content) => {
-          if (!zone) {
-            showNotification("Veuillez sélectionner une zone", "warning");
-            return;
-          }
-          // Création d'un nouveau postit
-          const newPostit: PostitType = {
-            id: generateId(),
-            content,
-            zone,
-            color: zoneColors[zone],
-            isOriginal: false,
-          };
-          setPostits([...postits, newPostit]);
+      {/* Section client qui reste visible */}
+      <Paper
+        elevation={3}
+        sx={{
+          p: 2,
+          bgcolor: zoneColors[ZONES.CLIENT],
+          minHeight: "60px",
+          mb: 3,
         }}
-        onEditPostit={(id, newContent) => {
-          setPostits(
-            postits.map((postit) =>
-              postit.id === id ? { ...postit, content: newContent } : postit
-            )
-          );
-        }}
-        onDeletePostit={(id) => {
-          setPostits(postits.filter((postit) => postit.id !== id));
-        }}
-        fontSize={fontSize}
-        zoneColors={zoneColors}
-      />
+      >
+        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+          Situation: Le client dit
+        </Typography>
+        <Typography fontSize={fontSize} fontWeight="bold">
+          {selectedClientText}
+        </Typography>
+      </Paper>
+
+      {/* Guide d'amélioration */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Améliorez les éléments de votre réponse:
+        </Typography>
+        <Typography variant="body2" color="text.secondary" paragraph>
+          Dans cette étape, vous pouvez améliorer directement le contenu de
+          chaque zone. Cliquez sur les éléments pour les modifier ou utilisez
+          l'IA pour les optimiser.
+        </Typography>
+      </Box>
+
       <ZoneLegend />
-      {renderDropZones()}
+
+      {/* Utiliser les zones de drop avec le mode amélioration activé */}
+      {renderDropZones(true)}
     </>
   );
 
