@@ -44,6 +44,8 @@ interface RenderStepContentParams {
     event: React.MouseEvent<HTMLElement>,
     zone: string
   ) => void;
+  postits: PostitType[];
+  setPostits: (postits: PostitType[]) => void;
 }
 
 /**
@@ -77,6 +79,8 @@ export const renderStepContent = ({
   addSelectedTextAsPostit,
   mode,
   handleOpenZoneMenu,
+  postits,
+  setPostits,
 }: RenderStepContentParams) => {
   const {
     transcriptSelectionMode,
@@ -208,24 +212,35 @@ export const renderStepContent = ({
     <>
       <ImprovementSection
         selectedClientText={selectedClientText}
-        newPostitContent={newPostitContent}
-        onNewPostitContentChange={setNewPostitContent}
-        currentZone={currentZone}
-        onCurrentZoneChange={setCurrentZone}
+        postits={postits}
         onAddSuggestion={(zone, content) => {
           if (!zone) {
             showNotification("Veuillez sélectionner une zone", "warning");
             return;
           }
-          // Ici nous utilisons le paramètre zone passé à la fonction
-          // au lieu de currentZone, et nous ignorons le content pour l'instant
-          // car votre fonction addSelectedTextAsPostit n'utilise que la zone
-          addSelectedTextAsPostit(zone);
+          // Création d'un nouveau postit
+          const newPostit: PostitType = {
+            id: generateId(),
+            content,
+            zone,
+            color: zoneColors[zone],
+            isOriginal: false,
+          };
+          setPostits([...postits, newPostit]);
+        }}
+        onEditPostit={(id, newContent) => {
+          setPostits(
+            postits.map((postit) =>
+              postit.id === id ? { ...postit, content: newContent } : postit
+            )
+          );
+        }}
+        onDeletePostit={(id) => {
+          setPostits(postits.filter((postit) => postit.id !== id));
         }}
         fontSize={fontSize}
         zoneColors={zoneColors}
       />
-
       <ZoneLegend />
       {renderDropZones()}
     </>

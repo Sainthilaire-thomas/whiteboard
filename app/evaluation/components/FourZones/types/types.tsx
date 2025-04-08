@@ -115,12 +115,10 @@ export interface ClientResponseSectionProps {
  */
 export interface ImprovementSectionProps {
   selectedClientText: string;
-  originalConseillerText?: string;
-  newPostitContent: string;
-  onNewPostitContentChange: (content: string) => void;
-  currentZone: string;
-  onCurrentZoneChange: (zone: string) => void;
+  postits: PostitType[];
   onAddSuggestion: (zone: string, content: string) => void;
+  onEditPostit: (id: string, newContent: string) => void;
+  onDeletePostit: (id: string) => void;
   fontSize: number;
   zoneColors: Record<string, string>;
 }

@@ -486,6 +486,8 @@ const FourZones: React.FC = () => {
           addSelectedTextAsPostit,
           mode,
           handleOpenZoneMenu,
+          postits,
+          setPostits,
         })}
       </Box>
 

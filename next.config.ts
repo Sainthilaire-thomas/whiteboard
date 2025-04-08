@@ -1,14 +1,20 @@
 import type { NextConfig } from "next";
 
 const nextConfig = {
+  // Déplacé de experimental.serverComponentsExternalPackages
+  serverExternalPackages: ["formidable", "node-fetch", "form-data"],
+
   experimental: {
-    serverComponentsExternalPackages: ["formidable", "node-fetch", "form-data"],
+    // Autres options expérimentales peuvent rester ici
   },
-  // Augmenter la taille maximale des corps de requête si nécessaire
-  api: {
-    responseLimit: "8mb",
-    bodyParser: {
-      sizeLimit: "8mb",
+
+  // Configurer correctement les limites d'API
+  serverRuntimeConfig: {
+    api: {
+      responseLimit: "8mb",
+      bodyParser: {
+        sizeLimit: "8mb",
+      },
     },
   },
 };
