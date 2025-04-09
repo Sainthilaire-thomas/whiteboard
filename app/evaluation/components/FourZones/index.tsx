@@ -132,6 +132,7 @@ const FourZones: React.FC = () => {
     addPostitsFromSpeech,
     getPostitsByZone,
     hasOriginalPostits,
+    updatePostitContent,
   } = postitState;
 
   const dragDropState = useDragAndDrop({
@@ -348,6 +349,7 @@ const FourZones: React.FC = () => {
             addPostitToZone(ZONES.JE_FAIS, content)
           }
           improvementMode={improvementMode} // Nouveau prop pour indiquer le mode
+          updatePostitContent={updatePostitContent}
         />
 
         {/* Autres zones avec le même pattern */}
@@ -363,6 +365,7 @@ const FourZones: React.FC = () => {
             addPostitToZone(ZONES.VOUS_AVEZ_FAIT, content)
           }
           improvementMode={improvementMode}
+          updatePostitContent={updatePostitContent}
         />
 
         <DroppableZone
@@ -378,6 +381,7 @@ const FourZones: React.FC = () => {
           }
           isEntrepriseZone={true}
           improvementMode={improvementMode}
+          updatePostitContent={updatePostitContent}
         />
 
         <DroppableZone
@@ -392,6 +396,7 @@ const FourZones: React.FC = () => {
             addPostitToZone(ZONES.VOUS_FEREZ, content)
           }
           improvementMode={improvementMode}
+          updatePostitContent={updatePostitContent}
         />
       </Box>
 

@@ -92,6 +92,7 @@ export interface DroppableZoneProps {
   onDelete: (id: string) => void;
   onAddClick: (zone: string, content: string) => void;
   isEntrepriseZone?: boolean;
+  updatePostitContent?: (id: string, content: string) => void;
 }
 
 /**

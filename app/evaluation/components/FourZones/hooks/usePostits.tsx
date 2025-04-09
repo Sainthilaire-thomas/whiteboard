@@ -91,6 +91,16 @@ export const usePostits = ({
     setIsEditDialogOpen(true);
   };
 
+  // Mettre à jour le contenu d'un post-it sans ouvrir la boîte de dialogue
+  const updatePostitContent = (id: string, content: string): void => {
+    if (id && content.trim() !== "") {
+      setPostits(
+        postits.map((postit) =>
+          postit.id === id ? { ...postit, content: content } : postit
+        )
+      );
+    }
+  };
   // Sauvegarder l'édition d'un post-it
   const savePostitEdit = (): void => {
     if (editPostitId && editPostitContent.trim() !== "") {
@@ -142,5 +152,6 @@ export const usePostits = ({
     getPostitsByZone,
     hasOriginalPostits,
     setEditPostitContent,
+    updatePostitContent,
   };
 };
