@@ -22,6 +22,10 @@ export default function GlobalNavBar() {
           <Button color="inherit" component={Link} href="/evaluation">
             Évaluation
           </Button>
+
+          <Button color="inherit" component={Link} href="/zohoworkdrive">
+            WorkDrive
+          </Button>
         </Box>
 
         {/* ✅ ActivityIndicator bien intégré à droite */}
