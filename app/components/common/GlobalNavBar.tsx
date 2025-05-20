@@ -1,10 +1,13 @@
+"use client";
+
 import Link from "next/link";
-import { AppBar, Toolbar, Button, Typography, Box } from "@mui/material";
-import ActivityIndicator from "./ActivityIndicator"; // ✅ Import du composant indicateur
+import { AppBar, Toolbar, Button, Box } from "@mui/material";
+import ActivityIndicator from "./ActivityIndicator";
 import { useThemeMode } from "./Theme/ThemeProvider";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import { IconButton, Tooltip } from "@mui/material";
+import AuthStatus from "./AuthStatus";
 
 export default function GlobalNavBar() {
   const { mode, toggleTheme } = useThemeMode();
@@ -22,21 +25,20 @@ export default function GlobalNavBar() {
           <Button color="inherit" component={Link} href="/evaluation">
             Évaluation
           </Button>
-
           <Button color="inherit" component={Link} href="/zohoworkdrive">
             WorkDrive
           </Button>
         </Box>
 
-        {/* ✅ ActivityIndicator bien intégré à droite */}
-        <Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}>
+        <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 2 }}>
           <ActivityIndicator />
+          <AuthStatus />
+          <Tooltip title="Changer le thème">
+            <IconButton onClick={toggleTheme} color="inherit">
+              {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+          </Tooltip>
         </Box>
-        <Tooltip title="Changer le thème">
-          <IconButton onClick={toggleTheme} color="inherit">
-            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
-        </Tooltip>
       </Toolbar>
     </AppBar>
   );

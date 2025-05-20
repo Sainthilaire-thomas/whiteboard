@@ -8,6 +8,7 @@ import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
 import { useAudio } from "@/context/AudioContext";
 import EvaluationTranscript from "./components/EvaluationTranscript";
+import TranscriptAlternative from "./TranscriptAlternative";
 import SyntheseEvaluation from "./components/SyntheseEvaluation/index";
 import SelectionEntrepriseEtAppel from "../components/common/SelectionEntrepriseEtAppel";
 import Postit from "./components/Postit";
@@ -17,8 +18,6 @@ import ActivitySidebar from "../components/navigation/ActivitySidebar";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { Fab } from "@mui/material";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
 const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
   const searchParams = useSearchParams();
@@ -49,6 +48,10 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
 
   const router = useRouter();
   const [showRightPanel, setShowRightPanel] = useState(true);
+  // Fonction à passer à EvaluationTranscript
+  const toggleRightPanel = useCallback(() => {
+    setShowRightPanel((prev) => !prev);
+  }, []);
 
   const { user, isAuthenticated } = useAuth0();
   const { selectedCall, calls, selectCall } = useCallData();
@@ -121,7 +124,14 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
                 display: view === "roleplay-fullscreen" ? "none" : "block",
               }}
             >
-              <EvaluationTranscript />
+              <EvaluationTranscript
+                showRightPanel={showRightPanel}
+                toggleRightPanel={toggleRightPanel}
+                hasRightPanel={
+                  Boolean(view && contextPanels[view]) ||
+                  Boolean(selectedPostit)
+                }
+              />
             </Box>
 
             {/* Zone contextuelle */}
@@ -155,23 +165,6 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
           </Box>
         </Box>
       </Box>
-
-      {/* ✅ Fab toggle */}
-      {view && (
-        <Fab
-          color="primary"
-          size="medium"
-          onClick={() => setShowRightPanel((prev) => !prev)}
-          sx={{
-            position: "fixed",
-            top: 64,
-            right: 24,
-            zIndex: 1000,
-          }}
-        >
-          {showRightPanel ? <VisibilityOffIcon /> : <VisibilityIcon />}
-        </Fab>
-      )}
     </>
   );
 };

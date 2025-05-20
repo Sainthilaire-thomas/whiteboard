@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   IconButton,
@@ -6,121 +6,169 @@ import {
   SnackbarContent,
   TextField,
   Tooltip,
+  Popover,
+  Paper,
+  Button,
+  Typography,
 } from "@mui/material";
 import NoteAddIcon from "@mui/icons-material/NoteAdd";
-import EditIcon from "@mui/icons-material/Edit";
 import { useCallData } from "@/context/CallDataContext";
 
-const AddPostitButton = () => {
-  const { currentWord, addPostit, updatePostit } = useCallData();
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [showInput, setShowInput] = useState(false);
+const AddPostitButton = ({ timestamp }) => {
+  const { currentWord, addPostit } = useCallData();
+  const [anchorEl, setAnchorEl] = useState(null);
   const [comment, setComment] = useState("");
-  const [lastPostitId, setLastPostitId] = useState<number | null>(null);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [createdPostitId, setCreatedPostitId] = useState<number | null>(null);
+  const textFieldRef = useRef<HTMLInputElement>(null);
 
-  /** 🔹 Ajout d'un Post-it */
+  // Ouvrir le popover pour la prise de note rapide
+  const handleOpenPopover = (event) => {
+    setAnchorEl(event.currentTarget);
+    // Reset du commentaire à chaque nouvelle ouverture
+    setComment("");
+  };
+
+  // Fermer le popover
+  const handleClosePopover = () => {
+    setAnchorEl(null);
+  };
+
+  // Ajouter un postit avec le commentaire
   const handleAddPostit = async () => {
     if (!currentWord) return;
 
     const wordid = currentWord.wordid ?? 0;
     const wordText = currentWord.text ?? "Post-it";
-    const timestamp = currentWord.startTime ?? 0;
 
     try {
-      const newPostitId = await addPostit(wordid, wordText, timestamp);
-      console.log("🔹 ID du post-it ajouté:", newPostitId);
+      // Ajouter le commentaire directement lors de la création du postit
+      const newPostitId = await addPostit(wordid, wordText, timestamp, {
+        text: comment.trim(),
+      });
 
       if (typeof newPostitId === "number") {
-        setLastPostitId(newPostitId);
+        setCreatedPostitId(newPostitId);
         setSnackbarOpen(true);
-        setShowInput(false);
-        setComment("");
+        handleClosePopover();
       }
     } catch (error) {
       console.error("❌ Erreur lors de l'ajout du post-it:", error);
     }
   };
 
-  /** 🔹 Ouverture du champ de commentaire */
-  const handleEditComment = () => {
-    setShowInput(true);
-    setSnackbarOpen(true);
-  };
-
-  /** 🔹 Sauvegarde du commentaire */
-  const handleSaveComment = async () => {
-    if (!lastPostitId || !comment.trim()) return;
-
-    try {
-      console.log("📝 Mise à jour du Post-it ID:", lastPostitId);
-      await updatePostit(lastPostitId, { text: comment });
-    } catch (error) {
-      console.error("❌ Erreur lors de la mise à jour du post-it:", error);
-    } finally {
-      handleCloseSnackbar();
-    }
-  };
-
-  /** 🔹 Fermeture du Snackbar */
-  const handleCloseSnackbar = () => {
-    setSnackbarOpen(false);
-    setShowInput(false);
-  };
-
-  /** 🔹 Ferme automatiquement le Snackbar après 5 secondes (si pas de saisie) */
+  // Focus sur le champ texte quand le popover s'ouvre
   useEffect(() => {
-    if (snackbarOpen && !showInput) {
+    if (anchorEl && textFieldRef.current) {
+      setTimeout(() => {
+        textFieldRef.current?.focus();
+      }, 100);
+    }
+  }, [anchorEl]);
+
+  // Fermer le snackbar après un délai
+  useEffect(() => {
+    if (snackbarOpen) {
       const timer = setTimeout(() => {
-        handleCloseSnackbar();
-      }, 5000);
+        setSnackbarOpen(false);
+      }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [snackbarOpen, showInput]);
+  }, [snackbarOpen]);
+
+  // Gérer la soumission avec Entrée
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleAddPostit();
+    }
+  };
+
+  const open = Boolean(anchorEl);
+  const id = open ? "postit-comment-popover" : undefined;
 
   return (
     <Box>
       {/* Bouton d'ajout de post-it */}
-      <Tooltip title="Ajouter un post-it">
-        <IconButton color="primary" onClick={handleAddPostit}>
+      <Tooltip title="Marquer ce passage avec une note">
+        <IconButton
+          color="primary"
+          onClick={handleOpenPopover}
+          aria-describedby={id}
+          disabled={!currentWord}
+        >
           <NoteAddIcon />
         </IconButton>
       </Tooltip>
 
-      {/* Snackbar affiché après l'ajout du post-it */}
-      <Snackbar open={snackbarOpen} onClose={handleCloseSnackbar}>
+      {/* Popover pour la prise de note rapide */}
+      <Popover
+        id={id}
+        open={open}
+        anchorEl={anchorEl}
+        onClose={handleClosePopover}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "left",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+      >
+        <Paper sx={{ p: 2, width: 320, maxWidth: "90vw" }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            Passage sélectionné:{" "}
+            <Typography component="span" fontStyle="italic">
+              "{currentWord?.text}"
+            </Typography>
+          </Typography>
+
+          <TextField
+            fullWidth
+            variant="outlined"
+            size="small"
+            label="Note rapide à chaud"
+            placeholder="Commentaire sur ce passage..."
+            multiline
+            rows={3}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            onKeyDown={handleKeyDown}
+            inputRef={textFieldRef}
+            sx={{ mb: 2 }}
+          />
+
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Button
+              variant="outlined"
+              onClick={handleClosePopover}
+              size="small"
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleAddPostit}
+              size="small"
+            >
+              Ajouter le marqueur
+            </Button>
+          </Box>
+        </Paper>
+      </Popover>
+
+      {/* Notification de succès */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
         <SnackbarContent
-          message={
-            showInput ? (
-              <TextField
-                size="small"
-                variant="outlined"
-                placeholder="Ajouter un commentaire..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                onBlur={handleSaveComment}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveComment()}
-                autoFocus
-                sx={{
-                  width: 220,
-                  bgcolor: "background.paper",
-                  border: "1px solid #ccc",
-                  borderRadius: 1,
-                  p: 1,
-                }}
-              />
-            ) : (
-              "Post-it ajouté"
-            )
-          }
-          action={
-            !showInput && (
-              <Tooltip title="Ajouter un commentaire">
-                <IconButton color="secondary" onClick={handleEditComment}>
-                  <EditIcon />
-                </IconButton>
-              </Tooltip>
-            )
-          }
+          sx={{ bgcolor: "success.main" }}
+          message="Passage marqué avec succès"
         />
       </Snackbar>
     </Box>

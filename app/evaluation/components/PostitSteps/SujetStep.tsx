@@ -25,8 +25,6 @@ export const SujetStep: React.FC<SujetStepProps> = ({
   sujetsDeLActivite,
   handleSujetClick,
   stepBoxStyle,
-  onBack,
-  onNext,
 }) => {
   return (
     <Box sx={stepBoxStyle}>
@@ -53,20 +51,6 @@ export const SujetStep: React.FC<SujetStepProps> = ({
           </Typography>
         </Fade>
       )}
-
-      <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
-        <Button onClick={onBack} sx={{ mt: 1, mr: 1 }}>
-          Retour
-        </Button>
-        <Button
-          variant="contained"
-          onClick={onNext}
-          sx={{ mt: 1, mr: 1 }}
-          disabled={!selectedPostit.idsujet}
-        >
-          Continuer
-        </Button>
-      </Box>
     </Box>
   );
 };

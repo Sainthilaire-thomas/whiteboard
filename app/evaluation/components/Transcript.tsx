@@ -9,11 +9,19 @@ import {
   Switch,
   Popover,
 } from "@mui/material";
-import AddPostitButton from "./AddPostitButton";
+
 import { Word } from "@/types/types";
 import { useAudio } from "@/context/AudioContext";
 import AudioPlayer from "./AudioPlayer";
 import Postit from "./Postit";
+import {
+  getSpeakerType,
+  isSpeakerConseil,
+  isSpeakerClient,
+  SpeakerType,
+  getSpeakerStyle,
+  getSpeakerSelectionStyle,
+} from "@/utils/SpeakerUtils";
 
 interface TranscriptProps {
   callId: number;
@@ -48,9 +56,11 @@ const Transcript = ({ callId }: TranscriptProps) => {
     setAudioSrc,
     currentWordIndex,
     updateCurrentWordIndex,
+    executeWithLock,
   } = useAudio();
 
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const [isProcessingAudioAction, setIsProcessingAudioAction] = useState(false);
 
   const [highlightTurnOne, setHighlightTurnOne] = useState(false);
 
@@ -114,8 +124,11 @@ const Transcript = ({ callId }: TranscriptProps) => {
           "turn:",
           word.turn
         );
-        const isClientWord = word.turn === "turn2";
-        const isConseillerWord = word.turn === "turn1";
+
+        // Utiliser les fonctions utilitaires pour déterminer qui parle
+        // Au lieu de vérifier uniquement "turn1" et "turn2"
+        const isClientWord = isSpeakerClient(word.turn);
+        const isConseillerWord = isSpeakerConseil(word.turn);
 
         if (
           (transcriptSelectionMode === "client" && isClientWord) ||
@@ -125,6 +138,7 @@ const Transcript = ({ callId }: TranscriptProps) => {
         }
       }
     });
+
     console.log("Selected indices:", selectedIndices);
     if (selectedIndices.length > 0) {
       console.log("Indices found, preparing selection data");
@@ -206,21 +220,19 @@ const Transcript = ({ callId }: TranscriptProps) => {
   // };
 
   const handleWordClick = (word: Word, index: number) => {
-    if (!audioRef.current) return;
+    executeWithLock(async () => {
+      console.log("État isPlaying avant clic:", isPlaying);
 
-    // Vérifiez d'abord si l'audio est en cours de lecture
-    console.log("État isPlaying avant clic:", isPlaying); // Ajoutez ce log pour déboguer
-
-    if (isPlaying) {
-      // Si c'est en lecture, mettez en pause immédiatement sans délai
-      pause();
-      console.log("Pause appelée"); // Log pour déboguer
-    } else {
-      // Si c'est en pause, positionnez et démarrez
-      seekTo(word.startTime);
-      play();
-      console.log("Play appelé"); // Log pour déboguer
-    }
+      if (isPlaying) {
+        pause();
+        console.log("Pause appelée");
+      } else {
+        seekTo(word.startTime);
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        play();
+        console.log("Play appelé");
+      }
+    });
   };
 
   const handleAddPostit = () => {
@@ -283,18 +295,19 @@ const Transcript = ({ callId }: TranscriptProps) => {
   }, [currentWordIndex]);
 
   // ✅ Styles conditionnels pour les tours de parole
-  const getWordStyle = (index: number, word: Word) => ({
-    fontWeight: index === currentWordIndex ? "bold" : "normal",
-    color: index === currentWordIndex ? "red" : "inherit",
-    backgroundColor:
-      highlightTurnOne && word.turn === "turn1"
-        ? "rgba(165, 141, 4, 0.5)" // Jaune transparent pour "turn1"
-        : highlightTurnOne && word.turn === "turn2"
-        ? "rgba(6, 158, 208, 0.5)" // Bleu transparent pour "turn2"
+  const getWordStyle = (index: number, word: Word) => {
+    const speakerType = getSpeakerType(word.turn);
+
+    return {
+      fontWeight: index === currentWordIndex ? "bold" : "normal",
+      color: index === currentWordIndex ? "red" : "inherit",
+      backgroundColor: highlightTurnOne
+        ? getSpeakerStyle(speakerType, true).backgroundColor
         : "transparent",
-    padding: "2px 4px",
-    borderRadius: "4px",
-  });
+      padding: "2px 4px",
+      borderRadius: "4px",
+    };
+  };
 
   // ✅ Filtrer les post-its pour ne garder que ceux liés à `callId`
   const postitMarkers = appelPostits.map((postit) => ({
@@ -363,14 +376,6 @@ const Transcript = ({ callId }: TranscriptProps) => {
             Aucun audio disponible pour cette transcription.
           </Typography>
         )}
-
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-          {currentWord && selectedCall && (
-            <AddPostitButton
-              timestamp={Math.floor(audioRef.current?.currentTime || 0)}
-            />
-          )}
-        </Box>
       </Box>
       <Popover
         open={Boolean(anchorEl)}
@@ -405,18 +410,12 @@ const Transcript = ({ callId }: TranscriptProps) => {
                 ref={(el) => (wordRefs.current[index] = el)}
                 style={{
                   ...getWordStyle(index, word),
-                  // Ajouter ces styles en mode sélection
                   cursor: transcriptSelectionMode ? "text" : "pointer",
                   userSelect: transcriptSelectionMode ? "text" : "none",
-                  // Surbrillance si c'est un mot du type recherché
-                  backgroundColor:
-                    transcriptSelectionMode === "client" &&
-                    word.turn === "turn1"
-                      ? "rgba(165, 141, 4, 0.3)"
-                      : transcriptSelectionMode === "conseiller" &&
-                        word.turn === "turn2"
-                      ? "rgba(6, 158, 208, 0.3)"
-                      : getWordStyle(index, word).backgroundColor,
+                  backgroundColor: transcriptSelectionMode
+                    ? getSpeakerSelectionStyle(getSpeakerType(word.turn))
+                        .backgroundColor
+                    : getWordStyle(index, word).backgroundColor,
                 }}
                 onClick={() =>
                   !transcriptSelectionMode && handleWordClick(word, index)

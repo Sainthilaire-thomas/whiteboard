@@ -29,7 +29,12 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
   >({});
 
   const addPostit = useCallback(
-    async (wordid: number, word: string, timestamp: number) => {
+    async (
+      wordid: number,
+      word: string,
+      timestamp: number,
+      additionalData: Record<string, any> = {}
+    ) => {
       if (!selectedCallId) return null;
 
       const newPostit = {
@@ -37,11 +42,11 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         wordid,
         word,
         timestamp,
-        text: "",
-        iddomaine: null,
-        sujet: "Non assigné",
-        idsujet: null,
-        pratique: "Non assigné",
+        text: additionalData.text || "",
+        iddomaine: additionalData.iddomaine || null,
+        sujet: additionalData.sujet || "Non assigné",
+        idsujet: additionalData.idsujet || null,
+        pratique: additionalData.pratique || "Non assigné",
       };
 
       const { data, error } = await supabaseClient
@@ -50,7 +55,7 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         .select(
           "id, callid, wordid, word, timestamp, text, iddomaine, sujet,idsujet, pratique"
         )
-        .single(); // ✅ Ajout de .single() pour éviter de devoir utiliser data[0]
+        .single();
 
       if (error) {
         console.error("❌ Erreur lors de l'ajout du post-it:", error);
@@ -60,12 +65,11 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
       if (data) {
         setAllPostits((prev) => [data, ...prev]);
 
-        // ✅ Mise à jour immédiate de `appelPostits`
         if (data.callid === selectedCallId) {
           setAppelPostits((prev) => [data, ...prev]);
         }
 
-        return data.id; // ✅ Retourne l'ID du post-it ajouté
+        return data.id;
       }
 
       return null;

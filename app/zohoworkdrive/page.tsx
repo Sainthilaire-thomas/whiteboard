@@ -4,10 +4,36 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ZohoAuthToken } from "./types/zoho";
 import WorkdriveExplorer from "./components/WorkdriveExplorer";
+import EnterpriseCallsList from "./components/EnterpriseCallsList";
+import { useAppContext } from "@/context/AppContext";
+import {
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  CircularProgress,
+  Container,
+  Tabs,
+  Tab,
+  Paper,
+} from "@mui/material";
 
 export default function ZohoWorkdrivePage() {
   const [token, setToken] = useState<ZohoAuthToken | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
   const searchParams = useSearchParams();
+
+  // Utilisation du contexte pour les entreprises
+  const {
+    entreprises,
+    selectedEntreprise,
+    setSelectedEntreprise,
+    isLoadingEntreprises,
+  } = useAppContext();
 
   // Récupérer le token depuis les paramètres d'URL (utilisé après le callback d'authentification)
   useEffect(() => {
@@ -28,9 +54,88 @@ export default function ZohoWorkdrivePage() {
     }
   }, [searchParams]);
 
+  // Gestionnaire pour le changement d'entreprise
+  const handleEntrepriseChange = (event) => {
+    const entrepriseId = event.target.value;
+    setSelectedEntreprise(entrepriseId);
+  };
+
+  // Gestionnaire pour le changement d'onglet
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <WorkdriveExplorer initialToken={token} />
-    </div>
+    <Container maxWidth="lg">
+      <Card sx={{ mb: 4, mt: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom>
+            Gestionnaire d'appels Zoho Workdrive
+          </Typography>
+
+          {/* Sélecteur d'entreprises */}
+          <Box sx={{ minWidth: 200, mb: 3 }}>
+            {isLoadingEntreprises ? (
+              <CircularProgress size={24} />
+            ) : (
+              <FormControl fullWidth>
+                <InputLabel id="entreprise-select-label">Entreprise</InputLabel>
+                <Select
+                  labelId="entreprise-select-label"
+                  id="entreprise-select"
+                  value={selectedEntreprise || ""}
+                  label="Entreprise"
+                  onChange={handleEntrepriseChange}
+                >
+                  <MenuItem value="">
+                    <em>Aucune</em>
+                  </MenuItem>
+                  {entreprises &&
+                    entreprises.map((entreprise) => (
+                      <MenuItem key={entreprise.id} value={entreprise.id}>
+                        {entreprise.nom}
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+            )}
+          </Box>
+
+          {!selectedEntreprise && (
+            <Typography color="textSecondary">
+              Veuillez sélectionner une entreprise pour continuer
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Onglets pour naviguer entre les sections */}
+      {selectedEntreprise && (
+        <>
+          <Paper sx={{ mb: 3 }}>
+            <Tabs
+              value={activeTab}
+              onChange={handleTabChange}
+              indicatorColor="primary"
+              textColor="primary"
+              centered
+            >
+              <Tab label="Appels existants" />
+              <Tab label="Importer depuis Zoho" />
+            </Tabs>
+          </Paper>
+
+          {/* Contenu des onglets */}
+          {activeTab === 0 ? (
+            <EnterpriseCallsList entrepriseId={selectedEntreprise} />
+          ) : (
+            <WorkdriveExplorer
+              initialToken={token}
+              entrepriseId={selectedEntreprise}
+            />
+          )}
+        </>
+      )}
+    </Container>
   );
 }

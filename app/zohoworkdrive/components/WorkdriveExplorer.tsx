@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useCallData } from "@/context/CallDataContext";
 import {
   Container,
   Typography,
@@ -13,17 +14,34 @@ import {
   AppBar,
   Alert,
   Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  TextField,
+  Chip,
+  Paper,
+  Grid,
+  Checkbox,
+  FormControlLabel,
+  CircularProgress,
 } from "@mui/material";
 import {
   ArrowBack as BackIcon,
   Home as HomeIcon,
   CloudSync as SyncIcon,
   Logout as LogoutIcon,
+  AudioFile as AudioFileIcon,
+  Description as DescriptionIcon,
+  Folder as FolderIcon,
+  CloudUpload as CloudUploadIcon,
 } from "@mui/icons-material";
 
 import { ZohoAuthToken, ZohoFile } from "../types/zoho";
 import { clientGetFiles } from "../lib/zohoworkdrive/api";
 import { getToken, saveToken, isTokenExpired } from "../utils/storage";
+import { supabaseClient } from "@/lib/supabaseClient";
 import FileList from "./FileList";
 
 // ID du dossier racine de votre Workdrive
@@ -31,10 +49,12 @@ const ROOT_FOLDER_ID = "ly5m40e0e2d4ae7604a1fa0f5d42905cb94c9";
 
 interface WorkdriveExplorerProps {
   initialToken?: ZohoAuthToken | null;
+  entrepriseId: number | null;
 }
 
 export default function WorkdriveExplorer({
   initialToken,
+  entrepriseId,
 }: WorkdriveExplorerProps) {
   const [token, setToken] = useState<ZohoAuthToken | null>(null);
   const [files, setFiles] = useState<ZohoFile[]>([]);
@@ -45,6 +65,21 @@ export default function WorkdriveExplorer({
   const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([
     { id: ROOT_FOLDER_ID, name: "Racine" },
   ]);
+
+  // États pour la sélection d'appel et transcription
+  const [selectedAudioFile, setSelectedAudioFile] = useState<ZohoFile | null>(
+    null
+  );
+  const [selectedTranscriptionFile, setSelectedTranscriptionFile] =
+    useState<ZohoFile | null>(null);
+  const [callName, setCallName] = useState<string>("");
+  const [callDescription, setCallDescription] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Utilisation du contexte CallData
+  const { fetchCalls } = useCallData();
 
   // Initialiser le token
   useEffect(() => {
@@ -141,17 +176,267 @@ export default function WorkdriveExplorer({
     setError("Déconnecté avec succès, veuillez vous authentifier");
   };
 
-  // Tester l'API directement
-  const handleTestAPI = () => {
-    if (token) {
-      const tokenParam = encodeURIComponent(JSON.stringify(token));
-      window.open(`/api/zoho/test?token=${tokenParam}`, "_blank");
-    }
-  };
-
   // Fermer le message d'erreur
   const handleCloseError = () => {
     setError(null);
+  };
+
+  // Fermer le message de succès
+  const handleCloseSuccess = () => {
+    setSuccessMessage(null);
+  };
+
+  // Vérifier si un fichier est audio
+  const isAudioFile = (file: ZohoFile) => {
+    const mimeType = file.mimeType?.toLowerCase();
+    const name = file.name.toLowerCase();
+    return (
+      mimeType?.includes("audio") ||
+      name.endsWith(".mp3") ||
+      name.endsWith(".wav") ||
+      name.endsWith(".m4a") ||
+      name.endsWith(".ogg")
+    );
+  };
+
+  // Vérifier si un fichier peut être une transcription
+  const isTranscriptionFile = (file: ZohoFile) => {
+    const mimeType = file.mimeType?.toLowerCase();
+    const name = file.name.toLowerCase();
+    return (
+      mimeType?.includes("text") ||
+      mimeType?.includes("json") ||
+      name.endsWith(".txt") ||
+      name.endsWith(".json") ||
+      name.endsWith(".doc") ||
+      name.endsWith(".docx")
+    );
+  };
+
+  // Gestionnaire pour sélectionner un fichier audio
+  const handleSelectAudioFile = (file: ZohoFile) => {
+    if (selectedAudioFile?.id === file.id) {
+      setSelectedAudioFile(null);
+    } else {
+      setSelectedAudioFile(file);
+      if (!callName) {
+        setCallName(file.name);
+      }
+    }
+  };
+
+  // Gestionnaire pour sélectionner un fichier de transcription
+  const handleSelectTranscriptionFile = (file: ZohoFile) => {
+    if (selectedTranscriptionFile?.id === file.id) {
+      setSelectedTranscriptionFile(null);
+    } else {
+      setSelectedTranscriptionFile(file);
+    }
+  };
+
+  // Ouvrir la boîte de dialogue pour créer un nouvel appel
+  const handleOpenCreateDialog = () => {
+    if (!selectedAudioFile) {
+      setError(
+        "Veuillez sélectionner un fichier audio avant de créer un appel"
+      );
+      return;
+    }
+    setOpenDialog(true);
+  };
+
+  // Fermer la boîte de dialogue
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+  };
+
+  // Soumettre l'appel
+  // Version corrigée de handleSubmitCall
+  const handleSubmitCall = async () => {
+    if (!entrepriseId) {
+      setError("Veuillez sélectionner une entreprise");
+      return;
+    }
+
+    if (!selectedAudioFile) {
+      setError("Veuillez sélectionner un fichier audio");
+      return;
+    }
+
+    if (!callName.trim()) {
+      setError("Veuillez donner un nom à l'appel");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      // Récupérer explicitement la session Supabase
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+
+      if (!session) {
+        throw new Error(
+          "Vous n'êtes pas connecté à Supabase. Veuillez vous reconnecter."
+        );
+      }
+
+      // Construction des données à envoyer avec le token Supabase
+      const callData = {
+        entrepriseId,
+        audioFileId: selectedAudioFile.id,
+        audioFileName: selectedAudioFile.name,
+        transcriptionFileId: selectedTranscriptionFile?.id || null,
+        transcriptionFileName: selectedTranscriptionFile?.name || null,
+        callName: callName,
+        callDescription: callDescription,
+        // Ajouter le token Supabase
+        supabaseAuthToken: session.access_token,
+      };
+
+      // Fetch avec seulement le token Zoho (sans credentials:include)
+      const response = await fetch("/api/calls/create-from-zoho", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token?.access_token}`,
+        },
+        body: JSON.stringify(callData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || "Erreur lors de la création de l'appel"
+        );
+      }
+
+      const responseData = await response.json();
+      console.log("Appel créé avec succès:", responseData);
+
+      // Fermer le dialogue
+      setOpenDialog(false);
+
+      // Réinitialiser les valeurs après la création
+      setSelectedAudioFile(null);
+      setSelectedTranscriptionFile(null);
+      setCallName("");
+      setCallDescription("");
+
+      // Afficher le message de succès
+      setSuccessMessage("Appel créé avec succès");
+
+      // Rafraîchir la liste des appels dans le contexte
+      if (entrepriseId) {
+        fetchCalls(entrepriseId);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la création de l'appel:", error);
+      setError(
+        `Erreur lors de la création de l'appel: ${
+          error instanceof Error ? error.message : "Erreur inconnue"
+        }`
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Gestionnaire de fichier amélioré pour remplacer FileList
+  const renderFileItem = (file: ZohoFile) => {
+    const isFolder = file.type === "folder";
+    const isAudio = isAudioFile(file);
+    const isTranscription = isTranscriptionFile(file);
+
+    return (
+      <Grid item xs={12} sm={6} md={4} key={file.id}>
+        <Paper
+          elevation={2}
+          sx={{
+            p: 2,
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            backgroundColor:
+              selectedAudioFile?.id === file.id ||
+              selectedTranscriptionFile?.id === file.id
+                ? "rgba(0, 0, 255, 0.05)"
+                : "whitegray",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+            {isFolder ? (
+              <FolderIcon color="primary" />
+            ) : isAudio ? (
+              <AudioFileIcon color="secondary" />
+            ) : (
+              <DescriptionIcon color="action" />
+            )}
+            <Typography
+              variant="subtitle1"
+              sx={{
+                ml: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                flexGrow: 1,
+              }}
+            >
+              {file.name}
+            </Typography>
+          </Box>
+
+          <Box sx={{ flexGrow: 1 }}></Box>
+
+          <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
+            {isFolder ? (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleFolderClick(file.id, file.name)}
+                fullWidth
+              >
+                Ouvrir
+              </Button>
+            ) : (
+              <Box
+                sx={{
+                  display: "flex",
+                  width: "100%",
+                  justifyContent: "center",
+                }}
+              >
+                {isAudio && (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={selectedAudioFile?.id === file.id}
+                        onChange={() => handleSelectAudioFile(file)}
+                        color="secondary"
+                      />
+                    }
+                    label="Audio"
+                  />
+                )}
+                {isTranscription && (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={selectedTranscriptionFile?.id === file.id}
+                        onChange={() => handleSelectTranscriptionFile(file)}
+                        color="primary"
+                      />
+                    }
+                    label="Transcription"
+                  />
+                )}
+              </Box>
+            )}
+          </Box>
+        </Paper>
+      </Grid>
+    );
   };
 
   if (error && !token) {
@@ -179,13 +464,17 @@ export default function WorkdriveExplorer({
             Zoho WorkDrive Explorer
           </Typography>
           <Box>
-            <IconButton
-              color="primary"
-              onClick={handleTestAPI}
-              title="Tester l'API"
-            >
-              <SyncIcon />
-            </IconButton>
+            {(selectedAudioFile || selectedTranscriptionFile) && (
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<CloudUploadIcon />}
+                onClick={handleOpenCreateDialog}
+                sx={{ mr: 2 }}
+              >
+                Créer un appel
+              </Button>
+            )}
             <IconButton
               color="error"
               onClick={handleLogout}
@@ -197,7 +486,7 @@ export default function WorkdriveExplorer({
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="md" sx={{ mt: 2 }}>
+      <Container maxWidth="lg" sx={{ mt: 2 }}>
         <Box
           sx={{
             display: "flex",
@@ -227,7 +516,8 @@ export default function WorkdriveExplorer({
                 key={folder.id}
                 color="inherit"
                 href="#"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
                   if (index !== folderPath.length - 1) {
                     setCurrentFolder(folder.id);
                     setFolderPath((prev) => prev.slice(0, index + 1));
@@ -242,16 +532,108 @@ export default function WorkdriveExplorer({
           </Breadcrumbs>
         </Box>
 
-        <FileList
-          files={files}
-          loading={loading}
-          onFolderClick={(folderId) => {
-            const selectedFolder = files.find((f) => f.id === folderId);
-            handleFolderClick(folderId, selectedFolder?.name);
-          }}
-        />
+        {/* Informations de sélection */}
+        {(selectedAudioFile || selectedTranscriptionFile) && (
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Fichiers sélectionnés:
+            </Typography>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+              {selectedAudioFile && (
+                <Chip
+                  icon={<AudioFileIcon />}
+                  label={`Audio: ${selectedAudioFile.name}`}
+                  color="secondary"
+                  onDelete={() => setSelectedAudioFile(null)}
+                />
+              )}
+              {selectedTranscriptionFile && (
+                <Chip
+                  icon={<DescriptionIcon />}
+                  label={`Transcription: ${selectedTranscriptionFile.name}`}
+                  color="primary"
+                  onDelete={() => setSelectedTranscriptionFile(null)}
+                />
+              )}
+            </Box>
+          </Paper>
+        )}
+
+        {/* Liste des fichiers avec grille */}
+        {loading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", p: 5 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Grid container spacing={3}>
+            {files.map(renderFileItem)}
+            {files.length === 0 && (
+              <Grid item xs={12}>
+                <Paper sx={{ p: 3, textAlign: "center" }}>
+                  <Typography color="textSecondary">
+                    Aucun fichier dans ce dossier
+                  </Typography>
+                </Paper>
+              </Grid>
+            )}
+          </Grid>
+        )}
       </Container>
 
+      {/* Dialogue pour créer un appel */}
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Créer un nouvel appel</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Cet appel sera associé à l'entreprise sélectionnée.
+          </DialogContentText>
+
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Nom de l'appel"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={callName}
+            onChange={(e) => setCallName(e.target.value)}
+            required
+            sx={{ mb: 2 }}
+          />
+
+          <TextField
+            margin="dense"
+            label="Description (optionnelle)"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={callDescription}
+            onChange={(e) => setCallDescription(e.target.value)}
+            multiline
+            rows={4}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary">
+            Annuler
+          </Button>
+          <Button
+            onClick={handleSubmitCall}
+            color="primary"
+            variant="contained"
+            disabled={isSubmitting || !callName.trim()}
+          >
+            {isSubmitting ? <CircularProgress size={24} /> : "Créer"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar pour les erreurs */}
       <Snackbar
         open={!!error}
         autoHideDuration={6000}
@@ -264,6 +646,22 @@ export default function WorkdriveExplorer({
           sx={{ width: "100%" }}
         >
           {error}
+        </Alert>
+      </Snackbar>
+
+      {/* Snackbar pour les succès */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={6000}
+        onClose={handleCloseSuccess}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleCloseSuccess}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
+          {successMessage}
         </Alert>
       </Snackbar>
     </Box>

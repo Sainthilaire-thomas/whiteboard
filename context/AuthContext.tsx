@@ -8,11 +8,10 @@ import {
   ReactNode,
 } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
-import { useRouter } from "next/router";
-import { useSupabase } from "@/context/SupabaseContext"; // Assurez-vous que ce chemin est correct
-import { AuthContextType } from "@/types/context/AuthContext/AuthContextTypes"; // Assurez-vous que ce chemin est correct
+import { useSupabase } from "@/context/SupabaseContext";
+import { AuthContextType } from "@/types/context/AuthContext/AuthContextTypes";
+import { usePathname } from "next/navigation"; // Utilisez usePathname au lieu de useRouter
 
-// Création du contexte avec un type générique
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuthContext = (): AuthContextType => {
@@ -36,8 +35,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   } = useAuth0();
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const router = useRouter();
-  const { setSupabaseSession } = useSupabase(); // Gestion de la session Supabase
+  const pathname = usePathname(); // Utilisez usePathname au lieu de useRouter
+  const { setSupabaseSession } = useSupabase();
 
   useEffect(() => {
     const authenticateWithSupabase = async () => {
@@ -49,8 +48,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             return;
           }
 
-          const token = idTokenClaims.__raw; // Jeton JWT Auth0
-          setSupabaseSession(token); // Configure la session avec Supabase
+          const token = idTokenClaims.__raw;
+          setSupabaseSession(token);
         } catch (error) {
           console.error("Erreur lors de la récupération du token:", error);
         }
@@ -59,6 +58,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     if (isAuthenticated) {
       authenticateWithSupabase();
+      setIsLoading(false);
+    } else {
       setIsLoading(false);
     }
   }, [isAuthenticated, getIdTokenClaims, setSupabaseSession]);
@@ -78,7 +79,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const handleAuth0Redirect = async () => {
     try {
       await handleRedirectCallback();
-      router.push("/"); // Redirection après connexion
+      // Au lieu d'utiliser router.push, vous pouvez utiliser window.location
+      window.location.href = "/";
     } catch (err) {
       console.error("Erreur lors de la gestion de la redirection Auth0 :", err);
     }

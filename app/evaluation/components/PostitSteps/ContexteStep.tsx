@@ -1,21 +1,17 @@
-// PostitSteps/ContexteStep.tsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Typography, TextField, Button, Tabs, Tab } from "@mui/material";
 import { Theme, alpha } from "@mui/material/styles";
 import { Postit } from "@/types/types";
+import { useCallData } from "@/context/CallDataContext";
 
 interface ContexteStepProps {
   selectedPostit: Postit;
   setSelectedPostit: (postit: Postit) => void;
   selectedDomain: string | null;
-  showTabs: boolean;
-  setShowTabs: (show: boolean) => void;
   filteredDomains: any[];
-  selectDomain: (domain: string) => void;
   theme: Theme;
   stepBoxStyle: any;
   styles: any;
-  onNext: () => void;
 }
 
 export const ContexteStep: React.FC<ContexteStepProps> = ({
@@ -29,8 +25,53 @@ export const ContexteStep: React.FC<ContexteStepProps> = ({
   theme,
   stepBoxStyle,
   styles,
-  onNext,
 }) => {
+  // Accéder à la fonction updatePostit depuis le contexte
+  const { updatePostit } = useCallData();
+
+  // État local pour le texte
+  const [commentText, setCommentText] = useState(selectedPostit.text || "");
+
+  // Mettre à jour l'état local lorsque selectedPostit change
+  useEffect(() => {
+    setCommentText(selectedPostit.text || "");
+  }, [selectedPostit.id]);
+
+  // Vérifier que le domaine sélectionné existe dans les domaines filtrés
+  const domainExists =
+    selectedDomain &&
+    filteredDomains.some((d) => String(d.iddomaine) === String(selectedDomain));
+
+  // Si le domaine sélectionné n'existe pas dans les domaines filtrés,
+  // utiliser le premier domaine disponible ou une chaîne vide
+  const effectiveSelectedDomain = domainExists
+    ? selectedDomain
+    : filteredDomains.length > 0
+    ? String(filteredDomains[0].iddomaine)
+    : "";
+
+  // Si le domaine sélectionné n'est pas valide et qu'il y a des domaines disponibles,
+  // sélectionner automatiquement le premier
+  useEffect(() => {
+    if (!domainExists && filteredDomains.length > 0) {
+      selectDomain(String(filteredDomains[0].iddomaine));
+    }
+  }, [domainExists, filteredDomains, selectDomain]);
+
+  // Sauvegarder le commentaire dans la base de données
+  const saveComment = () => {
+    if (selectedPostit.id && commentText !== selectedPostit.text) {
+      updatePostit(selectedPostit.id, { text: commentText });
+      // Mettre également à jour l'état local dans le parent
+      setSelectedPostit({ ...selectedPostit, text: commentText });
+    }
+  };
+
+  // Sauvegarder avant de passer à l'étape suivante
+  const handleNextWithSave = () => {
+    saveComment();
+  };
+
   return (
     <Box sx={stepBoxStyle}>
       <Typography variant="caption" color="text.secondary">
@@ -57,10 +98,9 @@ export const ContexteStep: React.FC<ContexteStepProps> = ({
       <TextField
         variant="standard"
         fullWidth
-        value={selectedPostit.text || ""}
-        onChange={(e) =>
-          setSelectedPostit({ ...selectedPostit, text: e.target.value })
-        }
+        value={commentText}
+        onChange={(e) => setCommentText(e.target.value)}
+        onBlur={saveComment} // Sauvegarder en quittant le champ
         placeholder="Note rapide à chaud..."
         sx={{ mb: 2 }}
       />
@@ -68,49 +108,12 @@ export const ContexteStep: React.FC<ContexteStepProps> = ({
       <Typography variant="caption" color="text.secondary">
         Domaine d'analyse :
       </Typography>
-      {selectedDomain && !showTabs ? (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
-          <Typography variant="body2" fontWeight={500}>
-            {
-              filteredDomains.find(
-                (d) => d.iddomaine === Number(selectedDomain)
-              )?.nomdomaine
-            }
-          </Typography>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => setShowTabs(true)}
-          >
-            Changer
-          </Button>
-        </Box>
-      ) : (
-        <Box sx={styles.domainSelection}>
-          <Tabs
-            value={selectedDomain ? String(selectedDomain) : ""}
-            onChange={(event, newValue) => {
-              selectDomain(String(newValue));
-              setShowTabs(false);
-            }}
-            variant="scrollable"
-            scrollButtons="auto"
-          >
-            {filteredDomains.map((domain) => (
-              <Tab
-                key={domain.iddomaine}
-                label={domain.nomdomaine}
-                value={String(domain.iddomaine)}
-              />
-            ))}
-          </Tabs>
-        </Box>
-      )}
-
-      <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
-        <Button variant="contained" onClick={onNext} sx={{ mt: 1, mr: 1 }}>
-          Continuer vers l'affectation
-        </Button>
+      <Box sx={{ mt: 0.5, mb: 2 }}>
+        <Typography variant="body2" fontWeight={500}>
+          {filteredDomains.find(
+            (d) => String(d.iddomaine) === String(selectedDomain)
+          )?.nomdomaine || "Non spécifié"}
+        </Typography>
       </Box>
     </Box>
   );

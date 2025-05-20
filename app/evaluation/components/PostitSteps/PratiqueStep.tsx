@@ -12,8 +12,8 @@ interface PratiqueStepProps {
   pratiquesDeLActivite: string[];
   handlePratiqueClick: (practice: any) => void;
   stepBoxStyle: any;
-  onBack: () => void;
-  onSave: () => void;
+  // onBack: () => void;
+  // onSave: () => void;
 }
 
 export const PratiqueStep: React.FC<PratiqueStepProps> = ({
@@ -59,24 +59,6 @@ export const PratiqueStep: React.FC<PratiqueStepProps> = ({
           </Typography>
         </Fade>
       )}
-
-      <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
-        <Button onClick={onBack} sx={{ mt: 1, mr: 1 }}>
-          Retour
-        </Button>
-        <Button
-          variant="contained"
-          onClick={onSave}
-          sx={{ mt: 1, mr: 1 }}
-          color="success"
-          disabled={
-            !selectedPostit.pratique ||
-            selectedPostit.pratique === "Non Assigné"
-          }
-        >
-          Finaliser et enregistrer
-        </Button>
-      </Box>
     </Box>
   );
 };

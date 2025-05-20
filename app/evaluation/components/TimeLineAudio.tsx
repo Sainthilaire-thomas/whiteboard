@@ -3,6 +3,7 @@ import { Box, Slider, Tooltip } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useCallData } from "@/context/CallDataContext";
 import { useAppContext } from "@/context/AppContext";
+import { useAudio } from "@/context/AudioContext";
 
 export interface TimelineMarker {
   id: number;
@@ -34,6 +35,7 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
   const { appelPostits } = useCallData();
   const router = useRouter();
   const { setSelectedPostit } = useAppContext();
+  const executeWithLock = useAudio().executeWithLock;
 
   const handleMarkerClick = (
     event: React.MouseEvent<HTMLElement>,
@@ -41,42 +43,48 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
   ) => {
     event.stopPropagation();
 
-    // Find the corresponding post-it
-    const matchingPostit = appelPostits.find((p) => p.id === marker.id);
-    if (!matchingPostit) {
-      console.warn("⚠️ Aucun post-it trouvé pour cet ID:", marker.id);
-      return;
-    }
+    // Utiliser executeWithLock pour gérer toutes les actions audio
+    executeWithLock(async () => {
+      // Find the corresponding post-it
+      const matchingPostit = appelPostits.find((p) => p.id === marker.id);
+      if (!matchingPostit) {
+        console.warn("⚠️ Aucun post-it trouvé pour cet ID:", marker.id);
+        return;
+      }
 
-    console.log(
-      "📌 Ouverture du post-it depuis TimeLineAudio:",
-      matchingPostit
-    );
+      console.log(
+        "📌 Ouverture du post-it depuis TimeLineAudio:",
+        matchingPostit
+      );
 
-    // Set the selected post-it in the app context
-    setSelectedPostit({
-      id: matchingPostit.id,
-      timestamp: matchingPostit.timestamp,
-      word: matchingPostit.word,
-      wordid: matchingPostit.wordid,
-      text: matchingPostit.text || "",
-      sujet: matchingPostit.sujet,
-      idsujet: matchingPostit.idsujet,
-      iddomaine: matchingPostit.iddomaine,
-      pratique: matchingPostit.pratique,
-      callid: matchingPostit.callid,
+      // Set the selected post-it in the app context
+      setSelectedPostit({
+        id: matchingPostit.id,
+        timestamp: matchingPostit.timestamp,
+        word: matchingPostit.word,
+        wordid: matchingPostit.wordid,
+        text: matchingPostit.text || "",
+        sujet: matchingPostit.sujet,
+        idsujet: matchingPostit.idsujet,
+        iddomaine: matchingPostit.iddomaine,
+        pratique: matchingPostit.pratique,
+        callid: matchingPostit.callid,
+      });
+
+      // Seek to the marker position - opération audio à protéger
+      onSeek(marker.time);
+
+      // Ajouter un délai pour s'assurer que le seek est terminé
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // If external handler provided, also call it
+      if (onMarkerClick) {
+        onMarkerClick(marker.id);
+      }
+
+      // Navigate to postit view
+      router.push("/evaluation?view=postit");
     });
-
-    // Navigate to postit view
-    router.push("/evaluation?view=postit");
-
-    // If external handler provided, also call it
-    if (onMarkerClick) {
-      onMarkerClick(marker.id);
-    }
-
-    // Seek to the marker position
-    onSeek(marker.time);
   };
 
   return (

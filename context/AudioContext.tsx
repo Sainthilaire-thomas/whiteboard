@@ -57,6 +57,33 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [currentWordIndex, setCurrentWordIndex] = useState<number>(-1);
+  const isAudioOperationInProgress = useRef(false);
+
+  const executeWithLock = useCallback(
+    async (operation: () => Promise<void> | void) => {
+      if (isAudioOperationInProgress.current) {
+        console.log(
+          "Opération audio déjà en cours, nouvelle opération ignorée"
+        );
+        return;
+      }
+
+      try {
+        isAudioOperationInProgress.current = true;
+        await operation();
+      } catch (error) {
+        console.error(
+          "Erreur lors de l'exécution de l'opération audio:",
+          error
+        );
+      } finally {
+        setTimeout(() => {
+          isAudioOperationInProgress.current = false;
+        }, 250);
+      }
+    },
+    []
+  );
 
   // Référence à l'élément audio
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -134,7 +161,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   }, []);
 
   // Méthodes de contrôle audio
-  const play = useCallback(() => {
+  const play = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -144,19 +171,34 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       return;
     }
 
-    // Lecture sécurisée
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch((error) => {
-        console.error("Erreur lors de la lecture :", error);
-      });
+    try {
+      // Lecture sécurisée avec await pour attendre que la promesse soit résolue
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        await playPromise;
+        // setIsPlaying est maintenant appelé après la résolution de la promesse
+        // mais ce n'est pas nécessaire car l'événement 'play' le fera
+      }
+    } catch (error) {
+      console.error("Erreur lors de la lecture :", error);
+      // En cas d'erreur, s'assurer que l'état est cohérent
+      setIsPlaying(false);
     }
   }, []);
 
+  // Correction de la méthode pause dans AudioContext.tsx
   const pause = useCallback(() => {
     const audio = audioRef.current;
-    if (audio && !audio.paused) {
-      audio.pause();
+    if (!audio) return;
+
+    try {
+      // S'assurer qu'on met en pause seulement si l'audio est en lecture
+      if (!audio.paused) {
+        audio.pause();
+        // setIsPlaying est géré par l'événement 'pause'
+      }
+    } catch (error) {
+      console.error("Erreur lors de la mise en pause :", error);
     }
   }, []);
 
@@ -219,6 +261,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
     playAudioAtTimestamp,
     updateCurrentWordIndex,
     audioRef,
+    executeWithLock,
   };
 
   return (
