@@ -1,14 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useCallData } from "@/context/CallDataContext";
-import {
-  Box,
-  Paper,
-  Typography,
-  IconButton,
-  FormControlLabel,
-  Switch,
-  Popover,
-} from "@mui/material";
+import { Box, Paper, Typography, Popover } from "@mui/material";
 
 import { Word } from "@/types/types";
 import { useAudio } from "@/context/AudioContext";
@@ -25,9 +17,17 @@ import {
 
 interface TranscriptProps {
   callId: number;
+  hideHeader?: boolean; // Pour masquer le titre et toggle si contrôlés depuis l'en-tête
+  highlightTurnOne?: boolean; // Prop externe pour contrôler la coloration
+  transcriptSelectionMode?: string; // Mode de sélection depuis l'extérieur
 }
 
-const Transcript = ({ callId }: TranscriptProps) => {
+const Transcript = ({
+  callId,
+  hideHeader = false,
+  highlightTurnOne = false, // Utiliser la prop externe au lieu de l'état local
+  transcriptSelectionMode,
+}: TranscriptProps) => {
   const {
     transcription,
     fetchTranscription,
@@ -39,7 +39,7 @@ const Transcript = ({ callId }: TranscriptProps) => {
     updatePostit,
     appelPostits,
     currentWord,
-    transcriptSelectionMode,
+    transcriptSelectionMode: contextSelectionMode, // Renommer pour éviter conflit
     setClientSelection,
     setConseillerSelection,
   } = useCallData();
@@ -62,7 +62,8 @@ const Transcript = ({ callId }: TranscriptProps) => {
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const [isProcessingAudioAction, setIsProcessingAudioAction] = useState(false);
 
-  const [highlightTurnOne, setHighlightTurnOne] = useState(false);
+  // SUPPRESSION DE L'ÉTAT LOCAL - maintenant contrôlé depuis l'en-tête
+  // const [highlightTurnOne, setHighlightTurnOne] = useState(false);
 
   // ✅ Gestion du Popover (affichage du Post-it)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -81,16 +82,13 @@ const Transcript = ({ callId }: TranscriptProps) => {
     setAnchorEl(null);
   };
 
-  // Ajoutez cette fonction pour gérer la sélection de texte
+  // Utiliser le mode de sélection externe ou celui du contexte
+  const activeSelectionMode = transcriptSelectionMode || contextSelectionMode;
+
+  // Fonction pour gérer la sélection de texte
   const handleTextSelection = () => {
-    console.log("handleTextSelection called, mode:", transcriptSelectionMode);
-    console.log(
-      "wordRefs content:",
-      wordRefs.current.filter((ref) => ref !== null).length,
-      "non-null refs out of",
-      wordRefs.current.length
-    );
-    if (!transcriptSelectionMode || !transcription?.words) return;
+    console.log("handleTextSelection called, mode:", activeSelectionMode);
+    if (!activeSelectionMode || !transcription?.words) return;
 
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -98,53 +96,26 @@ const Transcript = ({ callId }: TranscriptProps) => {
     const selectionText = selection.toString().trim();
     if (!selectionText) return;
 
-    // Logique pour identifier les mots sélectionnés
     const selectedIndices: number[] = [];
     const range = selection.getRangeAt(0);
 
     wordRefs.current.forEach((ref, idx) => {
-      if (ref) {
-        const isIntersecting = range.intersectsNode(ref);
-
-        // Si au moins un mot est sélectionné, loggez-le pour débogage
-        if (isIntersecting) {
-          console.log(
-            "Intersecting word:",
-            transcription.words[idx].text,
-            "turn:",
-            transcription.words[idx].turn
-          );
-        }
-      }
       if (ref && range.intersectsNode(ref)) {
         const word = transcription.words[idx];
-        console.log(
-          "Word with potential intersection:",
-          word.text,
-          "turn:",
-          word.turn
-        );
-
-        // Utiliser les fonctions utilitaires pour déterminer qui parle
-        // Au lieu de vérifier uniquement "turn1" et "turn2"
         const isClientWord = isSpeakerClient(word.turn);
         const isConseillerWord = isSpeakerConseil(word.turn);
 
         if (
-          (transcriptSelectionMode === "client" && isClientWord) ||
-          (transcriptSelectionMode === "conseiller" && isConseillerWord)
+          (activeSelectionMode === "client" && isClientWord) ||
+          (activeSelectionMode === "conseiller" && isConseillerWord)
         ) {
           selectedIndices.push(idx);
         }
       }
     });
 
-    console.log("Selected indices:", selectedIndices);
     if (selectedIndices.length > 0) {
-      console.log("Indices found, preparing selection data");
-      // Trier les indices
       selectedIndices.sort((a, b) => a - b);
-
       const firstIdx = selectedIndices[0];
       const lastIdx = selectedIndices[selectedIndices.length - 1];
 
@@ -155,112 +126,67 @@ const Transcript = ({ callId }: TranscriptProps) => {
           transcription.words[lastIdx].endTime ||
           transcription.words[lastIdx].startTime + 1,
         wordIndex: firstIdx,
-        speaker: transcriptSelectionMode,
+        speaker: activeSelectionMode,
       };
 
-      // Enregistrer la sélection dans le contexte
-      if (transcriptSelectionMode === "client") {
+      if (activeSelectionMode === "client") {
         setClientSelection(selectionData);
       } else {
         setConseillerSelection(selectionData);
       }
-      console.log("selectionData", selectionData);
 
-      // Afficher un feedback à l'utilisateur
-      // Vous pouvez ajouter une notification toast ou un autre élément UI
-
-      // Effacer la sélection
       window.getSelection()?.removeAllRanges();
     }
   };
 
-  // Ajoutez un event listener pour détecter la fin de la sélection
+  // Event listener pour détecter la fin de la sélection
   useEffect(() => {
-    console.log("Setting up mouseup listener, mode:", transcriptSelectionMode);
-    if (!transcriptSelectionMode) return;
+    if (!activeSelectionMode) return;
 
     const container = containerRef.current;
     if (container) {
       container.addEventListener("mouseup", handleTextSelection);
-
       return () => {
         container.removeEventListener("mouseup", handleTextSelection);
       };
     }
-  }, [transcriptSelectionMode, transcription]);
+  }, [activeSelectionMode, transcription]);
 
-  // ✅ 1️⃣ Charger la transcription uniquement si elle n'est pas déjà récupérée
+  // Charger la transcription
   useEffect(() => {
     if (callId && (!transcription || transcription.callid !== callId)) {
       fetchTranscription(callId);
     }
-  }, [callId]); // ✅ `fetchTranscription` est **retiré** des dépendances
+  }, [callId]);
 
-  // ✅ 2️⃣ Générer l'URL audio uniquement si `selectedCall.filepath` existe
-
+  // Générer l'URL audio
   useEffect(() => {
     if (selectedCall?.filepath) {
-      setAudioSrc(null); // 🔴 Réinitialise l'audio avant de charger le nouveau
-
+      setAudioSrc(null);
       createAudioUrlWithToken(selectedCall.filepath).then((url) => {
         if (url) {
           setAudioSrc(url);
         }
       });
     }
-  }, [selectedCall, setAudioSrc]); // 🔴 Ajoute `setAudioSrc` dans les dépendances
-
-  // const handleWordClick = (word: Word, index: number) => {
-  //   setTime(word.startTime);
-  //   if (isPlaying) {
-  //     pause();
-  //   } else {
-  //     play();
-  //   }
-  // };
+  }, [selectedCall, setAudioSrc]);
 
   const handleWordClick = (word: Word, index: number) => {
     executeWithLock(async () => {
-      console.log("État isPlaying avant clic:", isPlaying);
-
       if (isPlaying) {
         pause();
-        console.log("Pause appelée");
       } else {
         seekTo(word.startTime);
         await new Promise((resolve) => setTimeout(resolve, 150));
         play();
-        console.log("Play appelé");
       }
     });
   };
 
-  const handleAddPostit = () => {
-    if (!currentWord || !audioRef.current || !selectedCall?.callid) {
-      console.warn("Impossible de créer un post-it, données insuffisantes.");
-      return;
-    }
-
-    const wordid = currentWord.wordid ?? 0;
-    const wordText = currentWord.text ?? "Post-it";
-    const timestamp = Math.floor(audioRef.current.currentTime);
-
-    addPostit(wordid, wordText, timestamp, {
-      sujet: "Non assigné",
-      pratique: "Non assigné",
-      domaine: "Non assigné",
-    });
-
-    console.log(
-      `📝 Post-it ajouté -> WordID: ${wordid}, Texte: "${wordText}", Timestamp: ${timestamp}`
-    );
-  };
-
+  // Autres useEffect (timeupdate, currentWord, scroll)
   useEffect(() => {
     const onTimeUpdate = () => {
       const currentTime = audioRef.current?.currentTime || 0;
-
-      // Mise à jour de l'index si la transcription est disponible
       if (transcription?.words) {
         updateCurrentWordIndex(transcription.words, currentTime);
       }
@@ -269,19 +195,16 @@ const Transcript = ({ callId }: TranscriptProps) => {
     const player = audioRef.current;
     if (audioSrc && player) {
       player.addEventListener("timeupdate", onTimeUpdate);
-
       return () => {
-        // Nettoyage du listener d'événements pour éviter les conflits
         player.removeEventListener("timeupdate", onTimeUpdate);
       };
     }
   }, [audioSrc, transcription, updateCurrentWordIndex]);
 
-  // Ajout du useEffect pour mettre à jour currentWord lorsque currentWordIndex change
   useEffect(() => {
     if (currentWordIndex >= 0 && transcription?.words) {
-      const word = transcription.words[currentWordIndex]; // Obtenez le mot actuel à partir de l'index
-      updateCurrentWord(word); // Mettez à jour currentWord dans le contexte
+      const word = transcription.words[currentWordIndex];
+      updateCurrentWord(word);
     }
   }, [currentWordIndex, transcription, updateCurrentWord]);
 
@@ -289,19 +212,19 @@ const Transcript = ({ callId }: TranscriptProps) => {
     if (currentWordIndex >= 0 && wordRefs.current[currentWordIndex]) {
       wordRefs.current[currentWordIndex]?.scrollIntoView({
         behavior: "smooth",
-        block: "center", // 🔹 Place le mot au centre de la fenêtre
+        block: "center",
       });
     }
   }, [currentWordIndex]);
 
-  // ✅ Styles conditionnels pour les tours de parole
+  // Styles conditionnels pour les tours de parole
   const getWordStyle = (index: number, word: Word) => {
     const speakerType = getSpeakerType(word.turn);
 
     return {
       fontWeight: index === currentWordIndex ? "bold" : "normal",
       color: index === currentWordIndex ? "red" : "inherit",
-      backgroundColor: highlightTurnOne
+      backgroundColor: highlightTurnOne // Utilise la prop externe
         ? getSpeakerStyle(speakerType, true).backgroundColor
         : "transparent",
       padding: "2px 4px",
@@ -309,7 +232,6 @@ const Transcript = ({ callId }: TranscriptProps) => {
     };
   };
 
-  // ✅ Filtrer les post-its pour ne garder que ceux liés à `callId`
   const postitMarkers = appelPostits.map((postit) => ({
     id: postit.id,
     time: postit.timestamp,
@@ -317,49 +239,59 @@ const Transcript = ({ callId }: TranscriptProps) => {
   }));
 
   return (
-    <Box sx={{ padding: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Transcription
-      </Typography>
+    <Box sx={{ padding: hideHeader ? 1 : 2 }}>
+      {/* TITRE ET TOGGLE - Masqués si hideHeader = true */}
+      {!hideHeader && (
+        <>
+          <Typography variant="h6" gutterBottom>
+            Transcription
+          </Typography>
+
+          {/* Toggle local seulement si pas contrôlé depuis l'en-tête */}
+          <FormControlLabel
+            control={
+              <Switch
+                checked={highlightTurnOne}
+                onChange={() => {
+                  // Cette fonction ne sera plus utilisée si contrôlé depuis l'en-tête
+                  console.warn(
+                    "Toggle local utilisé - devrait être contrôlé depuis l'en-tête"
+                  );
+                }}
+              />
+            }
+            label="Colorer les tours de parole"
+          />
+        </>
+      )}
 
       {/* Indication du mode sélection si actif */}
-      {transcriptSelectionMode && (
+      {activeSelectionMode && (
         <Typography variant="body2" color="primary" sx={{ mb: 1 }}>
           Mode sélection:{" "}
-          {transcriptSelectionMode === "client"
+          {activeSelectionMode === "client"
             ? "Texte client"
             : "Texte conseiller"}{" "}
           (sélectionnez le texte avec la souris)
         </Typography>
       )}
-      {/* ✅ Ajout du Toggle pour changer le fond des mots en fonction de l'interlocuteur */}
-      <FormControlLabel
-        control={
-          <Switch
-            checked={highlightTurnOne}
-            onChange={() => setHighlightTurnOne(!highlightTurnOne)}
-          />
-        }
-        label="Colorer les tours de parole"
-      />
 
-      {/* ✅ Timeline placée au-dessus du lecteur audio */}
+      {/* Timeline et lecteur audio */}
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          mt: 1,
+          mt: hideHeader ? 0 : 1,
+          mb: 1,
         }}
       >
         {audioSrc ? (
           <AudioPlayer
             markers={postitMarkers}
             onMarkerClick={(id) => {
-              // Trouver le post-it correspondant à cet ID
               const postit = appelPostits.find((p) => p.id === id);
               if (postit) {
-                // Utiliser votre logique existante pour ouvrir le popover
                 const event = {
                   currentTarget:
                     document.getElementById(`marker-${id}`) || null,
@@ -377,6 +309,8 @@ const Transcript = ({ callId }: TranscriptProps) => {
           </Typography>
         )}
       </Box>
+
+      {/* Popover pour les post-its */}
       <Popover
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
@@ -398,8 +332,14 @@ const Transcript = ({ callId }: TranscriptProps) => {
           />
         )}
       </Popover>
+
+      {/* Transcription - Hauteur optimisée */}
       <Paper
-        sx={{ padding: 2, maxHeight: "400px", overflowY: "auto" }}
+        sx={{
+          padding: 2,
+          maxHeight: hideHeader ? "calc(100vh - 200px)" : "400px",
+          overflowY: "auto",
+        }}
         ref={containerRef}
       >
         <Box>
@@ -410,15 +350,15 @@ const Transcript = ({ callId }: TranscriptProps) => {
                 ref={(el) => (wordRefs.current[index] = el)}
                 style={{
                   ...getWordStyle(index, word),
-                  cursor: transcriptSelectionMode ? "text" : "pointer",
-                  userSelect: transcriptSelectionMode ? "text" : "none",
-                  backgroundColor: transcriptSelectionMode
+                  cursor: activeSelectionMode ? "text" : "pointer",
+                  userSelect: activeSelectionMode ? "text" : "none",
+                  backgroundColor: activeSelectionMode
                     ? getSpeakerSelectionStyle(getSpeakerType(word.turn))
                         .backgroundColor
                     : getWordStyle(index, word).backgroundColor,
                 }}
                 onClick={() =>
-                  !transcriptSelectionMode && handleWordClick(word, index)
+                  !activeSelectionMode && handleWordClick(word, index)
                 }
               >
                 {word.text}{" "}

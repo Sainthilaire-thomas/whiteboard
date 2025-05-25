@@ -45,10 +45,14 @@ import {
   CategoriePratique as AppCategoriePratique,
 } from "@/types/types";
 
-// Helper type for CallActivityRelation that seems to be referenced but not imported
-type CallActivityRelation = any; // Replace with actual type if available
+// AJOUT DE L'INTERFACE AVEC HIDEHEADER
+interface SyntheseEvaluationProps {
+  hideHeader?: boolean;
+}
 
-const SyntheseEvaluation: React.FC = () => {
+const SyntheseEvaluation: React.FC<SyntheseEvaluationProps> = ({
+  hideHeader = false,
+}) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isNarrow = useMediaQuery("(max-width:900px)");
@@ -62,7 +66,6 @@ const SyntheseEvaluation: React.FC = () => {
     sujetsData,
     selectedDomain,
   } = useAppContext();
-  console.log("pratiques", pratiques);
 
   const [activeTab, setActiveTab] = useState(0);
   const [selectedSujet, setSelectedSujet] = useState<string>("");
@@ -83,17 +86,17 @@ const SyntheseEvaluation: React.FC = () => {
     (postit) => postit.sujet || postit.pratique
   );
 
-  // Statistiques - Convertissons d'abord les postits pour correspondre au type attendu par getPostitStatistics
+  // Statistiques
   const tempConvertedPostits: EvaluationPostit[] = filteredPostits.map(
     (postit) => ({
-      id: String(postit.id), // Conversion de number à string
+      id: String(postit.id),
       callid: postit.callid,
       wordid: postit.wordid,
       word: postit.word,
       text: postit.text,
       iddomaine: postit.iddomaine,
       sujet: postit.sujet,
-      idsujet: postit.idsujet || undefined, // null to undefined conversion
+      idsujet: postit.idsujet || undefined,
       pratique: postit.pratique,
       timestamp: postit.timestamp,
       idactivite: postit.idactivite,
@@ -129,14 +132,12 @@ const SyntheseEvaluation: React.FC = () => {
     }
 
     try {
-      // FIX: Ensure selectedMotif is a string, not an array
-      // Convert array to string if needed
       let motifValue: string | null = null;
 
       if (selectedMotif) {
         motifValue = Array.isArray(selectedMotif)
-          ? selectedMotif.join(",") // If it's an array, join it
-          : selectedMotif; // If it's already a string, use as is
+          ? selectedMotif.join(",")
+          : selectedMotif;
       }
 
       const { error } = await supabase.from("motifs_afpa").upsert(
@@ -144,7 +145,7 @@ const SyntheseEvaluation: React.FC = () => {
           {
             ...formState,
             callid: selectedCall.callid,
-            motifs: motifValue, // Now guaranteed to be string or null
+            motifs: motifValue,
           },
         ],
         { onConflict: ["callid"] }
@@ -157,6 +158,12 @@ const SyntheseEvaluation: React.FC = () => {
     }
   };
 
+  // Fonction pour effacer les sélections
+  const handleClearSelection = () => {
+    setSelectedSujet("");
+    setSelectedPratique("");
+  };
+
   if (!selectedCall) {
     return (
       <Box sx={{ p: 2 }}>
@@ -167,24 +174,24 @@ const SyntheseEvaluation: React.FC = () => {
 
   // Conversion des données pour qu'elles correspondent aux types attendus
   const convertedCall: EvaluationCall = {
-    callid: String(selectedCall.callid), // Conversion de number à string
+    callid: String(selectedCall.callid),
     filename: selectedCall.filename,
-    description: selectedCall.description || "", // FIX: Ensure description is not undefined
+    description: selectedCall.description || "",
     filepath: selectedCall.filepath,
-    callactivityrelation: selectedCall.callactivityrelation || [], // FIX: Provide default empty array
+    callactivityrelation: selectedCall.callactivityrelation || [],
   };
 
   // Conversion des postits pour correspondre au type attendu
   const convertedPostits: EvaluationPostit[] = filteredPostits.map(
     (postit) => ({
-      id: String(postit.id), // Conversion de number à string
+      id: String(postit.id),
       callid: postit.callid,
       wordid: postit.wordid,
       word: postit.word,
       text: postit.text,
       iddomaine: postit.iddomaine,
       sujet: postit.sujet,
-      idsujet: postit.idsujet || undefined, // FIX: null to undefined conversion
+      idsujet: postit.idsujet || undefined,
       pratique: postit.pratique,
       timestamp: postit.timestamp,
       idactivite: postit.idactivite,
@@ -195,7 +202,7 @@ const SyntheseEvaluation: React.FC = () => {
   const convertedCategoriesPratiques: EvaluationCategoriePratique[] =
     categoriesPratiques.map((cat) => ({
       ...cat,
-      nomcategorie: cat.name || "", // Ajout du champ manquant, utiliser une valeur par défaut
+      nomcategorie: cat.name || "",
     }));
 
   // Conversion de selectedDomain en number si c'est un string
@@ -204,6 +211,106 @@ const SyntheseEvaluation: React.FC = () => {
       ? parseInt(selectedDomain, 10)
       : selectedDomain;
 
+  // Effet pour s'assurer qu'une seule sélection soit active à la fois
+  useEffect(() => {
+    // Si on sélectionne un nouveau sujet, effacer la pratique
+    if (selectedSujet && selectedPratique) {
+      setSelectedPratique("");
+    }
+  }, [selectedSujet]);
+
+  useEffect(() => {
+    // Si on sélectionne une nouvelle pratique, effacer le sujet
+    if (selectedPratique && selectedSujet) {
+      setSelectedSujet("");
+    }
+  }, [selectedPratique]);
+
+  // RENDU CONDITIONNEL SELON HIDEHEADER
+  if (hideHeader) {
+    return (
+      <Box sx={{ p: { xs: 1, md: 2 } }}>
+        {/* VERSION SANS EN-TÊTE - Juste les onglets et le contenu */}
+        {/* Navigation par onglets */}
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          sx={{
+            mb: 2,
+            minHeight: "auto",
+            "& .MuiTab-root": {
+              fontWeight: "bold",
+              fontSize: isMobile ? "0.75rem" : "0.85rem",
+              minHeight: "auto",
+              py: 1,
+            },
+          }}
+          variant={isNarrow ? "scrollable" : "fullWidth"}
+          scrollButtons="auto"
+        >
+          <Tab
+            icon={!isMobile ? <BarChart fontSize="small" /> : undefined}
+            iconPosition="start"
+            label="SYNTHÈSE"
+          />
+          <Tab
+            icon={
+              !isMobile ? <AssessmentOutlined fontSize="small" /> : undefined
+            }
+            iconPosition="start"
+            label="CRITÈRES QUALITÉ"
+          />
+          <Tab
+            icon={
+              !isMobile ? <PsychologyOutlined fontSize="small" /> : undefined
+            }
+            iconPosition="start"
+            label="SIMULATION COACHING"
+          />
+        </Tabs>
+
+        {/* Contenu des onglets */}
+        {activeTab === 0 && (
+          <SyntheseTab
+            selectedCall={convertedCall}
+            stats={stats}
+            selectedMotif={selectedMotif}
+            setSelectedMotif={setSelectedMotif}
+            formState={formState}
+            handleInputChange={handleInputChange}
+            setActiveTab={setActiveTab}
+            setSelectedSujet={setSelectedSujet}
+            setSelectedPratique={setSelectedPratique}
+          />
+        )}
+
+        {activeTab === 1 && (
+          <CritereQualiteTab
+            selectedDomain={domainAsNumber}
+            categoriesSujets={categoriesSujets}
+            sujetsData={sujetsData}
+            categoriesPratiques={convertedCategoriesPratiques}
+            pratiques={pratiques}
+          />
+        )}
+
+        {activeTab === 2 && (
+          <SimulationCoachingTab
+            filteredPostits={convertedPostits}
+            sujetsData={sujetsData}
+            categoriesSujets={categoriesSujets}
+            pratiques={pratiques}
+            categoriesPratiques={convertedCategoriesPratiques}
+            selectedSujet={selectedSujet}
+            selectedPratique={selectedPratique}
+            onClearSelection={handleClearSelection}
+          />
+        )}
+      </Box>
+    );
+  }
+
+  // VERSION ORIGINALE AVEC EN-TÊTE (pour rétrocompatibilité)
   return (
     <Box sx={{ p: { xs: 1, md: 2 } }}>
       {/* En-tête */}
@@ -339,6 +446,9 @@ const SyntheseEvaluation: React.FC = () => {
           categoriesSujets={categoriesSujets}
           pratiques={pratiques}
           categoriesPratiques={convertedCategoriesPratiques}
+          selectedSujet={selectedSujet}
+          selectedPratique={selectedPratique}
+          onClearSelection={handleClearSelection}
         />
       )}
     </Box>

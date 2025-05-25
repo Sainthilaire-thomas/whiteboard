@@ -11,6 +11,7 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  Divider,
 } from "@mui/material";
 import {
   ExpandLess,
@@ -19,6 +20,7 @@ import {
   CheckCircleOutline,
   RadioButtonUnchecked,
   PlayCircleOutline,
+  AdminPanelSettings,
 } from "@mui/icons-material";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -26,7 +28,13 @@ import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
 
 type StepStatus = "à faire" | "en cours" | "réalisé";
-type PhaseKey = "selection" | "evaluation" | "coaching" | "suivi" | "feedback";
+type PhaseKey =
+  | "selection"
+  | "evaluation"
+  | "coaching"
+  | "suivi"
+  | "feedback"
+  | "admin";
 
 type Phase = {
   label: string;
@@ -35,6 +43,7 @@ type Phase = {
     label: string;
     route?: string;
   }[];
+  isAdmin?: boolean;
 };
 
 const nextStatus: Record<StepStatus, StepStatus> = {
@@ -102,6 +111,18 @@ export default function ActivitySidebar() {
     },
     { label: "Suivi", key: "suivi" },
     { label: "Feedback", key: "feedback" },
+    // Section Admin séparée
+    {
+      label: "Administration",
+      key: "admin",
+      isAdmin: true,
+      subSteps: [
+        {
+          label: "Pondération des critères",
+          route: "/evaluation/admin",
+        },
+      ],
+    },
   ];
 
   const [stepStatus, setStepStatus] = useState<Record<PhaseKey, StepStatus>>({
@@ -110,6 +131,7 @@ export default function ActivitySidebar() {
     coaching: "à faire",
     suivi: "à faire",
     feedback: "à faire",
+    admin: "à faire",
   });
 
   const handlePhaseClick = (key: PhaseKey) => {
@@ -117,6 +139,9 @@ export default function ActivitySidebar() {
   };
 
   const toggleStatus = (key: PhaseKey) => {
+    // Ne pas permettre de changer le statut pour la section admin
+    if (key === "admin") return;
+
     setStepStatus((prev) => ({
       ...prev,
       [key]: nextStatus[prev[key]],
@@ -124,7 +149,179 @@ export default function ActivitySidebar() {
   };
 
   const isActiveSubStep = (route?: string): boolean => {
-    return !!(route && searchParams?.toString().includes(route.split("?")[1]));
+    if (!route) return false;
+
+    // Pour la route admin, vérifier l'URL complète
+    if (route === "/evaluation/admin") {
+      return window.location.pathname === "/evaluation/admin";
+    }
+
+    return !!searchParams?.toString().includes(route.split("?")[1]);
+  };
+
+  // Séparer les phases normales et admin
+  const normalPhases = phases.filter((p) => !p.isAdmin);
+  const adminPhases = phases.filter((p) => p.isAdmin);
+
+  const renderPhase = (phase: Phase) => {
+    const status = stepStatus[phase.key];
+    const isOpen = openPhase === phase.key;
+    const isAdminPhase = phase.isAdmin;
+
+    return (
+      <Box
+        key={phase.key}
+        sx={{
+          position: "relative",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 4,
+            bgcolor: isOpen
+              ? isAdminPhase
+                ? "#ff5722"
+                : statusColor[status]
+              : "transparent",
+            transition: "background-color 0.3s",
+          },
+        }}
+      >
+        <Tooltip title={phase.label} placement="right">
+          <ListItemButton
+            onClick={() => handlePhaseClick(phase.key)}
+            sx={{
+              px: isExpanded ? 2 : 1.5,
+              bgcolor: isAdminPhase ? "rgba(255, 87, 34, 0.05)" : "transparent",
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                color: isAdminPhase ? "#ff5722" : statusColor[status],
+              }}
+            >
+              {isAdminPhase ? <AdminPanelSettings /> : statusIcon[status]}
+            </ListItemIcon>
+
+            {isExpanded && (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  flexGrow: 1,
+                }}
+              >
+                <Typography
+                  fontWeight="bold"
+                  color={isAdminPhase ? "#ff5722" : "text.primary"}
+                  sx={{
+                    flexShrink: 1,
+                    maxWidth: "100px",
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {phase.label}
+                </Typography>
+
+                {!isAdminPhase && (
+                  <Chip
+                    label={status}
+                    size="small"
+                    sx={{
+                      fontSize: "0.7rem",
+                      minWidth: 70,
+                      bgcolor: statusColor[status],
+                      color: "white",
+                      mx: 1,
+                    }}
+                  />
+                )}
+
+                {!isAdminPhase && (
+                  <IconButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleStatus(phase.key);
+                    }}
+                    size="small"
+                    sx={{ color: "text.primary" }}
+                  >
+                    <LoopIcon fontSize="small" />
+                  </IconButton>
+                )}
+
+                {phase.subSteps && (
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePhaseClick(phase.key);
+                    }}
+                    sx={{ color: isAdminPhase ? "#ff5722" : "text.primary" }}
+                  >
+                    {isOpen ? (
+                      <ExpandLess fontSize="small" />
+                    ) : (
+                      <ExpandMore fontSize="small" />
+                    )}
+                  </IconButton>
+                )}
+              </Box>
+            )}
+          </ListItemButton>
+        </Tooltip>
+
+        {isExpanded && phase.subSteps && (
+          <Collapse in={isOpen} timeout="auto" unmountOnExit>
+            <List dense disablePadding sx={{ pl: 4 }}>
+              {phase.subSteps.map((sub, i) => {
+                const selected = isActiveSubStep(sub.route);
+                return (
+                  <ListItemButton
+                    key={i}
+                    onClick={() => sub.route && router.push(sub.route)}
+                    selected={selected}
+                    sx={{
+                      borderRadius: 1,
+                      bgcolor: selected
+                        ? isAdminPhase
+                          ? "#ff5722"
+                          : "primary.main"
+                        : "transparent",
+                      color: selected
+                        ? "white"
+                        : isAdminPhase
+                        ? "#ff5722"
+                        : "text.primary",
+                      "&:hover": {
+                        bgcolor: selected
+                          ? isAdminPhase
+                            ? "#e64a19"
+                            : "primary.dark"
+                          : "action.hover",
+                      },
+                    }}
+                  >
+                    <ListItemText
+                      primary={sub.label}
+                      primaryTypographyProps={{
+                        fontSize: "0.85rem",
+                        fontWeight: 600,
+                        color: "inherit",
+                      }}
+                    />
+                  </ListItemButton>
+                );
+              })}
+            </List>
+          </Collapse>
+        )}
+      </Box>
+    );
   };
 
   return (
@@ -149,144 +346,14 @@ export default function ActivitySidebar() {
         )}
 
         <List dense>
-          {phases.map((phase) => {
-            const status = stepStatus[phase.key];
-            const isOpen = openPhase === phase.key;
+          {/* Phases normales */}
+          {normalPhases.map(renderPhase)}
 
-            return (
-              <Box
-                key={phase.key}
-                sx={{
-                  position: "relative",
-                  "&::before": {
-                    content: '""',
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 4,
-                    bgcolor: isOpen ? statusColor[status] : "transparent",
-                    transition: "background-color 0.3s",
-                  },
-                }}
-              >
-                <Tooltip title={phase.label} placement="right">
-                  <ListItemButton
-                    onClick={() => handlePhaseClick(phase.key)}
-                    sx={{ px: isExpanded ? 2 : 1.5 }}
-                  >
-                    <ListItemIcon sx={{ color: statusColor[status] }}>
-                      {statusIcon[status]}
-                    </ListItemIcon>
+          {/* Divider */}
+          {isExpanded && <Divider sx={{ my: 2 }} />}
 
-                    {isExpanded && (
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          flexGrow: 1,
-                        }}
-                      >
-                        <Typography
-                          fontWeight="bold"
-                          color="text.primary"
-                          sx={{
-                            flexShrink: 1,
-                            maxWidth: "100px", // limite raisonnable pour ne pas manger tout l'espace
-                            overflow: "hidden",
-                            whiteSpace: "nowrap",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {phase.label}
-                        </Typography>
-
-                        <Chip
-                          label={status}
-                          size="small"
-                          sx={{
-                            fontSize: "0.7rem",
-                            minWidth: 70,
-                            bgcolor: statusColor[status],
-                            color: "white",
-                            mx: 1,
-                          }}
-                        />
-
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleStatus(phase.key);
-                          }}
-                          size="small"
-                          sx={{ color: "text.primary" }}
-                        >
-                          <LoopIcon fontSize="small" />
-                        </IconButton>
-
-                        {phase.subSteps && (
-                          <IconButton
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePhaseClick(phase.key);
-                            }}
-                            sx={{ color: "text.primary" }}
-                          >
-                            {isOpen ? (
-                              <ExpandLess fontSize="small" />
-                            ) : (
-                              <ExpandMore fontSize="small" />
-                            )}
-                          </IconButton>
-                        )}
-                      </Box>
-                    )}
-                  </ListItemButton>
-                </Tooltip>
-
-                {isExpanded && phase.subSteps && (
-                  <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                    <List dense disablePadding sx={{ pl: 4 }}>
-                      {phase.subSteps.map((sub, i) => {
-                        const selected = isActiveSubStep(sub.route);
-                        return (
-                          <ListItemButton
-                            key={i}
-                            onClick={() => sub.route && router.push(sub.route)}
-                            selected={selected}
-                            sx={{
-                              borderRadius: 1,
-                              bgcolor: selected
-                                ? "primary.main"
-                                : "transparent",
-                              color: selected
-                                ? "primary.contrastText"
-                                : "text.primary",
-                              "&:hover": {
-                                bgcolor: selected
-                                  ? "primary.dark"
-                                  : "action.hover",
-                              },
-                            }}
-                          >
-                            <ListItemText
-                              primary={sub.label}
-                              primaryTypographyProps={{
-                                fontSize: "0.85rem",
-                                fontWeight: 600,
-                                color: "inherit",
-                              }}
-                            />
-                          </ListItemButton>
-                        );
-                      })}
-                    </List>
-                  </Collapse>
-                )}
-              </Box>
-            );
-          })}
+          {/* Phases admin */}
+          {adminPhases.map(renderPhase)}
         </List>
       </Box>
     </Box>

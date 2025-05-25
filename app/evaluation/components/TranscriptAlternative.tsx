@@ -27,9 +27,15 @@ import Postit from "./Postit";
 interface TranscriptAlternativeProps {
   callId: number;
   audioSrc?: string;
+  hideHeader?: boolean;
+  highlightSpeakers?: boolean;
 }
 
-const TranscriptAlternative = ({ callId }: TranscriptAlternativeProps) => {
+const TranscriptAlternative = ({
+  callId,
+  hideHeader = false,
+  highlightSpeakers: externalHighlightSpeakers = true,
+}: TranscriptAlternativeProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === "dark";
 
@@ -60,7 +66,7 @@ const TranscriptAlternative = ({ callId }: TranscriptAlternativeProps) => {
     executeWithLock,
   } = useAudio();
 
-  const [highlightSpeakers, setHighlightSpeakers] = useState(true);
+  const highlightSpeakers = externalHighlightSpeakers;
   const [paragraphs, setParagraphs] = useState<SpeakerParagraph[]>([]);
   const [currentParagraphIndex, setCurrentParagraphIndex] =
     useState<number>(-1);
@@ -318,19 +324,28 @@ const TranscriptAlternative = ({ callId }: TranscriptAlternativeProps) => {
 
   return (
     <Box sx={{ padding: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Transcription
-      </Typography>
+      {!hideHeader && (
+        <>
+          <Typography variant="h6" gutterBottom>
+            Transcription
+          </Typography>
 
-      <FormControlLabel
-        control={
-          <Switch
-            checked={highlightSpeakers}
-            onChange={() => setHighlightSpeakers(!highlightSpeakers)}
+          <FormControlLabel
+            control={
+              <Switch
+                checked={highlightSpeakers}
+                onChange={() => {
+                  // Cette fonction ne sera plus utilisée si contrôlé depuis l'en-tête
+                  console.warn(
+                    "Toggle local utilisé - devrait être contrôlé depuis l'en-tête"
+                  );
+                }}
+              />
+            }
+            label="Colorer les locuteurs"
           />
-        }
-        label="Colorer les locuteurs"
-      />
+        </>
+      )}
 
       {/* ✅ Timeline placée au-dessus du lecteur audio - EXACTEMENT comme Transcript */}
       <Box

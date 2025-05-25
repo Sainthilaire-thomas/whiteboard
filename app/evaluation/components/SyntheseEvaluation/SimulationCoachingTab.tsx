@@ -14,6 +14,7 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
+  Chip,
 } from "@mui/material";
 import {
   PlayArrow,
@@ -22,6 +23,9 @@ import {
   SortByAlpha,
   AccessTime,
   LightbulbOutlined,
+  Clear,
+  VisibilityOff,
+  Visibility,
 } from "@mui/icons-material";
 import { SimulationCoachingTabProps, Postit } from "@/types/evaluation";
 import { useRouter } from "next/navigation";
@@ -29,15 +33,24 @@ import { sortPostits, SortCriteria } from "./utils/filters";
 import { formatTimecode, truncateText } from "./utils/formatters";
 import { useCallData } from "@/context/CallDataContext";
 
-const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
+// Interface mise à jour avec les nouvelles props
+interface SimulationCoachingTabPropsExtended
+  extends SimulationCoachingTabProps {
+  selectedSujet?: string;
+  selectedPratique?: string;
+  onClearSelection?: () => void;
+}
+
+const SimulationCoachingTab: React.FC<SimulationCoachingTabPropsExtended> = ({
   filteredPostits,
   sujetsData,
   categoriesSujets,
   pratiques,
   categoriesPratiques,
+  selectedSujet = "",
+  selectedPratique = "",
+  onClearSelection,
 }) => {
-  console.log("pratiques", pratiques);
-
   type FilterView = "all" | "bySubject" | "byPractice";
 
   const theme = useTheme();
@@ -46,10 +59,11 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
   const { setSelectedPostitForRolePlay } = useCallData();
 
   const [filterView, setFilterView] = useState<FilterView>("all");
-  const [selectedSujet, setSelectedSujet] = useState("");
-  const [selectedPratique, setSelectedPratique] = useState("");
+  const [internalSelectedSujet, setInternalSelectedSujet] = useState("");
+  const [internalSelectedPratique, setInternalSelectedPratique] = useState("");
   const [sortBy, setSortBy] = useState<SortCriteria>("timestamp");
   const [showFilters, setShowFilters] = useState(false);
+  const [showAllPassages, setShowAllPassages] = useState(false);
 
   // Extraire les sujets et pratiques uniques pour les filtres
   const uniqueSujets = [
@@ -59,22 +73,84 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
     ...new Set(filteredPostits.map((p) => p.pratique).filter(Boolean)),
   ] as string[];
 
+  // Gérer la sélection automatique quand on arrive depuis la synthèse
+  useEffect(() => {
+    if (selectedSujet) {
+      setFilterView("bySubject");
+      setInternalSelectedSujet(selectedSujet);
+      setShowAllPassages(false);
+    } else if (selectedPratique) {
+      setFilterView("byPractice");
+      setInternalSelectedPratique(selectedPratique);
+      setShowAllPassages(false);
+    }
+  }, [selectedSujet, selectedPratique]);
+
   // Réinitialiser les sélections lors du changement de vue de filtrage
   useEffect(() => {
     if (filterView === "all") {
-      setSelectedSujet("");
-      setSelectedPratique("");
+      setInternalSelectedSujet("");
+      setInternalSelectedPratique("");
     }
   }, [filterView]);
+
+  // Fonction pour afficher tous les passages
+  const handleShowAll = () => {
+    setShowAllPassages(true);
+    setFilterView("all");
+    setInternalSelectedSujet("");
+    setInternalSelectedPratique("");
+    if (onClearSelection) {
+      onClearSelection();
+    }
+  };
+
+  // Fonction pour effacer la sélection
+  const handleClearFilter = () => {
+    setShowAllPassages(false);
+    setFilterView("all");
+    setInternalSelectedSujet("");
+    setInternalSelectedPratique("");
+    if (onClearSelection) {
+      onClearSelection();
+    }
+  };
 
   // Filtrer les passages en fonction des sélections
   const getFilteredPostits = (): Postit[] => {
     let filtered = [...filteredPostits];
 
-    if (filterView === "bySubject" && selectedSujet) {
-      filtered = filtered.filter((p) => p.sujet === selectedSujet);
-    } else if (filterView === "byPractice" && selectedPratique) {
-      filtered = filtered.filter((p) => p.pratique === selectedPratique);
+    // Debug logs
+    console.log("🔍 Debug getFilteredPostits:");
+    console.log("selectedSujet:", selectedSujet);
+    console.log("selectedPratique:", selectedPratique);
+    console.log("showAllPassages:", showAllPassages);
+    console.log("filteredPostits.length:", filteredPostits.length);
+
+    // Si on a une sélection depuis la synthèse et qu'on n'affiche pas tout
+    if (!showAllPassages) {
+      if (selectedSujet) {
+        console.log("🎯 Filtrage par sujet:", selectedSujet);
+        filtered = filtered.filter((p) => p.sujet === selectedSujet);
+        console.log("Résultats après filtrage sujet:", filtered.length);
+      } else if (selectedPratique) {
+        console.log("🎯 Filtrage par pratique:", selectedPratique);
+        console.log(
+          "Pratiques disponibles:",
+          filteredPostits.map((p) => p.pratique)
+        );
+        filtered = filtered.filter((p) => p.pratique === selectedPratique);
+        console.log("Résultats après filtrage pratique:", filtered.length);
+      }
+    } else {
+      // Sinon, utiliser les filtres internes
+      if (filterView === "bySubject" && internalSelectedSujet) {
+        filtered = filtered.filter((p) => p.sujet === internalSelectedSujet);
+      } else if (filterView === "byPractice" && internalSelectedPratique) {
+        filtered = filtered.filter(
+          (p) => p.pratique === internalSelectedPratique
+        );
+      }
     }
 
     // Trier les résultats
@@ -82,6 +158,19 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
   };
 
   const displayedPostits = getFilteredPostits();
+
+  // Calculer les statistiques pour le bandeau
+  const getFilterStats = () => {
+    if (!showAllPassages && (selectedSujet || selectedPratique)) {
+      const filterName = selectedSujet || selectedPratique;
+      const count = displayedPostits.length;
+      const type = selectedSujet ? "critère" : "pratique";
+      return { filterName, count, type };
+    }
+    return null;
+  };
+
+  const filterStats = getFilterStats();
 
   // Fonction pour simuler le coaching sur un passage
   const handleSimulateCoaching = (postit: Postit) => {
@@ -102,6 +191,37 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
         maxWidth: "100%",
       }}
     >
+      {/* Bandeau de filtre automatique */}
+      {filterStats && !showAllPassages && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <IconButton
+              size="small"
+              onClick={handleClearFilter}
+              color="inherit"
+            >
+              <Clear fontSize="small" />
+            </IconButton>
+          }
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+              Filtré sur le {filterStats.type} :
+            </Typography>
+            <Chip
+              label={`${filterStats.filterName} (${filterStats.count} passage${
+                filterStats.count > 1 ? "s" : ""
+              })`}
+              size="small"
+              color="primary"
+              variant="outlined"
+            />
+          </Box>
+        </Alert>
+      )}
+
       {/* En-tête avec titre et contrôles de filtre */}
       <Box
         sx={{
@@ -114,6 +234,11 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
       >
         <Typography variant="subtitle1" sx={{ fontWeight: "medium" }}>
           Passages à travailler
+          {filterStats && !showAllPassages && (
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+              ({displayedPostits.length} sur {filteredPostits.length})
+            </Typography>
+          )}
         </Typography>
 
         <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -135,8 +260,8 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
               {filterView === "bySubject" && (
                 <FormControl size="small" sx={{ mx: 0.5, minWidth: 150 }}>
                   <Select
-                    value={selectedSujet}
-                    onChange={(e) => setSelectedSujet(e.target.value)}
+                    value={internalSelectedSujet}
+                    onChange={(e) => setInternalSelectedSujet(e.target.value)}
                     size="small"
                     displayEmpty
                   >
@@ -153,8 +278,10 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
               {filterView === "byPractice" && (
                 <FormControl size="small" sx={{ mx: 0.5, minWidth: 150 }}>
                   <Select
-                    value={selectedPratique}
-                    onChange={(e) => setSelectedPratique(e.target.value)}
+                    value={internalSelectedPratique}
+                    onChange={(e) =>
+                      setInternalSelectedPratique(e.target.value)
+                    }
                     size="small"
                     displayEmpty
                   >
@@ -203,18 +330,6 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
           </Tooltip>
         </Box>
       </Box>
-
-      {/* Message d'aide */}
-      <Alert
-        severity="info"
-        icon={<InfoOutlined fontSize="small" />}
-        variant="outlined"
-        sx={{ mb: 1.5, py: 0.5, width: "100%" }}
-      >
-        <Typography variant="caption">
-          Sélectionnez un passage pour le coaching en simulation
-        </Typography>
-      </Alert>
 
       {/* Liste des passages avec style inspiré de Slack */}
       <Box
@@ -453,6 +568,34 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabProps> = ({
           )}
         </div>
       </Box>
+
+      {/* Bouton flottant pour voir tous les passages (si filtré) */}
+      {((filterStats && !showAllPassages) ||
+        selectedSujet ||
+        selectedPratique) &&
+        displayedPostits.length > 0 && (
+          <Box
+            sx={{
+              position: "sticky",
+              bottom: 0,
+              bgcolor: "background.paper",
+              borderTop: "1px solid",
+              borderColor: "divider",
+              p: 1,
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <Button
+              variant="outlined"
+              startIcon={<Visibility />}
+              onClick={handleShowAll}
+              sx={{ textTransform: "none" }}
+            >
+              Voir tous les passages ({filteredPostits.length})
+            </Button>
+          </Box>
+        )}
     </Box>
   );
 };
