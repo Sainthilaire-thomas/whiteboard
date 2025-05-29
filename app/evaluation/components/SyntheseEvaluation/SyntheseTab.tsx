@@ -20,6 +20,7 @@ import { formatMotif } from "./utils/formatters";
 import { useAppContext } from "@/context/AppContext";
 import { useSupabase } from "@/context/SupabaseContext";
 import { useCallData } from "@/context/CallDataContext"; // ← AJOUT
+import { useAudio } from "@/context/AudioContext";
 
 // Types pour le calcul de score
 interface PonderationSujet {
@@ -65,6 +66,9 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
     selectedDomain,
     selectDomain,
   } = useAppContext();
+
+  // Récupérer les données audio
+  const { seekTo, executeWithLock } = useAudio();
 
   // ✅ AJOUT : Récupérer appelPostits pour détecter les changements
   const { appelPostits } = useCallData();
@@ -546,11 +550,74 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
   };
 
   const handleSujetClick = (sujet: string) => {
+    console.log("🎯 Clic sur sujet:", sujet);
+
+    // Trouver le premier post-it correspondant à ce sujet
+    const postitsForSujet = appelPostits.filter(
+      (postit) => postit.sujet === sujet
+    );
+
+    console.log("📋 Post-its trouvés pour le sujet:", postitsForSujet.length);
+
+    if (postitsForSujet.length > 0) {
+      // Prendre le premier post-it (ou celui avec le timestamp le plus petit)
+      const firstPostit = postitsForSujet.sort(
+        (a, b) => a.timestamp - b.timestamp
+      )[0];
+
+      console.log(
+        "🎵 Navigation audio vers:",
+        firstPostit.timestamp,
+        "secondes"
+      );
+
+      // Naviguer vers le timestamp du post-it avec protection audio
+      executeWithLock(async () => {
+        seekTo(firstPostit.timestamp);
+        // Petit délai pour laisser l'audio se positionner
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      });
+    }
+
+    // Actions existantes
     setSelectedSujet(sujet);
     setActiveTab(2); // Naviguer vers l'onglet de coaching
   };
 
   const handlePratiqueClick = (pratique: string) => {
+    console.log("🎯 Clic sur pratique:", pratique);
+
+    // Trouver le premier post-it correspondant à cette pratique
+    const postitsForPratique = appelPostits.filter(
+      (postit) => postit.pratique === pratique
+    );
+
+    console.log(
+      "📋 Post-its trouvés pour la pratique:",
+      postitsForPratique.length
+    );
+
+    if (postitsForPratique.length > 0) {
+      // Prendre le premier post-it (ou celui avec le timestamp le plus petit)
+      const firstPostit = postitsForPratique.sort(
+        (a, b) => a.timestamp - b.timestamp
+      )[0];
+
+      console.log(
+        "🎵 Navigation audio vers:",
+        firstPostit.timestamp,
+        "secondes"
+      );
+
+      // Naviguer vers le timestamp du post-it avec protection audio
+      executeWithLock(async () => {
+        seekTo(firstPostit.timestamp);
+        // Petit délai pour laisser l'audio se positionner
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      });
+    }
+
+    // Actions existantes
     setSelectedPratique(pratique);
     setActiveTab(2); // Naviguer vers l'onglet de coaching
   };

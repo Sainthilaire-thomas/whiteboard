@@ -1,0 +1,152 @@
+// hooks/usePhaseData.ts
+import { useMemo } from "react";
+import {
+  Business,
+  Assessment,
+  Psychology,
+  Timeline,
+  Feedback,
+  AdminPanelSettings,
+} from "@mui/icons-material";
+import { useAppContext } from "@/context/AppContext";
+import { useCallData } from "@/context/CallDataContext";
+import { StepStatus, PhaseKey, SubStep, Phase } from "../types";
+import { ROUTES, VIEWS, LABELS } from "../constants";
+
+export const usePhaseData = (currentView: string | null) => {
+  const { selectedPostitForRolePlay, appelPostits, selectedPostit } =
+    useCallData();
+
+  // Calculer les statistiques pour les badges
+  const evaluationStats = useMemo(() => {
+    if (!appelPostits || appelPostits.length === 0) {
+      return { total: 0, withIssues: 0 };
+    }
+
+    const withIssues = appelPostits.filter((p) => p.sujet || p.pratique).length;
+    return { total: appelPostits.length, withIssues };
+  }, [appelPostits]);
+
+  // Configuration des phases avec sous-étapes dynamiques
+  const phases: Phase[] = useMemo(
+    () => [
+      {
+        label: LABELS.PHASES.SELECTION.LABEL,
+        key: "selection",
+        icon: <Business />,
+        description: LABELS.PHASES.SELECTION.DESCRIPTION,
+        subSteps: [
+          {
+            label: LABELS.SUB_STEPS.SELECTION_ENTREPRISE,
+            route: ROUTES.EVALUATION.SELECTION,
+          },
+        ],
+      },
+      {
+        label: LABELS.PHASES.EVALUATION.LABEL,
+        key: "evaluation",
+        icon: <Assessment />,
+        description: LABELS.PHASES.EVALUATION.DESCRIPTION,
+        subSteps: [
+          {
+            label: LABELS.SUB_STEPS.SYNTHESE_GENERALE,
+            route: ROUTES.EVALUATION.SYNTHESE,
+            badge:
+              evaluationStats.withIssues > 0
+                ? evaluationStats.withIssues
+                : undefined,
+          },
+          ...(selectedPostit
+            ? [
+                {
+                  label: LABELS.SUB_STEPS.PASSAGE_SELECTIONNE,
+                  route: ROUTES.EVALUATION.POSTIT,
+                },
+              ]
+            : []),
+        ],
+      },
+      {
+        label: LABELS.PHASES.COACHING.LABEL,
+        key: "coaching",
+        icon: <Psychology />,
+        description: LABELS.PHASES.COACHING.DESCRIPTION,
+        subSteps: [
+          // Action de retour si on est en jeu de rôle
+          ...(currentView === VIEWS.ROLEPLAY
+            ? [
+                {
+                  label: LABELS.SUB_STEPS.RETOUR_SYNTHESE,
+                  route: ROUTES.EVALUATION.SYNTHESE,
+                  isBackAction: true,
+                },
+              ]
+            : []),
+          // Lien vers les passages à travailler
+          {
+            label: LABELS.SUB_STEPS.PASSAGES_TRAVAILLER,
+            route: ROUTES.EVALUATION.SYNTHESE,
+            badge:
+              evaluationStats.withIssues > 0
+                ? evaluationStats.withIssues
+                : undefined,
+            disabled: evaluationStats.withIssues === 0,
+          },
+          // Jeu de rôle actuel si disponible
+          ...(selectedPostitForRolePlay
+            ? [
+                {
+                  label: `${LABELS.SUB_STEPS.JEU_DE_ROLE}: ${
+                    selectedPostitForRolePlay.pratique || "Passage"
+                  }`,
+                  route: ROUTES.EVALUATION.ROLEPLAY,
+                },
+              ]
+            : []),
+        ],
+      },
+      {
+        label: LABELS.PHASES.SUIVI.LABEL,
+        key: "suivi",
+        icon: <Timeline />,
+        description: LABELS.PHASES.SUIVI.DESCRIPTION,
+      },
+      {
+        label: LABELS.PHASES.FEEDBACK.LABEL,
+        key: "feedback",
+        icon: <Feedback />,
+        description: LABELS.PHASES.FEEDBACK.DESCRIPTION,
+      },
+      // Section Admin séparée
+      {
+        label: LABELS.PHASES.ADMIN.LABEL,
+        key: "admin",
+        icon: <AdminPanelSettings />,
+        isAdmin: true,
+        description: LABELS.PHASES.ADMIN.DESCRIPTION,
+        subSteps: [
+          {
+            label: LABELS.SUB_STEPS.PONDERATION_CRITERES,
+            route: ROUTES.ADMIN.PONDERATION,
+          },
+        ],
+      },
+    ],
+    [currentView, selectedPostit, selectedPostitForRolePlay, evaluationStats]
+  );
+
+  // Séparer les phases normales et admin
+  const normalPhases = useMemo(
+    () => phases.filter((p) => !p.isAdmin),
+    [phases]
+  );
+
+  const adminPhases = useMemo(() => phases.filter((p) => p.isAdmin), [phases]);
+
+  return {
+    phases,
+    normalPhases,
+    adminPhases,
+    evaluationStats,
+  };
+};

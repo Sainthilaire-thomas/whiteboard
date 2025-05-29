@@ -3,16 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromCode } from "@/app/zohoworkdrive/lib/zohoworkdrive/auth";
 
 export async function GET(request: NextRequest) {
-  console.log("Callback route called");
-
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
   const error = searchParams.get("error");
 
-  console.log("Code reçu:", !!code);
-
   if (error) {
-    console.log("Erreur d'authentification:", error);
     return NextResponse.json(
       { error: `Authentication failed: ${error}` },
       { status: 400 }
@@ -20,7 +15,6 @@ export async function GET(request: NextRequest) {
   }
 
   if (!code) {
-    console.log("Code d'autorisation manquant");
     return NextResponse.json(
       { error: "Authorization code is missing" },
       { status: 400 }
@@ -28,7 +22,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log("Échange du code contre un token...");
     // Échanger le code d'autorisation contre un token
     const token = await getTokenFromCode(code);
     console.log("Token obtenu avec succès");

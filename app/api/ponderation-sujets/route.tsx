@@ -50,7 +50,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([]);
     }
 
-    console.log(`${ponderations.length} pondérations récupérées avec succès`);
     return NextResponse.json(ponderations);
   } catch (error) {
     console.error("Erreur lors de la récupération des pondérations:", error);
@@ -123,13 +122,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    console.log("Choix de conformité sauvegardé avec succès:", {
-      postitId,
-      idsujet,
-      conformiteChoice,
-      pointsAttribues,
-    });
 
     return NextResponse.json({
       success: true,
