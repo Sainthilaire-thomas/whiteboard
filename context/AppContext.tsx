@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useState,
+  useEffect,
   ReactNode,
   SetStateAction,
 } from "react";
@@ -15,8 +16,11 @@ import { useUI } from "@/hooks/AppContext/useUI";
 import { useAuth } from "@/hooks/AppContext/useAuth";
 import { useSelection } from "@/hooks/AppContext/useSelection";
 import { useEntreprises } from "@/hooks/AppContext/useEntreprises";
-import { useCallData } from "@/context/CallDataContext"; // 👈 si tu ne l'as pas encore
+// ❌ SUPPRIMÉ : import { useFilteredDomains } from "@/hooks/AppContext/useFilteredDomains";
+import { useCallData } from "@/context/CallDataContext";
 import { CallDataProvider } from "@/context/CallDataContext";
+import { supabaseClient } from "@/lib/supabaseClient"; // ✅ Import direct de Supabase
+import { useQuery } from "@tanstack/react-query"; // ✅ Import de useQuery
 
 // 📌 Définition du type pour AppContext
 import {
@@ -24,6 +28,7 @@ import {
   Nudge,
   UseNudgesResult,
   Postit as PostitType,
+  Domaine,
 } from "@/types/types";
 
 // 📌 Création du contexte
@@ -51,7 +56,79 @@ export const RawAppProvider = ({
 }: RawAppProviderProps) => {
   // 📦 Hooks custom
   const activités = useActivities();
+
+  // ✅ SOLUTION : Intégrer directement la logique de filtrage des domaines
+  const { data: filteredDomains = [] } = useQuery<Domaine[]>({
+    queryKey: ["filteredDomains", selectedEntreprise],
+    queryFn: async () => {
+      if (selectedEntreprise) {
+        const { data, error } = await supabaseClient
+          .from("entreprise_domaines")
+          .select(
+            `
+            iddomaine,
+            domaines:iddomaine (
+              iddomaine,
+              nomdomaine,
+              description
+            )
+          `
+          )
+          .eq("identreprise", selectedEntreprise);
+
+        if (error) {
+          console.error(
+            "Erreur lors de la récupération des domaines filtrés",
+            error
+          );
+          return [];
+        }
+
+        // Extraire les domaines de la jointure
+        return data.map((entry: any) => entry.domaines).filter(Boolean);
+      } else {
+        // Domaines par défaut si pas d'entreprise sélectionnée
+        const { data, error } = await supabaseClient
+          .from("domaines")
+          .select("*")
+          .in("nomdomaine", ["escda", "satisfaction"]);
+
+        if (error) {
+          console.error(
+            "Erreur lors de la récupération des domaines par défaut",
+            error
+          );
+          return [];
+        }
+
+        return data || [];
+      }
+    },
+    enabled: true, // Toujours activé
+  });
+
+  // ✅ Hook useDomains avec les domaines filtrés
   const domaines = useDomains();
+
+  // ✅ SYNCHRONISATION : S'assurer que selectedDomain est valide pour l'entreprise
+  useEffect(() => {
+    if (filteredDomains && filteredDomains.length > 0) {
+      const isCurrentDomainValid =
+        domaines.selectedDomain &&
+        filteredDomains.some(
+          (d: Domaine) => d.iddomaine.toString() === domaines.selectedDomain
+        );
+
+      if (!domaines.selectedDomain || !isCurrentDomainValid) {
+        const firstAvailableDomain = filteredDomains[0].iddomaine.toString();
+        console.log(
+          "🔍 AppContext - Auto-selecting domain for enterprise:",
+          firstAvailableDomain
+        );
+        domaines.selectDomain(firstAvailableDomain);
+      }
+    }
+  }, [filteredDomains, domaines.selectedDomain, domaines.selectDomain]);
 
   const nudges = useNudges();
   const ui = useUI();
@@ -59,21 +136,27 @@ export const RawAppProvider = ({
 
   const { entreprises, isLoading, error } = useEntreprises();
 
-  // 🟢 État pour stocker le post-it sélectionné
-  const [selectedPostit, setSelectedPostit] = useState<PostitType | null>(null);
-
-  const { idCallActivite, selectedCall } = useCallData(); // ✅ on passe par le contexte ici
+  const { idCallActivite, selectedCall } = useCallData();
   const selectedCallId = selectedCall?.callid ?? null;
-  const selection = useSelection(
-    selectedPostit,
-    selectedCallId,
-    idCallActivite
-  );
+  const selection = useSelection(null, selectedCallId, idCallActivite);
 
   // 🗂️ États globaux
   const [idActivite, setIdActivite] = useState<number | null>(null);
   const [idPratique, setIdPratique] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  // ✅ DEBUG pour voir la correspondance
+  useEffect(() => {
+    console.log("🔍 AppContext - Filtered domains:", {
+      selectedEntreprise,
+      filteredDomainsCount: filteredDomains?.length,
+      selectedDomain: domaines.selectedDomain,
+      filteredDomains: filteredDomains?.map((d: Domaine) => ({
+        id: d.iddomaine,
+        nom: d.nomdomaine,
+      })),
+    });
+  }, [selectedEntreprise, filteredDomains, domaines.selectedDomain]);
 
   return (
     <AppContext.Provider
@@ -96,6 +179,9 @@ export const RawAppProvider = ({
         isLoadingDomains: domaines.isLoadingDomains,
         isLoadingSujets: domaines.isLoadingSujets,
         isLoadingCategoriesSujets: domaines.isLoadingCategoriesSujets,
+
+        // ✅ Exposer filteredDomains dans le contexte
+        filteredDomains: filteredDomains || [],
 
         // Nudges
         nudges: nudges.nudges || [],
@@ -134,26 +220,8 @@ export const RawAppProvider = ({
         setSelectedEntreprise,
         refreshKey,
         setRefreshKey,
-        // Ajout de selectedPostit dans le contexte global
-        selectedPostit,
-        setSelectedPostit,
 
         // Sélections (via useSelection)
-        // selectedSujet: sélections.selectedSujet,
-        // handleSelectSujet: sélections.handleSelectSujet,
-        // sujetsForActivite: sélections.sujetsForActivite,
-        // fetchSujetsForActivite: sélections.fetchSujetsForActivite,
-        // subjectPracticeRelations: sélections.subjectPracticeRelations,
-        // toggleSujet: sélections.toggleSujet,
-        // selectedPratique: sélections.selectedPratique,
-        // handleSelectPratique: sélections.handleSelectPratique,
-        // highlightedPractices: sélections.highlightedPractices,
-        // calculateHighlightedPractices: sélections.calculateHighlightedPractices,
-        // resetSelectedState: sélections.resetSelectedState,
-        // avatarTexts: sélections.avatarTexts,
-        // updateAvatarText: sélections.updateAvatarText,
-        // selectedPostitIds: sélections.selectedPostitIds,
-        // setSelectedPostitIds: sélections.setSelectedPostitIds,
         ...selection,
 
         // Authentification

@@ -24,8 +24,10 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
   const [postitToSujetMap, setPostitToSujetMap] = useState<
     Record<number, number | null>
   >({});
+
+  // Map pratique avec les IDs maintenant
   const [postitToPratiqueMap, setPostitToPratiqueMap] = useState<
-    Record<number, string | null>
+    Record<number, number | null> // Changé de string | null vers number | null
   >({});
 
   const addPostit = useCallback(
@@ -47,13 +49,14 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         sujet: additionalData.sujet || "Non assigné",
         idsujet: additionalData.idsujet || null,
         pratique: additionalData.pratique || "Non assigné",
+        idpratique: additionalData.idpratique || null, // AJOUT
       };
 
       const { data, error } = await supabaseClient
         .from("postit")
         .insert([newPostit])
         .select(
-          "id, callid, wordid, word, timestamp, text, iddomaine, sujet,idsujet, pratique"
+          "id, callid, wordid, word, timestamp, text, iddomaine, sujet, idsujet, pratique, idpratique" // AJOUT idpratique
         )
         .single();
 
@@ -77,8 +80,11 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     [selectedCallId]
   );
 
+  // FONCTION UPDATEPOSTIT CORRIGÉE
   const updatePostit = useCallback(
     async (id: number, updatedFields: Record<string, any>) => {
+      console.log("💾 updatePostit appelé:", { id, updatedFields });
+
       if (
         !id ||
         typeof updatedFields !== "object" ||
@@ -90,54 +96,63 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         return;
       }
 
-      // ✅ Vérification si le post-it existe avant la mise à jour
-      const existingPostit = allPostits.find((p) => p.id === id);
-      if (!existingPostit) {
-        console.warn("⚠️ Post-it introuvable, annulation de la mise à jour.");
-        return;
-      }
+      try {
+        // Construire les données sécurisées
+        const safeUpdatedFields: Record<string, any> = {};
 
-      // ✅ Assurer que `idsujet` et `iddomaine` sont bien traités
-      const safeUpdatedFields: Record<string, any> = {};
-      if ("text" in updatedFields) safeUpdatedFields.text = updatedFields.text;
-      if ("sujet" in updatedFields)
-        safeUpdatedFields.sujet = updatedFields.sujet;
-      if ("idsujet" in updatedFields)
-        safeUpdatedFields.idsujet = updatedFields.idsujet ?? null;
-      if ("iddomaine" in updatedFields)
-        safeUpdatedFields.iddomaine = updatedFields.iddomaine ?? null;
-      if ("pratique" in updatedFields)
-        safeUpdatedFields.pratique = updatedFields.pratique;
+        if ("text" in updatedFields)
+          safeUpdatedFields.text = updatedFields.text;
+        if ("sujet" in updatedFields)
+          safeUpdatedFields.sujet = updatedFields.sujet;
+        if ("idsujet" in updatedFields)
+          safeUpdatedFields.idsujet = updatedFields.idsujet ?? null;
+        if ("iddomaine" in updatedFields)
+          safeUpdatedFields.iddomaine = updatedFields.iddomaine ?? null;
+        if ("pratique" in updatedFields)
+          safeUpdatedFields.pratique = updatedFields.pratique;
+        if ("idpratique" in updatedFields) {
+          safeUpdatedFields.idpratique = updatedFields.idpratique ?? null;
+          console.log("✅ idpratique inclus:", updatedFields.idpratique);
+        }
 
-      // ✅ Mise à jour locale
-      setAllPostits((prev) =>
-        prev.map((postit) =>
-          postit.id === id ? { ...postit, ...safeUpdatedFields } : postit
-        )
-      );
+        console.log("📤 Données pour Supabase:", safeUpdatedFields);
 
-      setAppelPostits((prev) =>
-        prev.map((postit) =>
-          postit.id === id ? { ...postit, ...safeUpdatedFields } : postit
-        )
-      );
+        // Mise à jour Supabase
+        const { data, error } = await supabaseClient
+          .from("postit")
+          .update(safeUpdatedFields)
+          .eq("id", id)
+          .select("*");
 
-      // ✅ Mise à jour Supabase
-      const { data, error } = await supabaseClient
-        .from("postit")
-        .update(safeUpdatedFields)
-        .eq("id", id)
-        .select("*");
+        if (error) {
+          console.error("❌ Erreur Supabase :", error);
+          return;
+        }
 
-      if (error) {
-        console.error("❌ Erreur Supabase :", error);
-        return;
+        console.log("✅ Supabase mis à jour:", data);
+
+        // Mise à jour des états locaux avec fonction pour éviter stale closure
+        setAllPostits((prevPostits) => {
+          return prevPostits.map((postit) =>
+            postit.id === id ? { ...postit, ...safeUpdatedFields } : postit
+          );
+        });
+
+        setAppelPostits((prevPostits) => {
+          return prevPostits.map((postit) =>
+            postit.id === id ? { ...postit, ...safeUpdatedFields } : postit
+          );
+        });
+
+        console.log("✅ États locaux mis à jour");
+      } catch (error) {
+        console.error("❌ Erreur dans updatePostit:", error);
       }
     },
-    [allPostits]
+    [] // Dépendances vides pour stabilité
   );
 
-  // 🔁 Mettre à jour le mapping pour un post-it donné
+  // 🔁 FONCTION POUR LES SUJETS (À GARDER - utilisée ailleurs)
   const updatePostitToSujetMap = useCallback(
     (postitId: number, sujetId: number | null) => {
       setPostitToSujetMap((prev) => ({
@@ -148,11 +163,14 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     []
   );
 
+  // 🔁 FONCTION POUR LES PRATIQUES (CORRIGÉE pour les IDs)
   const updatePostitToPratiqueMap = useCallback(
-    (postitId: number, nomPratique: string | null) => {
+    (postitId: number, pratiqueId: number | null) => {
+      // Changé de string vers number
+      console.log("🔄 updatePostitToPratiqueMap:", { postitId, pratiqueId });
       setPostitToPratiqueMap((prev) => ({
         ...prev,
-        [postitId]: nomPratique,
+        [postitId]: pratiqueId, // Stocke l'ID, pas le nom
       }));
     },
     []
@@ -184,6 +202,7 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     }
   }, [selectedCallId, getPostitsForCall]);
 
+  // Initialisation de la map des sujets (inchangé)
   useEffect(() => {
     if (!selectedCallId || appelPostits.length === 0) return;
 
@@ -195,17 +214,17 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     setPostitToSujetMap(initialMap);
   }, [appelPostits, selectedCallId]);
 
+  // EFFET CORRIGÉ : Initialiser la map pratique avec les IDs
   useEffect(() => {
     if (!selectedCallId || appelPostits.length === 0) return;
 
-    const initialPratiqueMap: Record<number, string | null> = {};
+    const initialPratiqueMap: Record<number, number | null> = {}; // Changé vers number | null
     appelPostits.forEach((postit) => {
-      initialPratiqueMap[postit.id] =
-        postit.pratique && postit.pratique !== "Non Assigné"
-          ? postit.pratique
-          : null;
+      // Stocker l'ID pratique, pas le nom
+      initialPratiqueMap[postit.id] = postit.idpratique ?? null;
     });
 
+    console.log("🔄 Initialisation pratiqueMap:", initialPratiqueMap);
     setPostitToPratiqueMap(initialPratiqueMap);
   }, [appelPostits, selectedCallId]);
 
@@ -218,8 +237,8 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     updatePostit,
     deletePostit,
     postitToSujetMap,
-    updatePostitToSujetMap,
+    updatePostitToSujetMap, // ← FONCTION POUR LES SUJETS (GARDÉE)
     postitToPratiqueMap,
-    updatePostitToPratiqueMap,
+    updatePostitToPratiqueMap, // ← FONCTION POUR LES PRATIQUES (CORRIGÉE)
   };
 }

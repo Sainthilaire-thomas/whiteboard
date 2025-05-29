@@ -63,7 +63,7 @@ const TranscriptAlternative = ({
     setAudioSrc,
     currentWordIndex,
     updateCurrentWordIndex,
-    executeWithLock,
+    executeWithLock, // ✅ CORRECTION: Ajouter executeWithLock
   } = useAudio();
 
   const highlightSpeakers = externalHighlightSpeakers;
@@ -129,6 +129,7 @@ const TranscriptAlternative = ({
       .padStart(2, "0")}`;
   };
 
+  // ✅ CORRECTION: Utiliser executeWithLock comme dans Transcript
   const handleParagraphClick = (paragraph: SpeakerParagraph, index: number) => {
     executeWithLock(async () => {
       console.log("État isPlaying avant clic:", isPlaying);
@@ -205,6 +206,25 @@ const TranscriptAlternative = ({
     time: postit.timestamp,
     label: postit.sujet || "Sans sujet",
   }));
+
+  // ✅ CORRECTION: Ajouter handleMarkerClick avec executeWithLock
+  const handleMarkerClick = (id: number) => {
+    executeWithLock(async () => {
+      // Trouver le post-it correspondant à cet ID
+      const postit = appelPostits.find((p) => p.id === id);
+      if (postit) {
+        // Chercher le timestamp et naviguer
+        seekTo(postit.timestamp);
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        // Simuler l'événement pour le popover
+        const event = {
+          currentTarget: document.getElementById(`marker-${id}`) || null,
+        };
+        handlePostitClick(event as React.MouseEvent<HTMLElement>, postit);
+      }
+    });
+  };
 
   // Fonction de rendu simplifiée
   const renderParagraphs = () => {
@@ -359,21 +379,7 @@ const TranscriptAlternative = ({
         {audioSrc ? (
           <AudioPlayer
             markers={postitMarkers}
-            onMarkerClick={(id) => {
-              // Trouver le post-it correspondant à cet ID
-              const postit = appelPostits.find((p) => p.id === id);
-              if (postit) {
-                // Utiliser votre logique existante pour ouvrir le popover
-                const event = {
-                  currentTarget:
-                    document.getElementById(`marker-${id}`) || null,
-                };
-                handlePostitClick(
-                  event as React.MouseEvent<HTMLElement>,
-                  postit
-                );
-              }
-            }}
+            onMarkerClick={handleMarkerClick} // ✅ CORRECTION: Utiliser la nouvelle fonction
           />
         ) : (
           <Typography variant="body2" color="textSecondary">

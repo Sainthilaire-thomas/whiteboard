@@ -1,8 +1,8 @@
-// 📁 app/evaluation/components/UnifiedHeader/ContextualHeader.tsx
 "use client";
 
 import React from "react";
-import { Box, Divider } from "@mui/material";
+import { Box, Divider, IconButton, Tooltip } from "@mui/material";
+import { Assessment } from "@mui/icons-material";
 import TitleSection from "./shared/TitleSection";
 import DomainSelector from "./shared/DomainSelector";
 import ContextualActions from "./shared/ContextualActions";
@@ -18,6 +18,18 @@ interface ContextualHeaderProps {
   onSave: () => void;
   onSetContextFullWidth: () => void;
   onClosePanel: () => void;
+
+  // Nouvelles props pour FourZones
+  fontSize?: number;
+  increaseFontSize?: () => void;
+  decreaseFontSize?: () => void;
+  speechToTextVisible?: boolean;
+  toggleSpeechToText?: () => void;
+  isLoadingRolePlay?: boolean;
+  selectedPostitForRolePlay?: any;
+
+  // ✅ NOUVELLE PROP pour déclencher la synthèse
+  onNavigateToSynthese?: () => void;
 }
 
 export default function ContextualHeader({
@@ -30,6 +42,14 @@ export default function ContextualHeader({
   onSave,
   onSetContextFullWidth,
   onClosePanel,
+  fontSize,
+  increaseFontSize,
+  decreaseFontSize,
+  speechToTextVisible,
+  toggleSpeechToText,
+  isLoadingRolePlay,
+  selectedPostitForRolePlay,
+  onNavigateToSynthese,
 }: ContextualHeaderProps) {
   const getViewConfig = (view: string | null) => {
     switch (view) {
@@ -40,7 +60,12 @@ export default function ContextualHeader({
       case "postit":
         return { title: "Détail Post-it", color: "warning.main" };
       case "roleplay":
-        return { title: "Simulation de coaching", color: "success.main" };
+        return {
+          title: selectedPostitForRolePlay
+            ? `Jeu de rôle: ${selectedPostitForRolePlay.pratique || "Passage"}`
+            : "Simulation de coaching",
+          color: "success.main",
+        };
       default:
         return { title: "Panneau", color: "grey.main" };
     }
@@ -51,24 +76,20 @@ export default function ContextualHeader({
   return (
     <Box
       sx={{
-        width:
-          displayMode === "context-fullwidth"
-            ? "100%"
-            : contextPanels[view!]?.width ?? "50%",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         px: 3,
         py: 1.5,
         bgcolor: "background.default",
-        transition: "all 0.2s ease",
+        minWidth: 0,
       }}
     >
       {/* Titre et contexte */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
         <TitleSection title={viewConfig.title} accentColor={viewConfig.color} />
 
-        {/* Sélecteur de domaine pour la synthèse */}
+        {/* Sélecteur de domaine pour la synthèse et postit */}
         {(view === "synthese" || view === "postit") &&
           filteredDomains.length > 0 && (
             <DomainSelector
@@ -81,7 +102,43 @@ export default function ContextualHeader({
 
       {/* Actions */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <ContextualActions view={view} onSave={onSave} />
+        {/* ✅ NOUVEAU : Bouton Synthèse (affiché seulement si pas déjà sur la synthèse) */}
+        {view !== "synthese" && onNavigateToSynthese && (
+          <>
+            <Tooltip title="Voir la synthèse d'évaluation">
+              <IconButton
+                onClick={onNavigateToSynthese}
+                size="small"
+                sx={{
+                  color: "secondary.main",
+                  "&:hover": {
+                    bgcolor: "secondary.light",
+                    color: "white",
+                  },
+                }}
+              >
+                <Assessment />
+              </IconButton>
+            </Tooltip>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 1, height: 24 }}
+            />
+          </>
+        )}
+
+        <ContextualActions
+          view={view}
+          onSave={onSave}
+          fontSize={fontSize}
+          increaseFontSize={increaseFontSize}
+          decreaseFontSize={decreaseFontSize}
+          speechToTextVisible={speechToTextVisible}
+          toggleSpeechToText={toggleSpeechToText}
+          isLoadingRolePlay={isLoadingRolePlay}
+          selectedPostitForRolePlay={selectedPostitForRolePlay}
+        />
 
         <Divider orientation="vertical" flexItem sx={{ mx: 1, height: 24 }} />
 

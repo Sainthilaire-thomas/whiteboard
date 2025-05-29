@@ -1,14 +1,14 @@
-// 📜 app/evaluation/admin/page.tsx
+// app/evaluation/admin/page.tsx
 "use client";
 
 import React from "react";
 import { Box } from "@mui/material";
-import AdminPonderationPage from "./AdminPonderationPage";
+import AdminMainPage from "./components/AdminMainPage";
 
 export default function AdminPage() {
   return (
     <Box sx={{ height: "100vh", overflow: "auto" }}>
-      <AdminPonderationPage />
+      <AdminMainPage />
     </Box>
   );
 }

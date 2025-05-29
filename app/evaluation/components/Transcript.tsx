@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, memo } from "react";
+
 import { useCallData } from "@/context/CallDataContext";
 import { Box, Paper, Typography, Popover } from "@mui/material";
 
@@ -375,4 +376,12 @@ const Transcript = ({
   );
 };
 
-export default Transcript;
+export default memo(Transcript, (prevProps, nextProps) => {
+  // Ne re-rendre QUE si ces props changent vraiment
+  return (
+    prevProps.callId === nextProps.callId &&
+    prevProps.hideHeader === nextProps.hideHeader &&
+    prevProps.highlightTurnOne === nextProps.highlightTurnOne &&
+    prevProps.transcriptSelectionMode === nextProps.transcriptSelectionMode
+  );
+});

@@ -63,7 +63,7 @@ export const CallDataProvider = ({
     isLoadingCalls,
   } = useCalls();
 
-  // 💡 C’est ici qu’on va lancer fetchCalls quand selectedEntreprise change
+  // 💡 C'est ici qu'on va lancer fetchCalls quand selectedEntreprise change
   useEffect(() => {
     if (selectedEntreprise !== null) {
       console.log("📞 Triggering fetchCalls from CallDataProvider");
@@ -72,7 +72,6 @@ export const CallDataProvider = ({
   }, [selectedEntreprise, fetchCalls]);
 
   // ✅ Activité liée à un appel
-
   const {
     idCallActivite,
     fetchActivitiesForCall,
@@ -82,7 +81,7 @@ export const CallDataProvider = ({
     getActivityIdFromCallId,
   } = useCallActivity({ selectedCall, fetchCalls, selectedEntreprise });
 
-  // 🗒️ Post-its liés à l’appel sélectionné
+  // 🗒️ Post-its liés à l'appel sélectionné
   const {
     allPostits,
     appelPostits,
@@ -95,6 +94,30 @@ export const CallDataProvider = ({
     postitToPratiqueMap,
     updatePostitToPratiqueMap,
   } = usePostits(selectedCall?.callid ?? null);
+
+  // 🟡 NOUVEAU : État pour le postit sélectionné (logiquement lié à l'appel)
+  const [selectedPostit, setSelectedPostit] = useState<Postit | null>(null);
+
+  // 🔄 NOUVEAU : Réinitialiser selectedPostit quand on change d'appel
+  useEffect(() => {
+    if (selectedCall?.callid !== selectedPostit?.callid) {
+      console.log("🔄 Changement d'appel - reset selectedPostit");
+      setSelectedPostit(null);
+    }
+  }, [selectedCall?.callid, selectedPostit?.callid]);
+
+  // 🔄 NOUVEAU : Debug pour vérifier la synchronisation
+  useEffect(() => {
+    if (selectedPostit) {
+      console.log("🎯 CallDataContext - selectedPostit changé:", {
+        id: selectedPostit.id,
+        pratique: selectedPostit.pratique,
+        idpratique: selectedPostit.idpratique,
+        callid: selectedPostit.callid,
+        selectedCallId: selectedCall?.callid,
+      });
+    }
+  }, [selectedPostit, selectedCall?.callid]);
 
   // 🖋️ Transcription
   const { transcription, fetchTranscription } = useTranscriptions();
@@ -163,6 +186,10 @@ export const CallDataProvider = ({
         postitToPratiqueMap,
         updatePostitToPratiqueMap,
 
+        // 🟡 NOUVEAU : Postit sélectionné
+        selectedPostit,
+        setSelectedPostit,
+
         // 📚 Transcription
         transcription,
         fetchTranscription,
@@ -180,7 +207,7 @@ export const CallDataProvider = ({
         currentWord,
         updateCurrentWord,
 
-        // 🔄 Activité liée à l’appel
+        // 🔄 Activité liée à l'appel
         idCallActivite,
         fetchActivitiesForCall,
         createActivityForCall,

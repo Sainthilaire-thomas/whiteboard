@@ -26,6 +26,9 @@ export interface AudioContextType {
   playAudioAtTimestamp: (timestamp: number) => void;
   updateCurrentWordIndex: (words: Word[], time: number) => void;
 
+  // 🔄 AJOUT : executeWithLock manquait dans le type
+  executeWithLock: (operation: () => Promise<void> | void) => Promise<void>;
+
   // Référence à l'élément audio
   audioRef: React.RefObject<HTMLAudioElement>;
 }

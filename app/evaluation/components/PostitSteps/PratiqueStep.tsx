@@ -1,19 +1,19 @@
 // PostitSteps/PratiqueStep.tsx
 import React from "react";
-import { Box, Typography, Button, Fade } from "@mui/material";
+import { Box, Typography, Fade } from "@mui/material";
 import { Postit } from "@/types/types";
+import { hasValidPractice } from "@/hooks/Postit/utils";
 import GridContainerPratiquesEval from "../GridContainerPratiquesEval";
-
 interface PratiqueStepProps {
   selectedPostit: Postit;
   categoriesPratiques: any[];
   pratiques: any[];
   columnConfigPratiques: any;
-  pratiquesDeLActivite: string[];
+  pratiquesDeLActivite: number[]; // MODIFIÉ : maintenant des IDs
   handlePratiqueClick: (practice: any) => void;
   stepBoxStyle: any;
-  // onBack: () => void;
-  // onSave: () => void;
+  onBack?: () => void; // Optionnel
+  onSave?: () => void; // Optionnel
 }
 
 export const PratiqueStep: React.FC<PratiqueStepProps> = ({
@@ -27,6 +27,9 @@ export const PratiqueStep: React.FC<PratiqueStepProps> = ({
   onBack,
   onSave,
 }) => {
+  // Helper pour vérifier si une pratique est sélectionnée
+  const isPratiqueValid = hasValidPractice(selectedPostit);
+
   return (
     <Box sx={stepBoxStyle}>
       <Typography
@@ -48,16 +51,43 @@ export const PratiqueStep: React.FC<PratiqueStepProps> = ({
         pratiquesDeLActivite={pratiquesDeLActivite}
       />
 
-      {selectedPostit.pratique && selectedPostit.pratique !== "Non Assigné" && (
+      {/* Affichage conditionnel basé sur idpratique */}
+      {isPratiqueValid && (
         <Fade in timeout={500}>
-          <Typography
-            variant="body2"
-            color="success.main"
-            sx={{ mt: 2, fontWeight: 500 }}
-          >
-            ✅ Pratique sélectionnée: <strong>{selectedPostit.pratique}</strong>
-          </Typography>
+          <Box sx={{ mt: 2 }}>
+            <Typography
+              variant="body2"
+              color="success.main"
+              sx={{ fontWeight: 500 }}
+            >
+              ✅ Pratique sélectionnée:{" "}
+              <strong>{selectedPostit.pratique}</strong>
+            </Typography>
+
+            {/* Affichage debug (à supprimer en production) */}
+            {process.env.NODE_ENV === "development" && (
+              <Typography
+                variant="caption"
+                display="block"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                ID: {selectedPostit.idpratique}
+              </Typography>
+            )}
+          </Box>
         </Fade>
+      )}
+
+      {/* Message d'encouragement si pas encore sélectionné */}
+      {!isPratiqueValid && (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 2, fontStyle: "italic" }}
+        >
+          💡 Sélectionnez une pratique pour continuer
+        </Typography>
       )}
     </Box>
   );

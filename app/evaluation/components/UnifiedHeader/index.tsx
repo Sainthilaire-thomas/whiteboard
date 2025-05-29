@@ -1,8 +1,7 @@
-// 📁 app/evaluation/components/UnifiedHeader/index.tsx
 "use client";
 
 import React from "react";
-import { Box } from "@mui/material";
+import { Box, Divider } from "@mui/material";
 import TranscriptionHeader from "./TranscriptionHeader";
 import ContextualHeader from "./ContextualHeader";
 
@@ -20,10 +19,17 @@ interface UnifiedHeaderProps {
   highlightTurnOne?: boolean;
   highlightSpeakers?: boolean;
 
+  // ✅ NOUVELLE PROP pour les statistiques d'évaluation
+  evaluationStats?: {
+    totalPostits: number;
+    uniqueSujets: number;
+    uniquePratiques: number;
+  } | null;
+
   // Actions transcription
   onToggleViewMode: () => void;
-  onToggleHighlightTurnOne?: () => void; // NOUVELLE ACTION
-  onToggleHighlightSpeakers?: () => void; // NOUVELLE ACTION
+  onToggleHighlightTurnOne?: () => void;
+  onToggleHighlightSpeakers?: () => void;
   onRefreshTranscription: () => void;
   onAddPostit: () => void;
   onSetTranscriptFullWidth: () => void;
@@ -40,12 +46,23 @@ interface UnifiedHeaderProps {
   onSave: () => void;
   onSetContextFullWidth: () => void;
   onClosePanel: () => void;
+  onNavigateToSynthese?: () => void; // ✅ NOUVELLE ACTION
+
+  // Nouvelles props pour FourZones
+  fontSize?: number;
+  increaseFontSize?: () => void;
+  decreaseFontSize?: () => void;
+  speechToTextVisible?: boolean;
+  toggleSpeechToText?: () => void;
+  isLoadingRolePlay?: boolean;
+  selectedPostitForRolePlay?: any;
 }
 
 export default function UnifiedHeader({
   shouldShowTranscript,
   displayMode,
   selectedCall,
+  evaluationStats, // ✅ Nouvelle prop
   viewMode,
   currentWord,
   hasRightPanel,
@@ -67,7 +84,24 @@ export default function UnifiedHeader({
   onSave,
   onSetContextFullWidth,
   onClosePanel,
+  onNavigateToSynthese, // ✅ NOUVELLE PROP
+  fontSize,
+  increaseFontSize,
+  decreaseFontSize,
+  speechToTextVisible,
+  toggleSpeechToText,
+  isLoadingRolePlay,
+  selectedPostitForRolePlay,
 }: UnifiedHeaderProps) {
+  // ✅ Debug logs
+  console.log("🔍 UnifiedHeader - Passing to ContextualHeader:", {
+    view,
+    selectedCall: selectedCall
+      ? { callid: selectedCall.callid, description: selectedCall.description }
+      : null,
+    evaluationStats,
+  });
+
   return (
     <Box
       sx={{
@@ -77,13 +111,15 @@ export default function UnifiedHeader({
         bgcolor: "background.paper",
         minHeight: 64,
         boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-        position: "sticky", // AJOUT
-        top: 0, // AJOUT
-        zIndex: 100, // AJOUT
       }}
     >
       {/* VOLET TRANSCRIPTION */}
-      {shouldShowTranscript && (
+      <Box
+        sx={{
+          flex: 1,
+          display: shouldShowTranscript ? "flex" : "none",
+        }}
+      >
         <TranscriptionHeader
           displayMode={displayMode}
           shouldShowContext={shouldShowContext}
@@ -91,10 +127,8 @@ export default function UnifiedHeader({
           viewMode={viewMode}
           currentWord={currentWord}
           hasRightPanel={hasRightPanel}
-          // NOUVELLES PROPS de coloration
           highlightTurnOne={highlightTurnOne}
           highlightSpeakers={highlightSpeakers}
-          // Actions
           onToggleViewMode={onToggleViewMode}
           onToggleHighlightTurnOne={onToggleHighlightTurnOne}
           onToggleHighlightSpeakers={onToggleHighlightSpeakers}
@@ -103,21 +137,50 @@ export default function UnifiedHeader({
           onSetTranscriptFullWidth={onSetTranscriptFullWidth}
           onToggleRightPanel={onToggleRightPanel}
         />
+      </Box>
+
+      {/* SÉPARATEUR VERTICAL - aligné avec le contenu */}
+      {shouldShowTranscript && shouldShowContext && (
+        <Divider
+          orientation="vertical"
+          sx={{
+            borderColor: "divider",
+            alignSelf: "stretch",
+          }}
+        />
       )}
 
       {/* VOLET CONTEXTUEL */}
       {shouldShowContext && (
-        <ContextualHeader
-          displayMode={displayMode}
-          view={view}
-          filteredDomains={filteredDomains}
-          selectedDomain={selectedDomain}
-          contextPanels={contextPanels}
-          onDomainChange={onDomainChange}
-          onSave={onSave}
-          onSetContextFullWidth={onSetContextFullWidth}
-          onClosePanel={onClosePanel}
-        />
+        <Box
+          sx={{
+            // FIX: Utiliser la même logique de flex que le contenu
+            flex: displayMode === "context-fullwidth" ? 1 : "0 0 55%",
+          }}
+        >
+          <ContextualHeader
+            displayMode={displayMode}
+            view={view}
+            filteredDomains={filteredDomains}
+            selectedDomain={selectedDomain}
+            contextPanels={contextPanels}
+            onDomainChange={onDomainChange}
+            onSave={onSave}
+            onSetContextFullWidth={onSetContextFullWidth}
+            onClosePanel={onClosePanel}
+            fontSize={fontSize}
+            increaseFontSize={increaseFontSize}
+            decreaseFontSize={decreaseFontSize}
+            speechToTextVisible={speechToTextVisible}
+            toggleSpeechToText={toggleSpeechToText}
+            isLoadingRolePlay={isLoadingRolePlay}
+            selectedPostitForRolePlay={selectedPostitForRolePlay}
+            // ✅ NOUVELLES PROPS pour la synthèse
+            selectedCall={selectedCall}
+            evaluationStats={evaluationStats}
+            onNavigateToSynthese={onNavigateToSynthese}
+          />
+        </Box>
       )}
     </Box>
   );

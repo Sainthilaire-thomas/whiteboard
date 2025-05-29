@@ -19,6 +19,7 @@ import { SyntheseTabProps } from "@/types/evaluation";
 import { formatMotif } from "./utils/formatters";
 import { useAppContext } from "@/context/AppContext";
 import { useSupabase } from "@/context/SupabaseContext";
+import { useCallData } from "@/context/CallDataContext"; // ← AJOUT
 
 // Types pour le calcul de score
 interface PonderationSujet {
@@ -62,7 +63,12 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
     pratiques,
     categoriesPratiques,
     selectedDomain,
+    selectDomain,
   } = useAppContext();
+
+  // ✅ AJOUT : Récupérer appelPostits pour détecter les changements
+  const { appelPostits } = useCallData();
+
   const { supabase } = useSupabase();
 
   // États pour les sujets et pratiques avec leurs catégories
@@ -76,6 +82,12 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
   const [scoreData, setScoreData] = useState<ScoreCalculation | null>(null);
   const [loadingScore, setLoadingScore] = useState(false);
 
+  // ✅ AJOUT : État pour gérer la détection automatique
+  const [autoDetectedDomain, setAutoDetectedDomain] = useState<number | null>(
+    null
+  );
+  const [shouldAutoSelect, setShouldAutoSelect] = useState<boolean>(false);
+
   const motifs = [
     "STAGIAIRE__ABSENCE",
     "INFORMATION_COLLECTIVE",
@@ -85,82 +97,160 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
     "FORMATION__EXISTE",
   ];
 
-  // Charger les pondérations pour le domaine sélectionné
+  // ✅ NOUVEAU : Effect pour détecter intelligemment le domaine au chargement
   useEffect(() => {
-    console.log("🔄 ÉTAPE 1 - useEffect loadPonderations");
-    console.log("selectedDomain:", selectedDomain);
-    console.log("sujetsData:", sujetsData);
-    console.log("sujetsData.length:", sujetsData?.length);
+    console.log("🔄 Détection intelligente du domaine depuis les post-its");
 
-    if (selectedDomain && sujetsData && sujetsData.length > 0) {
-      console.log("✅ Conditions remplies - Appel loadPonderations()");
-      loadPonderations();
+    if (appelPostits && appelPostits.length > 0) {
+      // Récupérer tous les domaines présents dans les post-its
+      const domainesInPostits = appelPostits
+        .filter((postit) => postit.iddomaine != null)
+        .map((postit) => postit.iddomaine);
+
+      const uniqueDomaines = [...new Set(domainesInPostits)];
+
+      console.log("🔍 Domaines détectés dans les post-its:", uniqueDomaines);
+      console.log("🔍 Nombre de domaines différents:", uniqueDomaines.length);
+
+      if (uniqueDomaines.length === 1) {
+        // ✅ CAS 1 : Un seul domaine → sélection automatique
+        const singleDomain = uniqueDomaines[0];
+        console.log(
+          "✅ UN SEUL DOMAINE détecté:",
+          singleDomain,
+          "→ Sélection automatique"
+        );
+
+        setAutoDetectedDomain(singleDomain);
+        setShouldAutoSelect(true);
+
+        // Mettre à jour le domaine sélectionné dans le contexte
+        if (selectedDomain !== singleDomain) {
+          console.log(
+            "🔄 Mise à jour automatique du domaine sélectionné:",
+            singleDomain
+          );
+          selectDomain(singleDomain.toString());
+        }
+      } else if (uniqueDomaines.length > 1) {
+        // ✅ CAS 2 : Plusieurs domaines → laisser l'utilisateur choisir
+        console.log(
+          "⚠️ PLUSIEURS DOMAINES détectés:",
+          uniqueDomaines,
+          "→ Choix utilisateur requis"
+        );
+
+        setAutoDetectedDomain(null);
+        setShouldAutoSelect(false);
+
+        // Optionnel : afficher une alerte pour informer l'utilisateur
+      } else {
+        // ✅ CAS 3 : Aucun domaine dans les post-its
+        console.log("❌ Aucun domaine détecté dans les post-its");
+        setAutoDetectedDomain(null);
+        setShouldAutoSelect(false);
+      }
     } else {
-      console.log("❌ Conditions non remplies pour loadPonderations");
+      console.log("❌ Aucun post-it disponible");
+      setAutoDetectedDomain(null);
+      setShouldAutoSelect(false);
     }
-  }, [selectedDomain, sujetsData]);
+  }, [appelPostits]); // Se déclenche au chargement et quand les post-its changent
 
-  // Calculer le score quand les pondérations sont chargées OU quand les sujets sont disponibles
+  // ✅ AJOUT : Effect pour détecter les changements dans les post-its
   useEffect(() => {
-    console.log("🔄 ÉTAPE 2 - useEffect calculateScore");
-    console.log("sujetsWithCategories.length:", sujetsWithCategories.length);
+    console.log(
+      "🔄 Changement détecté dans appelPostits:",
+      appelPostits?.length
+    );
+
+    // Forcer la recalculation du score quand les post-its changent
+    if (sujetsData && selectedDomain && ponderations.length > 0) {
+      console.log("🔄 Recalcul forcé du score après changement des post-its");
+      calculateScore();
+    }
+  }, [appelPostits]); // ← Dépendance sur appelPostits
+
+  // ✅ MODIFICATION : Effects avec les bonnes dépendances
+  useEffect(() => {
+    console.log("🔄 useEffect loadPonderations");
+    console.log("selectedDomain:", selectedDomain);
+    console.log("appelPostits.length:", appelPostits?.length);
+
+    if (selectedDomain && appelPostits && appelPostits.length > 0) {
+      loadPonderations();
+    }
+  }, [selectedDomain, appelPostits]);
+
+  useEffect(() => {
+    console.log("🔄 useEffect calculateScore");
     console.log("selectedDomain:", selectedDomain);
     console.log("ponderations.length:", ponderations.length);
 
-    if (sujetsWithCategories.length > 0 && selectedDomain) {
-      console.log("✅ Conditions remplies - Appel calculateScore()");
+    if (selectedDomain && ponderations.length >= 0 && sujetsData) {
       calculateScore();
-    } else {
-      console.log("❌ Conditions non remplies pour calculateScore");
-      if (sujetsWithCategories.length === 0)
-        console.log("  → sujetsWithCategories est vide");
-      if (!selectedDomain) console.log("  → selectedDomain manquant");
     }
-  }, [ponderations, sujetsWithCategories, selectedDomain]);
+  }, [ponderations, selectedDomain, appelPostits, sujetsData]);
 
   // Fonction pour charger les pondérations
+  // ✅ MODIFICATION : Charger les pondérations pour le domaine sélectionné (pas auto-détecté)
   const loadPonderations = async () => {
     console.log("🔄 FONCTION loadPonderations démarrée");
+    console.log("selectedDomain utilisé:", selectedDomain);
 
-    if (!selectedDomain || !sujetsData) {
+    if (!selectedDomain || !appelPostits) {
       console.log("❌ loadPonderations - Données manquantes");
-      console.log("selectedDomain:", selectedDomain);
-      console.log("sujetsData:", sujetsData);
+      console.log("  selectedDomain:", selectedDomain);
+      console.log("  appelPostits:", appelPostits?.length);
       return;
     }
 
-    console.log("🔍 Debug pondérations:");
-    console.log("selectedDomain:", selectedDomain, typeof selectedDomain);
-    console.log("sujetsData:", sujetsData);
-
     try {
       setLoadingScore(true);
-      console.log("⏳ loadingScore = true");
 
-      // Récupérer les IDs des sujets du domaine sélectionné
-      const sujetIds = sujetsData
-        .filter((s: any) => {
-          const match = s.iddomaine === parseInt(selectedDomain as string);
-          console.log(
-            `  📋 Sujet ${s.nomsujet} (iddomaine: ${s.iddomaine}) - Match: ${match}`
-          );
-          return match;
-        })
-        .map((s: any) => s.idsujet);
+      // ✅ IMPORTANT : Filtrer les post-its selon le domaine SÉLECTIONNÉ
+      const postitsInSelectedDomain = appelPostits.filter(
+        (postit) => postit.iddomaine === parseInt(selectedDomain.toString())
+      );
 
-      console.log("📊 Sujets filtrés pour ce domaine:", sujetIds);
+      console.log(
+        "📊 Post-its dans le domaine sélectionné:",
+        postitsInSelectedDomain.length
+      );
 
-      if (sujetIds.length === 0) {
-        console.log("❌ Aucun sujet trouvé pour ce domaine");
+      if (postitsInSelectedDomain.length === 0) {
+        console.log("❌ Aucun post-it dans le domaine sélectionné");
         setPonderations([]);
         return;
       }
 
-      console.log("🗄️ Requête Supabase pour pondérations...");
+      // Récupérer les IDs des sujets des post-its du domaine sélectionné
+      const sujetIdsFromPostits = [
+        ...new Set(
+          postitsInSelectedDomain
+            .filter((postit) => postit.idsujet != null)
+            .map((postit) => postit.idsujet)
+        ),
+      ];
+
+      console.log(
+        "📊 IDs des sujets depuis les post-its du domaine",
+        selectedDomain,
+        ":",
+        sujetIdsFromPostits
+      );
+
+      if (sujetIdsFromPostits.length === 0) {
+        console.log("❌ Aucun sujet avec ID dans le domaine sélectionné");
+        setPonderations([]);
+        return;
+      }
+
+      // Récupérer les pondérations
       const { data, error } = await supabase
         .from("ponderation_sujets")
         .select("*")
-        .in("idsujet", sujetIds);
+        .in("idsujet", sujetIdsFromPostits);
 
       if (error) {
         console.log("❌ Erreur Supabase:", error);
@@ -168,34 +258,28 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
       }
 
       console.log("✅ Pondérations trouvées:", data);
-      console.log("📊 Nombre de pondérations:", data?.length || 0);
       setPonderations(data || []);
     } catch (err) {
       console.error("💥 Erreur lors du chargement des pondérations:", err);
       setPonderations([]);
     } finally {
       setLoadingScore(false);
-      console.log("✅ loadingScore = false");
     }
   };
 
-  // Fonction pour calculer le score
+  // ✅ MODIFICATION : Calculer le score pour le domaine sélectionné
   const calculateScore = () => {
     console.log("🔄 FONCTION calculateScore démarrée");
-    console.log("🔢 Debug calcul score:");
-    console.log("sujetsWithCategories:", sujetsWithCategories);
-    console.log("ponderations:", ponderations);
-    console.log("sujetsData (tous les sujets du domaine):", sujetsData);
+    console.log("Domaine sélectionné pour le calcul:", selectedDomain);
 
-    if (!sujetsData || !sujetsData.length) {
-      console.log("❌ Calcul impossible - sujetsData vide");
+    if (!selectedDomain || !sujetsData || !appelPostits) {
+      console.log("❌ Calcul impossible - données manquantes");
       setScoreData(null);
       return;
     }
 
-    console.log(
-      "✅ Démarrage du calcul de score pour TOUS les sujets du domaine"
-    );
+    const selectedDomainId = parseInt(selectedDomain.toString());
+    console.log("✅ Calcul du score pour le domaine:", selectedDomainId);
 
     let totalPoints = 0;
     let maxPoints = 0;
@@ -209,60 +293,63 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
       };
     } = {};
 
-    // Filtrer les sujets du domaine sélectionné
-    const sujetsInDomain = sujetsData.filter(
-      (s: any) => s.iddomaine === parseInt(selectedDomain as string)
+    // ✅ IMPORTANT : Tous les sujets du domaine SÉLECTIONNÉ
+    const sujetsInSelectedDomain = sujetsData.filter(
+      (s: any) => s.iddomaine === selectedDomainId
     );
 
     console.log(
-      `📊 Traitement de ${sujetsInDomain.length} sujets du domaine ${selectedDomain}`
+      `📊 TOUS les sujets du domaine ${selectedDomainId}:`,
+      sujetsInSelectedDomain.length
     );
 
-    // Pour CHAQUE sujet du domaine (pas seulement ceux évalués)
-    sujetsInDomain.forEach((sujet: any) => {
-      console.log("🔍 Traitement sujet:", sujet.nomsujet);
+    // ✅ IMPORTANT : Sujets évalués dans les post-its du domaine SÉLECTIONNÉ
+    const sujetsEvaluesIds = new Set(
+      appelPostits
+        .filter(
+          (postit) =>
+            postit.idsujet != null && postit.iddomaine === selectedDomainId
+        )
+        .map((postit) => postit.idsujet)
+    );
 
-      // Vérifier si ce sujet est présent dans les évaluations (post-its)
-      const sujetEvalue = sujetsWithCategories.find(
-        (s: any) => s.name === sujet.nomsujet
+    console.log(
+      "📊 Sujets évalués (NON CONFORMES) dans le domaine:",
+      Array.from(sujetsEvaluesIds)
+    );
+
+    // Calculer le score pour chaque sujet du domaine sélectionné
+    sujetsInSelectedDomain.forEach((sujet: any) => {
+      console.log(
+        "🔍 Traitement sujet:",
+        sujet.nomsujet,
+        "(ID:",
+        sujet.idsujet,
+        ")"
       );
+
+      const ponderation = ponderations.find((p) => p.idsujet === sujet.idsujet);
+      const pointsMax = ponderation ? ponderation.conforme : 3;
 
       let pointsObtenus: number;
-      let pointsMax: number;
-
-      // Obtenir la pondération pour ce sujet
-      const ponderation = ponderations.find(
-        (p: any) => p.idsujet === sujet.idsujet
-      );
-
-      if (ponderation) {
-        pointsMax = ponderation.conforme;
-        console.log(
-          `📊 Pondération trouvée pour ${sujet.nomsujet}: max=${pointsMax}`
-        );
-      } else {
-        pointsMax = 3; // Valeur par défaut
-        console.log(
-          `📊 Valeur par défaut pour ${sujet.nomsujet}: max=${pointsMax}`
-        );
-      }
-
-      if (sujetEvalue) {
-        // Sujet présent dans les évaluations = NON CONFORME
+      if (sujetsEvaluesIds.has(sujet.idsujet)) {
+        // Sujet évalué dans les post-its = NON CONFORME
         pointsObtenus = ponderation ? ponderation.non_conforme : 0;
         console.log(
-          `❌ ${sujet.nomsujet}: NON CONFORME (${pointsObtenus} points)`
+          `❌ ${sujet.nomsujet}: NON CONFORME (${pointsObtenus}/${pointsMax})`
         );
       } else {
-        // Sujet absent des évaluations = CONFORME
+        // Sujet non évalué = CONFORME
         pointsObtenus = pointsMax;
-        console.log(`✅ ${sujet.nomsujet}: CONFORME (${pointsObtenus} points)`);
+        console.log(
+          `✅ ${sujet.nomsujet}: CONFORME (${pointsObtenus}/${pointsMax})`
+        );
       }
 
       totalPoints += pointsObtenus;
       maxPoints += pointsMax;
 
-      // Grouper par catégorie - TOUS les sujets de chaque catégorie
+      // Stats par catégorie
       const categoryId = sujet.idcategoriesujet;
       if (!categoryStats[categoryId]) {
         categoryStats[categoryId] = {
@@ -276,99 +363,41 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
 
       categoryStats[categoryId].points += pointsObtenus;
       categoryStats[categoryId].maxPoints += pointsMax;
-      categoryStats[categoryId].count += 1; // Chaque sujet compte pour 1
+      categoryStats[categoryId].count += 1;
 
-      if (sujetEvalue) {
+      if (sujetsEvaluesIds.has(sujet.idsujet)) {
         categoryStats[categoryId].sujetsNonConformes += 1;
       } else {
         categoryStats[categoryId].sujetsConformes += 1;
       }
-
-      console.log(
-        `📈 Catégorie ${categoryId}: +${pointsObtenus}/${pointsMax} points (${categoryStats[categoryId].sujetsConformes}✅/${categoryStats[categoryId].sujetsNonConformes}❌)`
-      );
     });
 
-    console.log("📊 Résultats finaux:", {
-      totalPoints,
-      maxPoints,
-      categoryStats,
-    });
-
-    // Construire les détails par catégorie - BASÉ SUR LES SUJETS ÉVALUÉS MAIS AVEC LE SCORE GLOBAL DE LA CATÉGORIE
+    // Construire les détails par catégorie
     const detailsByCategory: any[] = [];
 
-    // D'abord, récupérer les stats globales par catégorie (pour les pourcentages)
-    const categoryGlobalStats: {
-      [key: number]: { points: number; maxPoints: number; sujetsTotal: number };
-    } = {};
-
-    // Calculer les stats globales par catégorie (tous les sujets du domaine)
-    sujetsInDomain.forEach((sujet: any) => {
-      const categoryId = sujet.idcategoriesujet;
-      if (!categoryGlobalStats[categoryId]) {
-        categoryGlobalStats[categoryId] = {
-          points: 0,
-          maxPoints: 0,
-          sujetsTotal: 0,
-        };
-      }
-
-      const sujetEvalue = sujetsWithCategories.find(
-        (s: any) => s.name === sujet.nomsujet
-      );
-      const ponderation = ponderations.find(
-        (p: any) => p.idsujet === sujet.idsujet
-      );
-      const pointsMax = ponderation ? ponderation.conforme : 3;
-      const pointsObtenus = sujetEvalue
-        ? ponderation
-          ? ponderation.non_conforme
-          : 0
-        : pointsMax;
-
-      categoryGlobalStats[categoryId].points += pointsObtenus;
-      categoryGlobalStats[categoryId].maxPoints += pointsMax;
-      categoryGlobalStats[categoryId].sujetsTotal += 1;
-    });
-
-    // Ensuite, construire les détails par catégorie basés sur les sujets évalués UNIQUES
-    if (categoriesSujets && sujetsWithCategories.length > 0) {
+    if (categoriesSujets) {
       categoriesSujets.forEach((categorie: any) => {
-        // Trouver les sujets évalués de cette catégorie
-        const sujetsDeCategorie = sujetsWithCategories.filter(
-          (sujet: any) => sujet.idcategoriesujet === categorie.idcategoriesujet
+        const hasSujetsInDomain = sujetsData.some(
+          (sujet) =>
+            sujet.iddomaine === selectedDomainId &&
+            sujet.idcategoriesujet === categorie.idcategoriesujet
         );
 
-        if (sujetsDeCategorie.length > 0) {
-          // Compter le nombre de SUJETS UNIQUES non conformes (pas les occurrences)
-          const nombreSujetsNonConformes = sujetsDeCategorie.length;
-
-          // Récupérer les stats globales pour le pourcentage
-          const globalStats = categoryGlobalStats[categorie.idcategoriesujet];
-          const percent = globalStats
-            ? globalStats.maxPoints > 0
+        if (hasSujetsInDomain) {
+          const globalStats = categoryStats[categorie.idcategoriesujet];
+          const percent =
+            globalStats && globalStats.maxPoints > 0
               ? (globalStats.points / globalStats.maxPoints) * 100
-              : 0
-            : 0;
+              : 0;
 
-          const categoryDetail = {
+          detailsByCategory.push({
             categoryName: categorie.nomcategorie,
             categoryColor: categorie.couleur || "#666",
             points: globalStats?.points || 0,
             maxPoints: globalStats?.maxPoints || 0,
             percent: percent,
-            count: nombreSujetsNonConformes, // Nombre de SUJETS uniques non conformes
-          };
-
-          console.log(
-            `📊 Catégorie ${
-              categorie.nomcategorie
-            }: ${nombreSujetsNonConformes} sujet(s) non conforme(s), ${Math.round(
-              percent
-            )}% de réussite globale`
-          );
-          detailsByCategory.push(categoryDetail);
+            count: globalStats?.sujetsNonConformes || 0,
+          });
         }
       });
     }
@@ -384,7 +413,6 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
 
     console.log("🎯 Score final calculé:", finalScoreData);
     setScoreData(finalScoreData);
-    console.log("✅ setScoreData appelé avec:", finalScoreData);
   };
 
   // Fonction pour obtenir la couleur du score
@@ -460,7 +488,12 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
       console.log("📊 Résultat withCategories:", withCategories);
       setSujetsWithCategories(withCategories);
     } else {
-      console.log("❌ Conditions non remplies pour traitement des sujets");
+      // ✅ AJOUT : Vider sujetsWithCategories si aucun sujet n'est trouvé
+      console.log(
+        "❌ Conditions non remplies pour traitement des sujets - reset à []"
+      );
+      setSujetsWithCategories([]);
+
       if (!stats.sujetsDetails) console.log("  → stats.sujetsDetails manquant");
       if (stats.sujetsDetails?.length === 0)
         console.log("  → stats.sujetsDetails vide");
@@ -500,7 +533,11 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
 
       setPratiquesWithCategories(withCategories);
     } else {
-      console.log("❌ Conditions non remplies pour traitement des pratiques");
+      // ✅ AJOUT : Vider pratiquesWithCategories si aucune pratique n'est trouvée
+      console.log(
+        "❌ Conditions non remplies pour traitement des pratiques - reset à []"
+      );
+      setPratiquesWithCategories([]);
     }
   }, [stats.sujetsDetails, stats.pratiquesDetails, sujetsData, pratiques]);
 
@@ -561,6 +598,25 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
 
   return (
     <Box sx={{ p: 1 }}>
+      {/* ✅ AJOUT : Alerte informative sur la détection */}
+      {shouldAutoSelect && autoDetectedDomain && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          <Typography variant="caption">
+            ✅ Domaine détecté automatiquement :{" "}
+            <strong>{autoDetectedDomain}</strong>
+            (tous les post-its appartiennent au même domaine)
+          </Typography>
+        </Alert>
+      )}
+
+      {autoDetectedDomain && !shouldAutoSelect && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="caption">
+            ℹ️ Plusieurs domaines détectés dans les post-its. Veuillez
+            sélectionner le domaine pour calculer le score.
+          </Typography>
+        </Alert>
+      )}
       {/* Score global */}
       {selectedDomain && (
         <Card sx={{ mb: 2, borderLeft: "4px solid #2196f3" }}>

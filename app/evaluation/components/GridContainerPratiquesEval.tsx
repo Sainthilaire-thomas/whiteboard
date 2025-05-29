@@ -6,6 +6,7 @@ import { Tooltip } from "@mui/material";
 import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
 import { Pratique, Category, CategoriePratique } from "@/types/types";
+import { useHighlightedPractices } from "@/hooks/useHighlightedPractices"; // ✅ HOOK SPÉCIALISÉ
 
 interface GridContainerPratiquesEvalProps {
   categories: CategoriePratique[];
@@ -16,62 +17,97 @@ interface GridContainerPratiquesEvalProps {
     itemIdKey: string;
     itemNameKey: string;
   };
-  onPratiqueClick: (pratique: Pratique) => void;
-  pratiquesDeLActivite: string[]; // ← ✅ AJOUT ICI
+  onPratiqueClick?: (pratique: Pratique) => void;
+  pratiquesDeLActivite: string[] | number[];
 }
 
 const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
   categories,
   items,
   columnConfig,
+  onPratiqueClick,
   pratiquesDeLActivite,
 }) => {
-  const { updatePostit, idCallActivite, updatePostitToPratiqueMap } =
-    useCallData();
   const {
-    highlightedPractices,
+    updatePostit,
+    idCallActivite,
+    updatePostitToPratiqueMap,
+    selectedPostit,
+    setSelectedPostit,
+  } = useCallData();
+
+  const {
     idActivite,
     handleSelectPratique,
     setIdPratique,
     handleOpenDrawerWithData,
-    selectedPostit,
-    setSelectedPostit,
   } = useAppContext();
+
+  // ✅ SOLUTION PROPRE : Hook spécialisé pour les pratiques mises en évidence
+  const { highlightedPractices, loading: loadingRelations } =
+    useHighlightedPractices(selectedPostit);
 
   const currentActivityId = idCallActivite || idActivite;
 
-  // ✅ Gestion du clic sur une pratique (ajout/suppression)
+  // ✅ Debug pour vérifier
+  console.log("🔍 GridContainerPratiquesEval - Hook spécialisé:", {
+    selectedPostit: selectedPostit?.id,
+    selectedPostitIdsujet: selectedPostit?.idsujet,
+    highlightedPractices,
+    loadingRelations,
+  });
+
+  // FONCTION ADAPTATIVE : Compatible avec ancien et nouveau comportement
   const handleItemClick = async (selectedItem: Pratique) => {
+    console.log("🎯 GridContainer - Clic sur pratique:", selectedItem);
+
     if (!selectedPostit) {
       alert("⚠️ Aucun post-it actif !");
       return;
     }
 
+    // NOUVEAU COMPORTEMENT : Si onPratiqueClick est fourni, l'utiliser (pour Postit)
+    if (onPratiqueClick) {
+      console.log("✅ Utilisation du nouveau système (onPratiqueClick)");
+      onPratiqueClick(selectedItem);
+
+      // Garder la logique locale pour l'interface
+      handleSelectPratique(
+        selectedPostit.idpratique === selectedItem.idpratique
+          ? null
+          : selectedItem
+      );
+      return;
+    }
+
+    // ANCIEN COMPORTEMENT : Logique originale pour compatibilité ascendante
+    console.log("⚠️ Utilisation de l'ancien système (rétrocompatibilité)");
+
     const isSelectedForPostit =
       selectedPostit.pratique === selectedItem.nompratique;
 
-    // 🔄 Mise à jour locale du post-it
+    // 🔄 Mise à jour locale du post-it (ancien comportement)
     const updatedPostit = isSelectedForPostit
       ? { ...selectedPostit, pratique: "Non Assigné" }
       : { ...selectedPostit, pratique: selectedItem.nompratique };
 
-    // ✅ Met à jour l'état local et le mapping
+    // ✅ Met à jour l'état local et le mapping (ancien comportement)
     setSelectedPostit(updatedPostit);
     updatePostitToPratiqueMap(
       updatedPostit.id,
       isSelectedForPostit ? null : updatedPostit.pratique
     );
 
-    // ✅ Met à jour le post-it dans Supabase
+    // ✅ Met à jour le post-it dans Supabase (ancien comportement)
     await updatePostit(updatedPostit.id, {
       pratique: updatedPostit.pratique,
     });
 
-    console.log("✅ Post-it mis à jour !");
+    console.log("✅ Post-it mis à jour (mode rétrocompatibilité) !");
     handleSelectPratique(isSelectedForPostit ? null : selectedItem);
   };
 
-  // ✅ Gestion du clic droit pour ouvrir le drawer
+  // ✅ Gestion du clic droit pour ouvrir le drawer (inchangé)
   const handleRightClick = (event: React.MouseEvent, item: Pratique) => {
     event.preventDefault();
     handleOpenDrawerWithData(item.idpratique, "conseiller");
@@ -137,14 +173,35 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
             {/* 📌 Affichage des pratiques */}
             {pratiquesFiltrees.length > 0 ? (
               pratiquesFiltrees.map((item) => {
-                const isAssociated = pratiquesDeLActivite.includes(
-                  item.nompratique
-                );
-                const isSelectedForPostit =
-                  selectedPostit?.pratique === item.nompratique;
+                // LOGIQUE ADAPTATIVE : Support des deux types de pratiquesDeLActivite
+                const isAssociated =
+                  Array.isArray(pratiquesDeLActivite) &&
+                  pratiquesDeLActivite.length > 0
+                    ? typeof pratiquesDeLActivite[0] === "number"
+                      ? (pratiquesDeLActivite as number[]).includes(
+                          item.idpratique
+                        ) // IDs
+                      : (pratiquesDeLActivite as string[]).includes(
+                          item.nompratique
+                        ) // Noms (ancien comportement)
+                    : false;
+
+                // LOGIQUE ADAPTATIVE : Support des deux modes de sélection
+                const isSelectedForPostit = onPratiqueClick
+                  ? selectedPostit?.idpratique === item.idpratique // Nouveau : par ID
+                  : selectedPostit?.pratique === item.nompratique; // Ancien : par nom
+
+                // ✅ SOLUTION PROPRE : Utiliser le hook spécialisé
                 const isHighlighted = highlightedPractices.includes(
                   item.idpratique
                 );
+
+                // ✅ Debug pour les pratiques mises en évidence
+                if (isHighlighted) {
+                  console.log(
+                    `🔗 Pratique ${item.nompratique} mise en évidence (hook spécialisé)`
+                  );
+                }
 
                 return (
                   <Tooltip
@@ -163,13 +220,14 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
                           : isAssociated
                           ? "gray" // 🟫 Pratique encore associée à l'activité
                           : category.couleur, // 🎨 Couleur d'origine si elle n'est plus associée
-                        border: isHighlighted ? "2px dashed #FFA500" : "none", // ✨ Highlight si associée au sujet sélectionné
+                        border: isHighlighted ? "2px dashed #FFA500" : "none", // ✅ Highlight du hook spécialisé
                         padding: "10px",
                         textAlign: "center",
                       }}
                     >
                       {item[columnConfig.itemNameKey]}{" "}
-                      {isHighlighted ? "🔗" : ""}
+                      {isHighlighted ? "🔗" : ""}{" "}
+                      {/* ✅ Emoji basé sur highlight du hook spécialisé */}
                     </Typography>
                   </Tooltip>
                 );

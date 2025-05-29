@@ -294,22 +294,14 @@ export interface TextSelection {
 export interface CallDataContextType {
   // 📞 Appels
   calls: Call[];
-  fetchCalls: (identreprise: number) => Promise<void>;
+  fetchCalls: (entrepriseId: number) => Promise<void>;
   selectedCall: Call | null;
   selectCall: (call: Call) => void;
-  setSelectedCall: React.Dispatch<React.SetStateAction<Call | null>>;
+  setSelectedCall: (call: Call | null) => void;
   archiveCall: (callId: number) => Promise<void>;
   deleteCall: (callId: number) => Promise<void>;
-  createAudioUrlWithToken: (filepath: string) => Promise<string | null>;
+  createAudioUrlWithToken: (audioUrl: string) => string;
   isLoadingCalls: boolean;
-
-  //TextSelection
-  selectionMode: "client" | "conseiller" | null;
-  setSelectionMode: (mode: "client" | "conseiller" | null) => void;
-  clientSelection: TextSelection | null;
-  setClientSelection: (selection: TextSelection | null) => void;
-  conseillerSelection: TextSelection | null;
-  setConseillerSelection: (selection: TextSelection | null) => void;
 
   // 🗒️ Post-its
   allPostits: Postit[];
@@ -317,23 +309,29 @@ export interface CallDataContextType {
   fetchAllPostits: () => Promise<void>;
   addPostit: (
     wordid: number,
-    text: string,
+    word: string,
     timestamp: number,
-    metadata: {
-      sujet?: string;
-      pratique?: string;
-      domaine?: string;
-    }
+    additionalData?: Record<string, any>
+  ) => Promise<number | null>;
+  updatePostit: (
+    id: number,
+    updatedFields: Record<string, any>
   ) => Promise<void>;
-  updatePostit: (postit: Postit) => Promise<void>;
-  deletePostit: (id: number) => Promise<void>;
-  postitToSujetMap: Record<number, string>;
-  updatePostitToSujetMap: (postitId: number, sujet: string) => void;
-  postitToPratiqueMap: Record<number, string>;
-  updatePostitToPratiqueMap: (postitId: number, pratique: string) => void;
+  deletePostit: (postitId: number) => Promise<void>;
+  postitToSujetMap: Record<number, number | null>;
+  updatePostitToSujetMap: (postitId: number, sujetId: number | null) => void;
+  postitToPratiqueMap: Record<number, number | null>;
+  updatePostitToPratiqueMap: (
+    postitId: number,
+    pratiqueId: number | null
+  ) => void;
+
+  // 🟡 NOUVEAU : Postit sélectionné (déplacé depuis AppContext)
+  selectedPostit: Postit | null;
+  setSelectedPostit: (postit: Postit | null) => void;
 
   // 📚 Transcription
-  transcription: Transcription | null;
+  transcription: any;
   fetchTranscription: (callId: number) => Promise<void>;
 
   // 🧠 Zones
@@ -341,14 +339,9 @@ export interface CallDataContextType {
   selectTextForZone: (zone: string, text: string) => void;
 
   // 🌍 Domaines
-  domains: Domain[];
-  domainNames: Record<number, string>;
+  domains: any[];
+  domainNames: string[];
   fetchDomains: () => Promise<void>;
-
-  // 🎧 Audio - SIMPLIFIÉ
-  loadCallAudio: (callId: number, filepath: string) => Promise<boolean>;
-  playAudioAtTimestamp: (timestamp: number) => void;
-  playerRef: React.RefObject<HTMLAudioElement>;
 
   // 🗣️ Word tracking
   currentWord: Word | null;
@@ -357,27 +350,28 @@ export interface CallDataContextType {
   // 🔄 Activité liée à l'appel
   idCallActivite: number | null;
   fetchActivitiesForCall: (callId: number) => Promise<void>;
-  createActivityForCall: (activity: {
-    callid: number;
-    nature?: string;
-  }) => Promise<void>;
-  removeActivityForCall: (activityId: number) => Promise<void>;
+  createActivityForCall: (callId: number) => Promise<void>;
+  removeActivityForCall: (callId: number) => Promise<void>;
   getActivityIdFromCallId: (callId: number) => number | null;
 
-  // 🎮 Jeu de rôle coaching
+  // Sélections de texte
+  transcriptSelectionMode: "client" | "conseiller" | null;
+  setTranscriptSelectionMode: (mode: "client" | "conseiller" | null) => void;
+  clientSelection: TextSelection | null;
+  setClientSelection: (selection: TextSelection | null) => void;
+  conseillerSelection: TextSelection | null;
+  setConseillerSelection: (selection: TextSelection | null) => void;
+
+  // 🎮 Jeu de rôle
   selectedPostitForRolePlay: Postit | null;
-  setSelectedPostitForRolePlay: React.Dispatch<
-    React.SetStateAction<Postit | null>
-  >;
+  setSelectedPostitForRolePlay: (postit: Postit | null) => void;
   rolePlayData: RolePlayData | null;
-  saveRolePlayData: (data: RolePlayData, postitId: number) => Promise<void>;
-  fetchRolePlayData: (postitId: number | null) => Promise<void>;
-  deleteRolePlayData: (postitId: number) => Promise<void>;
-  getRolePlaysByCallId: (
-    callId: number
-  ) => Promise<Record<number, RolePlayData>>;
+  saveRolePlayData: (data: RolePlayData) => Promise<void>;
+  fetchRolePlayData: () => Promise<void>;
+  deleteRolePlayData: () => Promise<void>;
+  getRolePlaysByCallId: (callId: number) => Promise<RolePlayData[]>;
   isLoadingRolePlay: boolean;
-  rolePlayError: any;
+  rolePlayError: string | null;
 }
 
 export interface UIContextType {
@@ -535,25 +529,15 @@ export interface AppContextType {
   // Activités et Avis
   pratiques: Pratique[];
   isLoadingPratiques: boolean;
-  fetchReviewsForPractice: (id: number) => void;
-  reviews: any[];
-  averageRating: number | null;
+  fetchReviewsForPractice: (pratiqueId: number) => Promise<void>;
+  reviews: Review[];
+  averageRating: number;
   categoriesPratiques: CategoriePratique[];
-  subjectPracticeRelations: RelationSujetPratique[];
-  sujetsForActivite: number[]; // Contient les sujets liés à l'activité actuelle
-  fetchSujetsForActivite: (idActivite: number) => Promise<void>;
-  syncPratiquesForActiviteFromMap: (
-    postitToPratiqueMap: Record<number, string | null>,
-    idActivite: number,
-    allPratiques: Pratique[]
-  ) => Promise<void>;
-
-  toggleSujet: (idActivite: number, sujet: Item) => Promise<void>;
 
   // Domaines et Sujets
-  domains: Domaine[];
-  selectedDomain: string;
-  selectDomain: (domain: string) => void;
+  domains: Domain[];
+  selectedDomain: Domain | null;
+  selectDomain: (domain: Domain) => void;
   sujetsData: Sujet[];
   categoriesSujets: CategorieSujet[];
   isLoadingDomains: boolean;
@@ -561,14 +545,14 @@ export interface AppContextType {
   isLoadingCategoriesSujets: boolean;
 
   // Nudges
-  nudges: any[];
-  setNudges: React.Dispatch<React.SetStateAction<Nudge[]>>;
-  fetchNudgesForPractice: (idpratique: number) => Promise<Nudge[]>;
-  fetchNudgesForActivity: (id: number) => void;
-  refreshNudgesFunction: () => void;
-  refreshNudges: () => void;
-  updateNudgeDates: (newDates: any) => void;
-  nudgeDates: any;
+  nudges: Nudge[];
+  setNudges: (value: SetStateAction<Nudge[]>) => void;
+  fetchNudgesForPractice: (pratiqueId: number) => Promise<void>;
+  fetchNudgesForActivity: (activityId: number) => Promise<void>;
+  refreshNudgesFunction: () => Promise<void>;
+  refreshNudges: boolean;
+  updateNudgeDates: (nudgeId: number, dates: any) => Promise<void>;
+  nudgeDates: Record<number, any>;
   nudgesUpdated: boolean;
   markNudgesAsUpdated: () => void;
   resetNudgesUpdated: () => void;
@@ -579,7 +563,7 @@ export interface AppContextType {
   drawerContent: any;
   setDrawerContent: (content: any) => void;
   handleOpenDrawerWithContent: (content: any) => void;
-  handleOpenDrawerWithData: (idPratique: number, initialType: string) => void;
+  handleOpenDrawerWithData: (pratiqueId: number, type: string) => void;
 
   // Entreprises
   entreprises: Entreprise[];
@@ -596,37 +580,26 @@ export interface AppContextType {
   refreshKey: number;
   setRefreshKey: (key: number) => void;
 
-  // Sélections (via useSelection)
-  selectedSujet: Sujet | null;
-  handleSelectSujet: (sujet: Sujet) => void;
-  selectedPratique: Pratique | null;
-  handleSelectPratique: (pratique: Pratique | null) => void;
+  // 🔴 SUPPRIMÉ : selectedPostit et setSelectedPostit ne sont plus ici
+  // selectedPostit: Postit | null;
+  // setSelectedPostit: (postit: Postit | null) => void;
 
+  // Sélections (via useSelection)
+  selectedSujet: any;
+  handleSelectSujet: (sujet: any) => void;
+  sujetsForActivite: any[];
+  fetchSujetsForActivite: (activityId: number) => Promise<void>;
+  subjectPracticeRelations: any[];
+  toggleSujet: (sujetId: number) => void;
+  selectedPratique: any;
+  handleSelectPratique: (pratique: any) => void;
   highlightedPractices: number[];
-  calculateHighlightedPractices: (
-    disabledSubjects: number[],
-    relations: any[]
-  ) => void;
+  calculateHighlightedPractices: () => void;
   resetSelectedState: () => void;
-  avatarTexts: Record<number, string>;
-  updateAvatarText: (index: number, text: string) => void;
+  avatarTexts: Record<string, string>;
+  updateAvatarText: (key: string, text: string) => void;
   selectedPostitIds: number[];
   setSelectedPostitIds: (ids: number[]) => void;
-  postits: Postit[]; // Assurez-vous que 'postits' est bien ici
-
-  // Post-it sélectionné
-  selectedPostit: Postit | null;
-  setSelectedPostit: (postit: Postit | null) => void;
-
-  // Sujets de l’activité (initialement chargés)
-  initialSujetsForActivite: number[];
-  setSujetsForActivite: (ids: number[]) => void;
-
-  // Sync depuis postitToSujetMap (hook useSelection)
-  syncSujetsForActiviteFromMap: (
-    postitToSujetMap: Record<number, number | null>,
-    idActivite: number
-  ) => Promise<void>;
 
   // Authentification
   user: any;
@@ -645,6 +618,7 @@ export interface UseDomainsResult {
   categoriesSujets: CategorieSujet[];
   isLoadingCategoriesSujets: boolean;
   selectedDomain: string;
+  filteredDomains?: Domaine[];
   setSelectedDomain: (domainId: string) => void;
   selectDomain: (domainId: string) => void; // Alias pour `setSelectedDomain`
   sujetsData: Sujet[];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { Box } from "@mui/material";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useAppContext } from "@/context/AppContext";
@@ -16,6 +16,7 @@ import { EvaluationProps } from "@/types/types";
 import ActivitySidebar from "../components/navigation/ActivitySidebar";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
+import { getPostitStatistics } from "./components/SyntheseEvaluation/utils/filters";
 
 // IMPORT DU NOUVEAU COMPOSANT
 import UnifiedHeader from "./components/UnifiedHeader";
@@ -45,6 +46,19 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
     setHighlightSpeakers((prev) => !prev);
   }, []);
 
+  //états pour FourZones
+  const [fontSize, setFontSize] = useState<number>(14);
+  const [speechToTextVisible, setSpeechToTextVisible] =
+    useState<boolean>(false);
+
+  const increaseFontSize = () =>
+    setFontSize((current) => Math.min(current + 1, 24));
+  const decreaseFontSize = () =>
+    setFontSize((current) => Math.max(current - 1, 10));
+  const toggleSpeechToText = useCallback(() => {
+    setSpeechToTextVisible((prev) => !prev);
+  }, []);
+
   // CONSOLIDATION DES HOOKS - Une seule fois
   const { user, isAuthenticated } = useAuth0();
   const {
@@ -55,7 +69,12 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
     selectCall,
     selectedPostitForRolePlay,
     transcriptSelectionMode,
+    isLoadingRolePlay,
+    selectedPostit,
+    setSelectedPostit,
+    appelPostits, // ✅ AJOUTÉ : Import de appelPostits
   } = useCallData();
+
   const { audioRef, setAudioSrc } = useAudio();
   const {
     resetSelectedState,
@@ -64,12 +83,36 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
     errorEntreprises,
     selectedEntreprise,
     setSelectedEntreprise,
-    selectedPostit,
-    setSelectedPostit,
     selectedDomain,
     selectDomain,
   } = useAppContext();
   const { filteredDomains } = useFilteredDomains(selectedEntreprise);
+
+  // ✅ CORRIGÉ : Calcul des stats avec appelPostits importé
+  const evaluationStats = useMemo(() => {
+    if (!appelPostits || appelPostits.length === 0) return null;
+
+    const filteredPostits = appelPostits.filter(
+      (postit) => postit.sujet || postit.pratique
+    );
+
+    // Convertir les postits au format attendu par getPostitStatistics
+    const convertedPostits = filteredPostits.map((postit) => ({
+      id: String(postit.id),
+      callid: postit.callid,
+      wordid: postit.wordid,
+      word: postit.word,
+      text: postit.text,
+      iddomaine: postit.iddomaine,
+      sujet: postit.sujet,
+      idsujet: postit.idsujet || undefined,
+      pratique: postit.pratique,
+      timestamp: postit.timestamp,
+      idactivite: postit.idactivite,
+    }));
+
+    return getPostitStatistics(convertedPostits);
+  }, [appelPostits]);
 
   // Ajout de FourZones aux panneaux contextuels
   const contextPanels: Record<
@@ -89,7 +132,15 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
       width: 700,
     },
     roleplay: {
-      component: <FourZones />,
+      component: (
+        <FourZones
+          fontSize={fontSize}
+          speechToTextVisible={speechToTextVisible}
+          toggleSpeechToText={toggleSpeechToText}
+          increaseFontSize={increaseFontSize}
+          decreaseFontSize={decreaseFontSize}
+        />
+      ),
       width: "55%",
     },
   };
@@ -104,9 +155,11 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
   }, [displayMode]);
 
   const setContextFullWidth = useCallback(() => {
-    setDisplayMode(
-      displayMode === "context-fullwidth" ? "normal" : "context-fullwidth"
-    );
+    console.log("🔄 setContextFullWidth called, current mode:", displayMode);
+    const newMode =
+      displayMode === "context-fullwidth" ? "normal" : "context-fullwidth";
+    console.log("🔄 switching to:", newMode);
+    setDisplayMode(newMode);
   }, [displayMode]);
 
   const toggleRightPanel = useCallback(() => {
@@ -116,6 +169,10 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
       setDisplayMode("normal");
     }
   }, [displayMode]);
+
+  const handleNavigateToSynthese = useCallback(() => {
+    router.push("/evaluation?view=synthese");
+  }, [router]);
 
   // Fonctions pour la transcription
   const toggleViewMode = useCallback(() => {
@@ -182,6 +239,14 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
     }
   }, [view, selectedPostit]);
 
+  // Debug logs
+  useEffect(() => {
+    console.log("🔍 DisplayMode changed:", displayMode);
+    console.log("📊 shouldShowTranscript:", shouldShowTranscript);
+    console.log("📊 shouldShowContext:", shouldShowContext);
+    console.log("📊 view:", view);
+  }, [displayMode, shouldShowTranscript, shouldShowContext, view]);
+
   return (
     <>
       <Box sx={{ display: "flex", height: "100vh", flexDirection: "column" }}>
@@ -195,96 +260,128 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
             selectedCall={selectedCall}
           />
 
-          {/* Zone principale avec en-tête unifié */}
+          {/* Zone principale avec structure fixe */}
           <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            {/* REMPLACEMENT DE L'EN-TÊTE PAR UnifiedHeader */}
-            <UnifiedHeader
-              // Transcription props
-              shouldShowTranscript={shouldShowTranscript}
-              displayMode={displayMode}
-              selectedCall={selectedCall}
-              viewMode={viewMode}
-              currentWord={currentWord}
-              hasRightPanel={hasRightPanel}
-              shouldShowContext={shouldShowContext}
-              highlightTurnOne={highlightTurnOne}
-              highlightSpeakers={highlightSpeakers}
-              // Actions transcription
-              onToggleViewMode={toggleViewMode}
-              onRefreshTranscription={handleRefreshTranscription}
-              onAddPostit={handleAddPostit}
-              onSetTranscriptFullWidth={setTranscriptFullWidth}
-              onToggleRightPanel={toggleRightPanel}
-              onToggleHighlightTurnOne={toggleHighlightTurnOne}
-              onToggleHighlightSpeakers={toggleHighlightSpeakers}
-              // Contextual props
-              view={view}
-              filteredDomains={filteredDomains || []}
-              selectedDomain={selectedDomain || ""}
-              contextPanels={contextPanels}
-              // Actions contextuelles
-              onDomainChange={handleDomainChange}
-              onSave={handleSave}
-              onSetContextFullWidth={setContextFullWidth}
-              onClosePanel={() => setDisplayMode("transcript-fullwidth")}
-            />
+            {/* CONTENEUR FIXE POUR LE HEADER */}
+            <Box
+              sx={{
+                flexShrink: 0,
+                position: "relative",
+                zIndex: 10,
+              }}
+            >
+              <UnifiedHeader
+                // Transcription props
+                shouldShowTranscript={shouldShowTranscript}
+                displayMode={displayMode}
+                selectedCall={selectedCall}
+                evaluationStats={evaluationStats} // ✅ Passé avec les stats calculées
+                viewMode={viewMode}
+                currentWord={currentWord}
+                hasRightPanel={hasRightPanel}
+                shouldShowContext={shouldShowContext}
+                highlightTurnOne={highlightTurnOne}
+                highlightSpeakers={highlightSpeakers}
+                // Actions transcription
+                onToggleViewMode={toggleViewMode}
+                onRefreshTranscription={handleRefreshTranscription}
+                onAddPostit={handleAddPostit}
+                onSetTranscriptFullWidth={setTranscriptFullWidth}
+                onToggleRightPanel={toggleRightPanel}
+                onToggleHighlightTurnOne={toggleHighlightTurnOne}
+                onToggleHighlightSpeakers={toggleHighlightSpeakers}
+                // Contextual props
+                view={view}
+                filteredDomains={filteredDomains || []}
+                selectedDomain={selectedDomain || ""}
+                contextPanels={contextPanels}
+                // Actions contextuelles
+                onDomainChange={handleDomainChange}
+                onSave={handleSave}
+                onSetContextFullWidth={setContextFullWidth}
+                onClosePanel={() => setDisplayMode("transcript-fullwidth")}
+                onNavigateToSynthese={handleNavigateToSynthese}
+                fontSize={fontSize}
+                increaseFontSize={increaseFontSize}
+                decreaseFontSize={decreaseFontSize}
+                speechToTextVisible={speechToTextVisible}
+                toggleSpeechToText={toggleSpeechToText}
+                isLoadingRolePlay={isLoadingRolePlay}
+                selectedPostitForRolePlay={selectedPostitForRolePlay}
+              />
+            </Box>
 
-            {/* CONTENU DES VOLETS (sans en-têtes redondants) */}
-            <Box sx={{ display: "flex", flexGrow: 1, overflow: "hidden" }}>
+            {/* CONTENU DES VOLETS avec hauteur calculée */}
+            <Box
+              sx={{
+                display: "flex",
+                flex: 1,
+                overflow: "hidden",
+                minHeight: 0,
+              }}
+            >
               {/* Contenu Transcription */}
-              {shouldShowTranscript && (
-                <Box
-                  sx={{
-                    flex: displayMode === "transcript-fullwidth" ? 1 : 1,
-                    width:
-                      displayMode === "transcript-fullwidth" ? "100%" : "auto",
-                    overflow: "hidden",
-                  }}
-                >
-                  <EvaluationTranscript
-                    showRightPanel={shouldShowContext}
-                    toggleRightPanel={toggleRightPanel}
-                    hasRightPanel={hasRightPanel}
-                    displayMode={displayMode}
-                    setTranscriptFullWidth={setTranscriptFullWidth}
-                    setContextFullWidth={setContextFullWidth}
-                    // NOUVELLES PROPS pour contrôler depuis l'en-tête
-                    viewMode={viewMode}
-                    hideHeader={true}
-                    // PROPS DE COLORATION - AJOUTÉES
-                    highlightTurnOne={highlightTurnOne}
-                    highlightSpeakers={highlightSpeakers}
-                    transcriptSelectionMode={transcriptSelectionMode} // Si disponible dans useCallData
-                  />
-                </Box>
-              )}
+              <Box
+                sx={{
+                  flex: 1,
+                  overflow: "hidden",
+                  display: shouldShowTranscript ? "flex" : "none",
+                  flexDirection: "column",
+                }}
+              >
+                <EvaluationTranscript
+                  showRightPanel={shouldShowContext}
+                  toggleRightPanel={toggleRightPanel}
+                  hasRightPanel={hasRightPanel}
+                  displayMode={displayMode}
+                  setTranscriptFullWidth={setTranscriptFullWidth}
+                  setContextFullWidth={setContextFullWidth}
+                  viewMode={viewMode}
+                  hideHeader={true}
+                  highlightTurnOne={highlightTurnOne}
+                  highlightSpeakers={highlightSpeakers}
+                  transcriptSelectionMode={transcriptSelectionMode}
+                />
+              </Box>
 
               {/* Contenu du panneau contextuel */}
               {shouldShowContext && (
                 <Box
                   sx={{
-                    width:
-                      displayMode === "context-fullwidth"
-                        ? "100%"
-                        : contextPanels[view!]?.width ?? 400,
+                    flex: displayMode === "context-fullwidth" ? 1 : "0 0 55%",
                     borderLeft:
                       displayMode === "context-fullwidth"
                         ? "none"
                         : "1px solid",
                     borderColor: "divider",
                     bgcolor: "background.default",
-                    px: 2,
-                    py: 2,
                     height: "100%",
-                    overflowY: "auto",
-                    transition: "width 0.3s ease",
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
                   }}
                 >
-                  {/* Contenu sans en-têtes redondants */}
+                  {/* Contenu complet */}
                   {view === "postit" && selectedPostit ? (
-                    <Postit inline hideHeader={true} />
+                    <Box sx={{ p: 2, height: "100%", overflow: "auto" }}>
+                      <Postit inline hideHeader={true} />
+                    </Box>
                   ) : view === "synthese" ? (
-                    <SyntheseEvaluation hideHeader={true} />
+                    <Box sx={{ p: 2, height: "100%", overflow: "auto" }}>
+                      <SyntheseEvaluation hideHeader={true} />
+                    </Box>
+                  ) : view === "roleplay" ? (
+                    <FourZones
+                      fontSize={fontSize}
+                      speechToTextVisible={speechToTextVisible}
+                      toggleSpeechToText={toggleSpeechToText}
+                      increaseFontSize={increaseFontSize}
+                      decreaseFontSize={decreaseFontSize}
+                    />
+                  ) : view === "selection" ? (
+                    <Box sx={{ p: 2, height: "100%", overflow: "auto" }}>
+                      <SelectionEntrepriseEtAppel />
+                    </Box>
                   ) : (
                     contextPanels[view!]?.component
                   )}

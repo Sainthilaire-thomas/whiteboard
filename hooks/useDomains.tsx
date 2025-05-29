@@ -84,7 +84,8 @@ export function useDomains(): UseDomainsResult {
     }, {});
   }, [domains]);
 
-  // Sélection du premier domaine si aucun n'est sélectionné
+  // ✅ SIMPLIFICATION : Garder la logique existante pour l'instant
+  // La synchronisation avec filteredDomains se fera dans AppContext
   useEffect(() => {
     if (
       domains.length > 0 &&
@@ -95,11 +96,33 @@ export function useDomains(): UseDomainsResult {
     }
   }, [domains, selectedDomain]);
 
-  // 🎯 Alias pour `setSelectedDomain`
-  const selectDomain = (domainId: string) => setSelectedDomain(domainId);
+  // ✅ DEBUG POUR IDENTIFIER L'ORIGINE
+  useEffect(() => {
+    console.log("🔍 DEBUG useDomains - Initialisation:", {
+      selectedDomain,
+      type: typeof selectedDomain,
+      source: "useDomains hook",
+    });
+  }, []);
+
+  // ✅ DEBUG QUAND selectedDomain CHANGE
+  useEffect(() => {
+    console.log("🔍 DEBUG useDomains - selectedDomain changed:", {
+      newValue: selectedDomain,
+      type: typeof selectedDomain,
+      timestamp: new Date().toISOString(),
+    });
+  }, [selectedDomain]);
+
+  // 🎯 Alias pour `setSelectedDomain` avec debug
+  const selectDomain = (domainId: string) => {
+    console.log("🔍 selectDomain called with:", domainId);
+    setSelectedDomain(domainId);
+  };
+
   // ✅ Encapsulation de `fetchDomains` pour le typage correct
   const refetchDomains = async (): Promise<void> => {
-    await fetchDomains(); // Appelle refetch() mais ignore le retour de `useQuery`
+    await fetchDomains();
   };
 
   return {
@@ -115,6 +138,6 @@ export function useDomains(): UseDomainsResult {
     selectedDomain,
     setSelectedDomain,
     selectDomain,
-    sujetsData: sujets, // ✅ Alias pour `sujets`
+    sujetsData: sujets,
   };
 }

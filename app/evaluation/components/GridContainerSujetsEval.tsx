@@ -1,4 +1,4 @@
-import { Grid, Typography, Tooltip } from "@mui/material";
+import { Grid, Typography, Tooltip, Box } from "@mui/material";
 import { darken } from "@mui/material/styles";
 import { useEffect, useMemo, memo } from "react";
 import { useAppContext } from "@/context/AppContext";
@@ -36,9 +36,9 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
     sujetsForActivite, // ✅ Contient uniquement des `idsujet`
     setSujetsForActivite,
     initialSujetsForActivite,
-    selectedPostit,
-    setSelectedPostit,
   } = useAppContext();
+
+  const { selectedPostit, setSelectedPostit } = useCallData();
 
   const { updatePostit, idCallActivite } = useCallData();
 
@@ -86,9 +86,7 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
       sx={{
         width: "auto",
         maxWidth: "100%",
-
         overflow: "auto",
-
         boxShadow: 1,
       }}
     >
@@ -101,6 +99,8 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
             backgroundColor: category.couleur,
             borderLeft: "0.5px solid white",
             borderRight: "0.5px solid white",
+            display: "flex",
+            flexDirection: "column",
           }}
         >
           <Typography
@@ -109,75 +109,79 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
               fontWeight: "bold",
               backgroundColor: darken(String(category.couleur), 0.2),
               textAlign: "center",
-              padding: "6px",
+              padding: "8px 6px", // Augmenté le padding vertical
               borderBottom: "0.5px solid white",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              height: 48, // 👈 hauteur fixe pour toutes les têtes de colonnes
+              minHeight: 48, // 👈 Changé de height fixe à minHeight
+              wordWrap: "break-word", // 👈 Permet le retour à la ligne
+              hyphens: "auto", // 👈 Césure automatique
+              lineHeight: 1.2, // 👈 Espacement des lignes optimisé
+              fontSize: "0.875rem", // 👈 Taille de police légèrement réduite si nécessaire
             }}
           >
             {category[columnConfig.categoryNameKey]}
           </Typography>
 
-          {items
-            .filter(
-              (item) =>
-                item[columnConfig.categoryIdKey] ===
-                category[columnConfig.categoryIdKey]
-            )
-            .map((item) => {
-              const isAssociated = sujetsDeLActivite.includes(item.idsujet);
+          <Box sx={{ flex: 1 }}>
+            {" "}
+            {/* 👈 Container pour les items */}
+            {items
+              .filter(
+                (item) =>
+                  item[columnConfig.categoryIdKey] ===
+                  category[columnConfig.categoryIdKey]
+              )
+              .map((item) => {
+                const isAssociated = sujetsDeLActivite.includes(item.idsujet);
+                const isSelectedForPostit =
+                  selectedPostit?.idsujet === item.idsujet;
 
-              const isSelectedForPostit =
-                selectedPostit?.idsujet === item.idsujet;
-
-              return (
-                <Tooltip
-                  key={item[columnConfig.itemIdKey]}
-                  title={item.description || ""}
-                  disableTouchListener
-                  enterDelay={50}
-                  leaveDelay={0}
-                  placement="left"
-                >
-                  <Typography
-                    variant="body2"
-                    onClick={() => handleSujetClick(item)}
-                    sx={{
-                      cursor: "pointer",
-                      backgroundColor: isSelectedForPostit
-                        ? "error.main"
-                        : isAssociated
-                        ? "gray"
-                        : category.couleur,
-
-                      "&:hover": {
+                return (
+                  <Tooltip
+                    key={item[columnConfig.itemIdKey]}
+                    title={item.description || ""}
+                    disableTouchListener
+                    enterDelay={50}
+                    leaveDelay={0}
+                    placement="left"
+                  >
+                    <Typography
+                      variant="body2"
+                      onClick={() => handleSujetClick(item)}
+                      sx={{
+                        cursor: "pointer",
                         backgroundColor: isSelectedForPostit
                           ? "error.main"
                           : isAssociated
-                          ? "action.selected"
-                          : "action.hover",
-                      },
-                      px: 1,
-                      py: 0.5,
-                      fontSize: "0.85rem",
-                      lineHeight: 1.2,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      minHeight: 36,
-
-                      borderBottom: "0.5px solid white",
-
-                      textAlign: "center",
-                    }}
-                  >
-                    {item[columnConfig.itemNameKey]}
-                  </Typography>
-                </Tooltip>
-              );
-            })}
+                          ? "gray"
+                          : category.couleur,
+                        "&:hover": {
+                          backgroundColor: isSelectedForPostit
+                            ? "error.main"
+                            : isAssociated
+                            ? "action.selected"
+                            : "action.hover",
+                        },
+                        px: 1,
+                        py: 0.5,
+                        fontSize: "0.85rem",
+                        lineHeight: 1.2,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minHeight: 36,
+                        borderBottom: "0.5px solid white",
+                        textAlign: "center",
+                      }}
+                    >
+                      {item[columnConfig.itemNameKey]}
+                    </Typography>
+                  </Tooltip>
+                );
+              })}
+          </Box>
         </Grid>
       ))}
     </Grid>

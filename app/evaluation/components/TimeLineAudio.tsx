@@ -16,14 +16,11 @@ export interface TimeLineAudioProps {
   currentTime: number;
   markers: TimelineMarker[];
   onSeek: (time: number) => void;
-  onMarkerClick?: (id: number) => void; // Optional callback for marker clicks
+  onMarkerClick?: (id: number) => void;
 }
 
 /**
  * TimeLineAudio - Displays an interactive audio timeline with post-it markers
- *
- * This component handles the timeline visualization with markers.
- * It's been optimized to avoid duplication with AudioPlayer.
  */
 const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
   duration,
@@ -32,10 +29,18 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
   onSeek,
   onMarkerClick,
 }) => {
-  const { appelPostits } = useCallData();
+  // 🔄 CHANGEMENT : Récupérer appelPostits ET setSelectedPostit depuis CallDataContext
+  const {
+    appelPostits,
+    setSelectedPostit, // ← DÉPLACÉ depuis AppContext vers CallDataContext
+  } = useCallData();
+
   const router = useRouter();
-  const { setSelectedPostit } = useAppContext();
-  const executeWithLock = useAudio().executeWithLock;
+
+  // 🔄 CHANGEMENT : Plus besoin de récupérer setSelectedPostit d'AppContext
+  // const { setSelectedPostit } = useAppContext(); // ← SUPPRIMÉ
+
+  const { executeWithLock } = useAudio();
 
   const handleMarkerClick = (
     event: React.MouseEvent<HTMLElement>,
@@ -57,7 +62,10 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
         matchingPostit
       );
 
-      // Set the selected post-it in the app context
+      // 🔄 CHANGEMENT : setSelectedPostit vient maintenant de CallDataContext
+      console.log("✅ setSelectedPostit depuis CallDataContext");
+
+      // Set the selected post-it (maintenant depuis CallDataContext)
       setSelectedPostit({
         id: matchingPostit.id,
         timestamp: matchingPostit.timestamp,
@@ -68,6 +76,7 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
         idsujet: matchingPostit.idsujet,
         iddomaine: matchingPostit.iddomaine,
         pratique: matchingPostit.pratique,
+        idpratique: matchingPostit.idpratique, // ← AJOUT du champ idpratique
         callid: matchingPostit.callid,
       });
 
@@ -99,7 +108,7 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
       <Slider
         value={currentTime}
         min={0}
-        max={duration || 100} // Fallback to 100 if duration is not available
+        max={duration || 100}
         onChange={(_, newValue) =>
           typeof newValue === "number" && onSeek(newValue)
         }
@@ -111,13 +120,12 @@ const TimeLineAudio: React.FC<TimeLineAudioProps> = ({
       {markers &&
         markers.length > 0 &&
         markers.map((marker: TimelineMarker) => {
-          // Calculate the relative position (as %)
           const position = (marker.time / (duration || 1)) * 100;
 
           return (
             <Tooltip key={marker.id} title={marker.label} placement="top">
               <Box
-                id={`marker-${marker.id}`} // Add ID for reference in Popover positioning
+                id={`marker-${marker.id}`}
                 sx={{
                   position: "absolute",
                   left: `${position}%`,

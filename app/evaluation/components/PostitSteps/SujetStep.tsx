@@ -1,6 +1,5 @@
-// PostitSteps/SujetStep.tsx
 import React from "react";
-import { Box, Typography, Button, Fade } from "@mui/material";
+import { Box, Typography, Fade } from "@mui/material";
 import { Postit } from "@/types/types";
 import { Item } from "@/types/types";
 import GridContainerSujetsEval from "../GridContainerSujetsEval";
@@ -13,8 +12,6 @@ interface SujetStepProps {
   sujetsDeLActivite: number[];
   handleSujetClick: (item: Item) => void;
   stepBoxStyle: any;
-  onBack: () => void;
-  onNext: () => void;
 }
 
 export const SujetStep: React.FC<SujetStepProps> = ({
@@ -37,7 +34,7 @@ export const SujetStep: React.FC<SujetStepProps> = ({
         items={sujetsData}
         columnConfig={columnConfigSujets}
         handleSujetClick={handleSujetClick}
-        sujetsDeLActivite={sujetsDeLActivite}
+        sujetsDeLActivite={sujetsDeLActivite || []}
       />
 
       {selectedPostit.idsujet && (

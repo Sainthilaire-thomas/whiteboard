@@ -18,19 +18,35 @@ export function usePostitActions() {
     postitToSujetMap,
     postitToPratiqueMap,
     idCallActivite,
+    selectedPostit,
+    setSelectedPostit,
   } = useCallData();
 
   const {
-    selectedPostit,
-    setSelectedPostit,
     pratiques,
     syncSujetsForActiviteFromMap,
     syncPratiquesForActiviteFromMap,
   } = useAppContext();
 
+  // Helper pour vérifier si un postit est complet
+  const isPostitComplete = useCallback((postit: any) => {
+    return (
+      postit?.idsujet !== null &&
+      postit?.idsujet !== undefined &&
+      postit?.idpratique !== null &&
+      postit?.idpratique !== undefined &&
+      postit?.idpratique > 0
+    );
+  }, []);
+
   // Sauvegarde d'un postit
   const handleSave = useCallback(async () => {
     if (!selectedPostit) return;
+
+    // Validation avant sauvegarde
+    if (!isPostitComplete(selectedPostit)) {
+      console.warn("⚠️ Postit incomplet - sauvegarde partielle");
+    }
 
     await updatePostit(selectedPostit.id, {
       text: selectedPostit.text,
@@ -38,6 +54,7 @@ export function usePostitActions() {
       idsujet: selectedPostit.idsujet,
       iddomaine: selectedPostit.iddomaine,
       pratique: selectedPostit.pratique,
+      idpratique: selectedPostit.idpratique, // AJOUT
     });
 
     // Synchronisation
@@ -67,6 +84,7 @@ export function usePostitActions() {
     postitToPratiqueMap,
     pratiques,
     setSelectedPostit,
+    isPostitComplete,
   ]);
 
   // Suppression d'un postit
@@ -74,13 +92,25 @@ export function usePostitActions() {
     if (!selectedPostit?.id) return;
 
     try {
-      const { data: otherPostits } = await supabaseClient
+      // Vérifier s'il y a d'autres postits avec le même sujet
+      const { data: otherPostitsWithSujet } = await supabaseClient
         .from("postit")
         .select("id")
         .eq("idsujet", selectedPostit.idsujet)
         .neq("id", selectedPostit.id);
 
-      if (!otherPostits || otherPostits.length === 0) {
+      // Vérifier s'il y a d'autres postits avec la même pratique
+      const { data: otherPostitsWithPratique } = await supabaseClient
+        .from("postit")
+        .select("id")
+        .eq("idpratique", selectedPostit.idpratique)
+        .neq("id", selectedPostit.id);
+
+      // Supprimer la liaison sujet si c'était le dernier postit avec ce sujet
+      if (
+        selectedPostit.idsujet &&
+        (!otherPostitsWithSujet || otherPostitsWithSujet.length === 0)
+      ) {
         await supabaseClient
           .from("activitesconseillers_sujets")
           .delete()
@@ -88,6 +118,29 @@ export function usePostitActions() {
             idactivite: idCallActivite,
             idsujet: selectedPostit.idsujet,
           });
+      }
+
+      // Supprimer la liaison pratique si c'était le dernier postit avec cette pratique
+      // (Supposant qu'il existe une table activitesconseillers_pratiques)
+      if (
+        selectedPostit.idpratique &&
+        (!otherPostitsWithPratique || otherPostitsWithPratique.length === 0)
+      ) {
+        try {
+          await supabaseClient
+            .from("activitesconseillers_pratiques")
+            .delete()
+            .match({
+              idactivite: idCallActivite,
+              idpratique: selectedPostit.idpratique,
+            });
+        } catch (error) {
+          // Si la table n'existe pas encore, ignorer l'erreur
+          console.warn(
+            "⚠️ Table activitesconseillers_pratiques non trouvée:",
+            error
+          );
+        }
       }
 
       await deletePostit(selectedPostit.id);
@@ -124,5 +177,6 @@ export function usePostitActions() {
     handleSave,
     handleDelete,
     handleClosePostit,
+    isPostitComplete, // Export de la fonction helper
   };
 }

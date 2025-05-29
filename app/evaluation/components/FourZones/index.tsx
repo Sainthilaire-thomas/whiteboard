@@ -64,7 +64,21 @@ const steps = [
   "Lecture finale",
 ];
 
-const FourZones: React.FC = () => {
+interface FourZonesProps {
+  fontSize?: number;
+  speechToTextVisible?: boolean;
+  toggleSpeechToText?: () => void;
+  increaseFontSize?: () => void;
+  decreaseFontSize?: () => void;
+}
+
+const FourZones: React.FC<FourZonesProps> = ({
+  fontSize = 14,
+  speechToTextVisible = false,
+  toggleSpeechToText,
+  increaseFontSize,
+  decreaseFontSize,
+}) => {
   const { mode } = useThemeMode();
   const callDataContext = useCallData();
   const {
@@ -74,19 +88,13 @@ const FourZones: React.FC = () => {
     saveRolePlayData,
     isLoadingRolePlay,
     setTranscriptSelectionMode,
+    // fontSize,
   } = callDataContext as unknown as CallDataContextType;
 
   const { audioSrc, play, seekTo } = useAudio();
 
-  // État de la taille de police
-  const [fontSize, setFontSize] = useState<number>(14);
-
   // État pour le mode de sélection
   const [selectionMode, setSelectionMode] = useState<string>("client");
-
-  // État pour la reconnaissance vocale
-  const [speechToTextVisible, setSpeechToTextVisible] =
-    useState<boolean>(false);
 
   // État pour le menu contextuel
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
@@ -193,17 +201,6 @@ const FourZones: React.FC = () => {
     document.addEventListener("mouseup", handleTextSelection);
     return () => document.removeEventListener("mouseup", handleTextSelection);
   }, [selectionMode]);
-
-  // Gestionnaires de taille de police
-  const increaseFontSize = () =>
-    setFontSize((current) => Math.min(current + 1, 24));
-  const decreaseFontSize = () =>
-    setFontSize((current) => Math.max(current - 1, 10));
-
-  // Toggle pour la reconnaissance vocale
-  const toggleSpeechToText = () => {
-    setSpeechToTextVisible((prev) => !prev);
-  };
 
   // Gérer le menu contextuel
   const handleOpenZoneMenu = (
@@ -433,38 +430,32 @@ const FourZones: React.FC = () => {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        gap: "12px",
+        overflow: "hidden", // Important pour que sticky fonctionne
       }}
     >
-      {/* Barre d'outils supérieure */}
-      <ToolBar
-        title={
-          selectedPostitForRolePlay
-            ? `Jeu de rôle: ${selectedPostitForRolePlay.pratique || "Passage"}`
-            : "Jeu de rôle avec 4 zones"
-        }
-        fontSize={fontSize}
-        increaseFontSize={increaseFontSize}
-        decreaseFontSize={decreaseFontSize}
-        onSave={handleSaveRolePlay}
-        isLoading={isLoadingRolePlay}
-        mode={mode}
-      />
+      {/* Stepper fixe en haut */}
+      <Box
+        sx={{
+          flexShrink: 0, // Ne se réduit pas
+          backgroundColor: "background.paper",
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          p: 2,
+          px: 2,
+          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+        }}
+      >
+        <StepperHeader steps={steps} activeStep={activeStep} mode={mode} />
+      </Box>
 
-      {/* Stepper pour suivre la progression */}
-      <StepperHeader steps={steps} activeStep={activeStep} mode={mode} />
-
-      {/* Contenu principal basé sur l'étape active */}
+      {/* Contenu scrollable */}
       <Box
         sx={{
           flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflowY: "auto",
+          overflow: "auto", // Permet le scroll
           p: 1,
         }}
       >
-        {/* MODIFIÉ: Passage de tous les paramètres nécessaires, y compris ceux pour la reconnaissance vocale */}
         {renderStepContent({
           activeStep,
           selectionMode,
@@ -498,15 +489,26 @@ const FourZones: React.FC = () => {
         })}
       </Box>
 
-      {/* Barre de navigation entre les étapes */}
-      <StepNavigation
-        activeStep={activeStep}
-        stepsLength={steps.length}
-        handleBack={handleBack}
-        handleNext={handleNext}
-        canProceedToNextStep={canProceedToNextStep()}
-        mode={mode}
-      />
+      {/* Navigation fixe en bas */}
+      <Box
+        sx={{
+          flexShrink: 0, // Ne se réduit pas
+          backgroundColor: "background.paper",
+          borderTop: "1px solid",
+          borderColor: "divider",
+          p: 2,
+          boxShadow: "0 -2px 4px rgba(0,0,0,0.1)",
+        }}
+      >
+        <StepNavigation
+          activeStep={activeStep}
+          stepsLength={steps.length}
+          handleBack={handleBack}
+          handleNext={handleNext}
+          canProceedToNextStep={canProceedToNextStep()}
+          mode={mode}
+        />
+      </Box>
 
       {/* Menu contextuel pour l'ajout à une zone */}
       <Menu
