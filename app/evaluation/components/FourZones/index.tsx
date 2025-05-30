@@ -41,8 +41,12 @@ import DynamicSpeechToTextForFourZones from "./components/DynamicSpeechToTextFor
 import { ToolBar } from "./components/ToolBar";
 import { StepperHeader } from "./components/StepperHeader";
 import { StepNavigation } from "./components/StepNavigation";
-import { FinalReviewStep } from "./components/FinalReviewStep";
+import { FinalReviewStep } from "./components/FinalReviewStep/FinalReviewStep";
 import { ZoneLegend } from "./components/ZoneLegend";
+import {
+  generateFinalConseillerText,
+  hasImprovedContent,
+} from "./utils/generateFinalText";
 
 // Import des hooks personnalisés
 import { usePostits } from "./hooks/usePostits";
@@ -180,6 +184,14 @@ const FourZones: React.FC<FourZonesProps> = ({
     showNotification,
     handleSnackbarClose,
   } = notificationState;
+
+  // NOUVEAU: Calculer le texte final retravaillé
+  const improvedConseillerText = React.useMemo(() => {
+    if (hasImprovedContent(postits)) {
+      return generateFinalConseillerText(postits);
+    }
+    return null;
+  }, [postits]);
 
   // AJOUT: Écouter les événements de sélection de texte (important !)
   useEffect(() => {
@@ -486,6 +498,7 @@ const FourZones: React.FC<FourZonesProps> = ({
           handleOpenZoneMenu,
           postits,
           setPostits,
+          improvedConseillerText,
         })}
       </Box>
 

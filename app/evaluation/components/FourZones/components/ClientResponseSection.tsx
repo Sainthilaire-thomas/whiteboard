@@ -4,22 +4,30 @@ import {
   Paper,
   Typography,
   Button,
-  Divider,
-  TextField,
+  Chip,
   IconButton,
   Tooltip,
-  Chip,
+  LinearProgress,
+  Card,
+  CardContent,
+  Fade,
+  Alert,
+  TextField,
   InputAdornment,
+  useTheme,
 } from "@mui/material";
-import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import PersonIcon from "@mui/icons-material/Person";
-import HeadsetMicIcon from "@mui/icons-material/HeadsetMic";
-import ArrowRightAltIcon from "@mui/icons-material/ArrowRightAlt";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import { ZONES } from "../constants/zone";
+import {
+  Person,
+  HeadsetMic,
+  CheckCircle,
+  Edit,
+  ContentCopy,
+  PlayArrow,
+  ArrowForward,
+  Clear,
+  Save,
+  Refresh,
+} from "@mui/icons-material";
 import { ClientResponseSectionProps } from "../types/types";
 import { useCallData } from "@/context/CallDataContext";
 
@@ -32,18 +40,28 @@ export const ClientResponseSection: React.FC<ClientResponseSectionProps> = ({
   zoneColors,
   hasOriginalPostits,
   onCategorizeClick,
-  setSelectedClientText, // <- Recevoir explicitement
-  setSelectedConseillerText, // <- Recevoir explicitement
+  setSelectedClientText,
+  setSelectedConseillerText,
 }) => {
+  const theme = useTheme();
+  const { clientSelection, conseillerSelection } = useCallData();
+
+  // États pour l'édition
+  const [isClientEditing, setIsClientEditing] = useState(false);
+  const [isConseillerEditing, setIsConseillerEditing] = useState(false);
   const [clientTextInput, setClientTextInput] = useState(selectedClientText);
   const [conseillerTextInput, setConseillerTextInput] = useState(
     selectedConseillerText
   );
-  const [isClientEditing, setIsClientEditing] = useState(false);
-  const [isConseillerEditing, setIsConseillerEditing] = useState(false);
-  const { clientSelection, conseillerSelection } = useCallData();
 
-  // Synchroniser les états locaux avec les props
+  // États pour le workflow
+  const isClientComplete =
+    !!selectedClientText && selectedClientText.trim().length > 0;
+  const isConseillerComplete =
+    !!selectedConseillerText && selectedConseillerText.trim().length > 0;
+  const progress = isClientComplete ? (isConseillerComplete ? 100 : 50) : 0;
+
+  // Synchroniser les inputs avec les props
   useEffect(() => {
     setClientTextInput(selectedClientText);
   }, [selectedClientText]);
@@ -52,38 +70,46 @@ export const ClientResponseSection: React.FC<ClientResponseSectionProps> = ({
     setConseillerTextInput(selectedConseillerText);
   }, [selectedConseillerText]);
 
-  // Fonction pour copier le texte dans le presse-papier
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  // Fonctions d'édition
+  const handleClientEdit = () => {
+    setIsClientEditing(true);
+    onSelectionModeChange("client");
   };
 
-  // Gérer les modifications directes des textes
-  const handleClientTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setClientTextInput(e.target.value);
+  const handleConseillerEdit = () => {
+    setIsConseillerEditing(true);
+    onSelectionModeChange("conseiller");
   };
 
-  const handleConseillerTextChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setConseillerTextInput(e.target.value);
-  };
-
-  // Appliquer les modifications manuelles
-  const applyClientText = () => {
-    if (clientTextInput.trim() !== "") {
-      setSelectedClientText(clientTextInput);
-    }
+  const saveClientEdit = () => {
+    setSelectedClientText(clientTextInput);
     setIsClientEditing(false);
   };
 
-  const applyConseillerText = () => {
-    if (conseillerTextInput.trim() !== "") {
-      setSelectedConseillerText(conseillerTextInput);
-    }
+  const saveConseillerEdit = () => {
+    setSelectedConseillerText(conseillerTextInput);
     setIsConseillerEditing(false);
   };
 
-  // Logique pour appliquer les sélections
+  const cancelClientEdit = () => {
+    setClientTextInput(selectedClientText);
+    setIsClientEditing(false);
+  };
+
+  const cancelConseillerEdit = () => {
+    setConseillerTextInput(selectedConseillerText);
+    setIsConseillerEditing(false);
+  };
+
+  // Fonctions de sélection
+  const handleClientSelection = () => {
+    onSelectionModeChange("client");
+  };
+
+  const handleConseillerSelection = () => {
+    onSelectionModeChange("conseiller");
+  };
+
   const applyClientSelection = () => {
     if (clientSelection) {
       setSelectedClientText(clientSelection.text);
@@ -95,432 +121,502 @@ export const ClientResponseSection: React.FC<ClientResponseSectionProps> = ({
       setSelectedConseillerText(conseillerSelection.text);
     }
   };
-  // Fonction pour activer le mode client
-  const activateClientMode = () => {
-    onSelectionModeChange("client");
+
+  const clearClientSelection = () => {
+    setSelectedClientText("");
+    setClientTextInput("");
   };
 
-  // Fonction pour activer le mode conseiller
-  const activateConseillerMode = () => {
-    onSelectionModeChange("conseiller");
+  const clearConseillerSelection = () => {
+    setSelectedConseillerText("");
+    setConseillerTextInput("");
+  };
+
+  // Copier dans le presse-papier
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  // Couleurs adaptées au thème
+  const getBackgroundColor = (isActive: boolean, isComplete: boolean) => {
+    if (isComplete) return theme.palette.success.main + "15";
+    if (isActive) return theme.palette.primary.main + "15";
+    return theme.palette.background.paper;
+  };
+
+  const getTextBackgroundColor = () => {
+    return theme.palette.mode === "dark"
+      ? "rgba(255, 255, 255, 0.05)"
+      : "rgba(0, 0, 0, 0.02)";
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mb: 2 }}>
-      <Box sx={{ mb: 1, display: "flex", justifyContent: "center" }}>
-        <Chip
-          label={
-            selectionMode === "client"
-              ? "Sélection: Parole client"
-              : "Sélection: Réponse conseiller"
-          }
-          color={selectionMode === "client" ? "primary" : "secondary"}
-          icon={
-            selectionMode === "client" ? <PersonIcon /> : <HeadsetMicIcon />
-          }
-          variant="outlined"
-        />
-      </Box>
-
-      <Typography
-        variant="body2"
-        sx={{ textAlign: "center", mb: 2, fontStyle: "italic" }}
-      >
-        Cliquez sur une zone pour la sélectionner, puis surlignez le texte dans
-        la transcription
-      </Typography>
-
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {/* Zone pour le texte client sélectionné */}
-        <Paper
-          elevation={3}
-          sx={{
-            p: 2,
-            bgcolor: zoneColors[ZONES.CLIENT],
-            minHeight: "60px",
-            borderRadius: "8px",
-            position: "relative",
-            transition: "all 0.2s ease",
-            transform: selectionMode === "client" ? "scale(1.02)" : "scale(1)",
-            border: selectionMode === "client" ? "2px solid" : "none",
-            borderColor: "primary.main",
-            cursor: "pointer",
-            "&:hover": {
-              boxShadow: 6,
-            },
-          }}
-          onClick={activateClientMode}
-        >
+    <Box sx={{ mb: 3 }}>
+      {/* Header avec progression */}
+      <Card sx={{ mb: 2, bgcolor: "primary.50" }}>
+        <CardContent sx={{ pb: 2 }}>
           <Box
             sx={{
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
-              mb: 1,
+              justifyContent: "space-between",
+              mb: 2,
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{ color: "primary.main", fontWeight: 600 }}
+            >
+              🎯 Sélection du dialogue à améliorer
+            </Typography>
+            <Chip
+              label={`${progress}% terminé`}
+              color={progress === 100 ? "success" : "primary"}
+              size="small"
+            />
+          </Box>
+
+          <LinearProgress
+            variant="determinate"
+            value={progress}
+            sx={{
+              height: 6,
+              borderRadius: 3,
+              bgcolor:
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.1)"
+                  : "primary.100",
+              "& .MuiLinearProgress-bar": {
+                borderRadius: 3,
+              },
+            }}
+          />
+
+          <Typography variant="body2" sx={{ mt: 1, color: "text.secondary" }}>
+            Sélectionnez le dialogue client/conseiller à travailler
+          </Typography>
+        </CardContent>
+      </Card>
+
+      {/* Layout côte à côte */}
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+        {/* Colonne Client */}
+        <Paper
+          elevation={selectionMode === "client" ? 4 : 1}
+          sx={{
+            p: 2,
+            border: selectionMode === "client" ? "2px solid" : "1px solid",
+            borderColor:
+              selectionMode === "client" ? "primary.main" : "divider",
+            bgcolor: getBackgroundColor(
+              selectionMode === "client",
+              isClientComplete
+            ),
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            "&:hover": { elevation: 3 },
+          }}
+          onClick={handleClientSelection}
+        >
+          {/* Header Client */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 2,
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <PersonIcon
-                color={selectionMode === "client" ? "primary" : "inherit"}
-              />
-              <Typography variant="subtitle1" fontWeight="bold">
-                Le client dit:
-              </Typography>
-            </Box>
-
-            <Box>
-              {selectedClientText && (
-                <Tooltip title="Copier le texte">
-                  <IconButton
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      copyToClipboard(selectedClientText);
-                    }}
-                  >
-                    <ContentCopyIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              )}
-              <Tooltip
-                title={isClientEditing ? "Appliquer" : "Modifier directement"}
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  bgcolor: isClientComplete
+                    ? "success.main"
+                    : selectionMode === "client"
+                    ? "primary.main"
+                    : "grey.400",
+                  color: "white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: "bold",
+                }}
               >
-                <IconButton
-                  size="small"
-                  color={isClientEditing ? "primary" : "default"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (isClientEditing) {
-                      applyClientText();
-                    } else {
-                      setIsClientEditing(true);
-                      activateClientMode();
-                    }
-                  }}
-                >
-                  {isClientEditing ? (
-                    <CheckCircleIcon fontSize="small" />
-                  ) : (
-                    <EditIcon fontSize="small" />
-                  )}
-                </IconButton>
-              </Tooltip>
+                {isClientComplete ? <CheckCircle /> : <Person />}
+              </Box>
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  Client
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {isClientComplete
+                    ? "✓ Sélectionné"
+                    : "Cliquez pour sélectionner"}
+                </Typography>
+              </Box>
             </Box>
-          </Box>
 
-          <Divider sx={{ mb: 1 }} />
-
-          {isClientEditing ? (
-            <TextField
-              fullWidth
-              multiline
-              variant="outlined"
-              value={clientTextInput}
-              onChange={handleClientTextChange}
-              placeholder="Saisissez ou collez ici ce que dit le client..."
-              autoFocus
-              minRows={2}
-              onClick={(e) => e.stopPropagation()}
-              InputProps={{
-                sx: { fontSize },
-                endAdornment: (
-                  <InputAdornment position="end">
+            {/* Actions Client */}
+            <Box sx={{ display: "flex", gap: 0.5 }}>
+              {selectedClientText && !isClientEditing && (
+                <>
+                  <Tooltip title="Copier">
                     <IconButton
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setIsClientEditing(false);
+                        copyToClipboard(selectedClientText);
                       }}
-                      edge="end"
                     >
-                      <DeleteIcon fontSize="small" />
+                      <ContentCopy fontSize="small" />
                     </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
+                  </Tooltip>
+                  <Tooltip title="Modifier">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClientEdit();
+                      }}
+                    >
+                      <Edit fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Effacer">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearClientSelection();
+                      }}
+                    >
+                      <Clear fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              )}
+            </Box>
+          </Box>
+
+          {/* Contenu Client */}
+          {isClientEditing ? (
+            <Box onClick={(e) => e.stopPropagation()}>
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                value={clientTextInput}
+                onChange={(e) => setClientTextInput(e.target.value)}
+                placeholder="Saisissez ou collez le texte du client..."
+                sx={{ mb: 1 }}
+                InputProps={{
+                  sx: { fontSize },
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={saveClientEdit}>
+                        <Save fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={cancelClientEdit}>
+                        <Clear fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
           ) : (
             <Box
               sx={{
-                p: 1.5,
-                bgcolor: "rgba(255,255,255,0.7)",
-                borderRadius: 1,
-                minHeight: "60px",
+                p: 2,
+                minHeight: "100px",
+                bgcolor: getTextBackgroundColor(),
+                borderRadius: 2,
+                border: `1px solid ${theme.palette.divider}`,
               }}
             >
-              <Typography fontSize={fontSize} sx={{ whiteSpace: "pre-wrap" }}>
-                {selectedClientText || (
-                  <span style={{ fontStyle: "italic", opacity: 0.7 }}>
-                    Cliquez ici puis sélectionnez du texte dans la transcription
-                  </span>
-                )}
-              </Typography>
+              {selectedClientText ? (
+                <Typography
+                  sx={{
+                    fontSize: `${fontSize}px`,
+                    fontStyle: "italic",
+                    color: "text.primary",
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  "{selectedClientText}"
+                </Typography>
+              ) : (
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    fontStyle: "italic",
+                    textAlign: "center",
+                    mt: 2,
+                  }}
+                >
+                  {selectionMode === "client"
+                    ? "👆 Sélectionnez du texte dans la transcription"
+                    : "Cliquez ici puis sélectionnez dans la transcription"}
+                </Typography>
+              )}
             </Box>
           )}
 
-          {/* Ajout: Affichage de la sélection client disponible */}
+          {/* Sélection disponible Client */}
           {!isClientEditing &&
             clientSelection &&
             clientSelection.text !== selectedClientText && (
-              <Box
-                sx={{
-                  mt: 1,
-                  p: 1.5,
-                  bgcolor: "rgba(25, 118, 210, 0.1)",
-                  borderRadius: 1,
-                  border: "1px solid",
-                  borderColor: "primary.light",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: 1,
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Typography
-                  variant="body2"
-                  fontSize={fontSize - 1}
-                  sx={{ flex: 1 }}
-                >
-                  <b>Sélection disponible:</b>{" "}
-                  {clientSelection.text.length > 50
-                    ? `${clientSelection.text.substring(0, 50)}...`
-                    : clientSelection.text}
-                </Typography>
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    applyClientSelection();
-                  }}
-                >
-                  Appliquer
-                </Button>
-              </Box>
-            )}
-        </Paper>
-
-        {/* Flèche indiquant le flux de conversation */}
-        <Box sx={{ display: "flex", justifyContent: "center", my: -1 }}>
-          <ArrowRightAltIcon
-            sx={{ transform: "rotate(90deg)", fontSize: 30, opacity: 0.6 }}
-          />
-        </Box>
-
-        {/* Zone pour le texte conseiller sélectionné */}
-        <Paper
-          elevation={3}
-          sx={{
-            p: 2,
-            bgcolor: zoneColors[ZONES.CONSEILLER],
-            minHeight: "60px",
-            borderRadius: "8px",
-            position: "relative",
-            transition: "all 0.2s ease",
-            transform:
-              selectionMode === "conseiller" ? "scale(1.02)" : "scale(1)",
-            border: selectionMode === "conseiller" ? "2px solid" : "none",
-            borderColor: "secondary.main",
-            cursor: "pointer",
-            "&:hover": {
-              boxShadow: 6,
-            },
-          }}
-          onClick={activateConseillerMode}
-        >
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 1,
-            }}
-          >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <HeadsetMicIcon
-                color={selectionMode === "conseiller" ? "secondary" : "inherit"}
-              />
-              <Typography variant="subtitle1" fontWeight="bold">
-                Le conseiller répond:
-              </Typography>
-            </Box>
-
-            <Box>
-              {selectedConseillerText && !hasOriginalPostits && (
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<CompareArrowsIcon />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCategorizeClick(selectedConseillerText);
-                  }}
-                  sx={{ mr: 1 }}
-                >
-                  Catégoriser
-                </Button>
-              )}
-
-              {selectedConseillerText && (
-                <Tooltip title="Copier le texte">
-                  <IconButton
+              <Alert
+                severity="info"
+                sx={{ mt: 2 }}
+                action={
+                  <Button
                     size="small"
                     onClick={(e) => {
                       e.stopPropagation();
-                      copyToClipboard(selectedConseillerText);
+                      applyClientSelection();
                     }}
                   >
-                    <ContentCopyIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              )}
-
-              <Tooltip
-                title={
-                  isConseillerEditing ? "Appliquer" : "Modifier directement"
+                    Utiliser
+                  </Button>
                 }
               >
-                <IconButton
-                  size="small"
-                  color={isConseillerEditing ? "secondary" : "default"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (isConseillerEditing) {
-                      applyConseillerText();
-                    } else {
-                      setIsConseillerEditing(true);
-                      activateConseillerMode();
-                    }
-                  }}
-                >
-                  {isConseillerEditing ? (
-                    <CheckCircleIcon fontSize="small" />
-                  ) : (
-                    <EditIcon fontSize="small" />
-                  )}
-                </IconButton>
-              </Tooltip>
+                <Typography variant="body2">
+                  <strong>Nouvelle sélection:</strong> "
+                  {clientSelection.text.substring(0, 60)}..."
+                </Typography>
+              </Alert>
+            )}
+        </Paper>
+
+        {/* Colonne Conseiller */}
+        <Paper
+          elevation={selectionMode === "conseiller" ? 4 : 1}
+          sx={{
+            p: 2,
+            border: selectionMode === "conseiller" ? "2px solid" : "1px solid",
+            borderColor:
+              selectionMode === "conseiller" ? "secondary.main" : "divider",
+            bgcolor: getBackgroundColor(
+              selectionMode === "conseiller",
+              isConseillerComplete
+            ),
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            "&:hover": { elevation: 3 },
+          }}
+          onClick={handleConseillerSelection}
+        >
+          {/* Header Conseiller */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 2,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  bgcolor: isConseillerComplete
+                    ? "success.main"
+                    : selectionMode === "conseiller"
+                    ? "secondary.main"
+                    : "grey.400",
+                  color: "white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: "bold",
+                }}
+              >
+                {isConseillerComplete ? <CheckCircle /> : <HeadsetMic />}
+              </Box>
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  Conseiller
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {isConseillerComplete
+                    ? "✓ Sélectionné"
+                    : "Cliquez pour sélectionner"}
+                </Typography>
+              </Box>
             </Box>
-          </Box>
 
-          <Divider sx={{ mb: 1 }} />
+            {/* Actions Conseiller */}
+            <Box sx={{ display: "flex", gap: 0.5 }}>
+              {selectedConseillerText &&
+                !isConseillerEditing &&
+                !hasOriginalPostits && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    color="secondary"
+                    startIcon={<PlayArrow />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCategorizeClick(selectedConseillerText);
+                    }}
+                    sx={{ mr: 1 }}
+                  >
+                    Catégoriser
+                  </Button>
+                )}
 
-          {isConseillerEditing ? (
-            <TextField
-              fullWidth
-              multiline
-              variant="outlined"
-              value={conseillerTextInput}
-              onChange={handleConseillerTextChange}
-              placeholder="Saisissez ou collez ici ce que répond le conseiller..."
-              autoFocus
-              minRows={2}
-              onClick={(e) => e.stopPropagation()}
-              InputProps={{
-                sx: { fontSize },
-                endAdornment: (
-                  <InputAdornment position="end">
+              {selectedConseillerText && !isConseillerEditing && (
+                <>
+                  <Tooltip title="Copier">
                     <IconButton
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setIsConseillerEditing(false);
+                        copyToClipboard(selectedConseillerText);
                       }}
-                      edge="end"
                     >
-                      <DeleteIcon fontSize="small" />
+                      <ContentCopy fontSize="small" />
                     </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
+                  </Tooltip>
+                  <Tooltip title="Modifier">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleConseillerEdit();
+                      }}
+                    >
+                      <Edit fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Effacer">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearConseillerSelection();
+                      }}
+                    >
+                      <Clear fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              )}
+            </Box>
+          </Box>
+
+          {/* Contenu Conseiller */}
+          {isConseillerEditing ? (
+            <Box onClick={(e) => e.stopPropagation()}>
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                value={conseillerTextInput}
+                onChange={(e) => setConseillerTextInput(e.target.value)}
+                placeholder="Saisissez ou collez le texte du conseiller..."
+                sx={{ mb: 1 }}
+                InputProps={{
+                  sx: { fontSize },
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={saveConseillerEdit}>
+                        <Save fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={cancelConseillerEdit}>
+                        <Clear fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
           ) : (
             <Box
               sx={{
-                p: 1.5,
-                bgcolor: "rgba(255,255,255,0.7)",
-                borderRadius: 1,
-                minHeight: "60px",
+                p: 2,
+                minHeight: "100px",
+                bgcolor: getTextBackgroundColor(),
+                borderRadius: 2,
+                border: `1px solid ${theme.palette.divider}`,
               }}
             >
-              <Typography fontSize={fontSize} sx={{ whiteSpace: "pre-wrap" }}>
-                {selectedConseillerText || (
-                  <span style={{ fontStyle: "italic", opacity: 0.7 }}>
-                    Cliquez ici puis sélectionnez du texte dans la transcription
-                  </span>
-                )}
-              </Typography>
+              {selectedConseillerText ? (
+                <Typography
+                  sx={{
+                    fontSize: `${fontSize}px`,
+                    fontStyle: "italic",
+                    color: "text.primary",
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  "{selectedConseillerText}"
+                </Typography>
+              ) : (
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    fontStyle: "italic",
+                    textAlign: "center",
+                    mt: 2,
+                  }}
+                >
+                  {selectionMode === "conseiller"
+                    ? "👆 Sélectionnez du texte dans la transcription"
+                    : "Cliquez ici puis sélectionnez dans la transcription"}
+                </Typography>
+              )}
             </Box>
           )}
 
-          {/* Ajout: Affichage de la sélection conseiller disponible */}
+          {/* Sélection disponible Conseiller */}
           {!isConseillerEditing &&
             conseillerSelection &&
             conseillerSelection.text !== selectedConseillerText && (
-              <Box
-                sx={{
-                  mt: 1,
-                  p: 1.5,
-                  bgcolor: "rgba(156, 39, 176, 0.1)",
-                  borderRadius: 1,
-                  border: "1px solid",
-                  borderColor: "secondary.light",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: 1,
-                }}
-                onClick={(e) => e.stopPropagation()}
+              <Alert
+                severity="info"
+                sx={{ mt: 2 }}
+                action={
+                  <Button
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      applyConseillerSelection();
+                    }}
+                  >
+                    Utiliser
+                  </Button>
+                }
               >
-                <Typography
-                  variant="body2"
-                  fontSize={fontSize - 1}
-                  sx={{ flex: 1 }}
-                >
-                  <b>Sélection disponible:</b>{" "}
-                  {conseillerSelection.text.length > 50
-                    ? `${conseillerSelection.text.substring(0, 50)}...`
-                    : conseillerSelection.text}
+                <Typography variant="body2">
+                  <strong>Nouvelle sélection:</strong> "
+                  {conseillerSelection.text.substring(0, 60)}..."
                 </Typography>
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="secondary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    applyConseillerSelection();
-                  }}
-                >
-                  Appliquer
-                </Button>
-              </Box>
+              </Alert>
             )}
-
-          {selectedConseillerText && !hasOriginalPostits && (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                mt: 2,
-                p: 1,
-                bgcolor: "rgba(0,0,0,0.03)",
-                borderRadius: 1,
-                border: "1px dashed",
-                borderColor: "divider",
-              }}
-            >
-              <Typography variant="body2" color="text.secondary">
-                Cliquez sur "Catégoriser" pour passer à l'étape suivante
-              </Typography>
-            </Box>
-          )}
         </Paper>
       </Box>
+
+      {/* Message de succès */}
+      {isClientComplete && isConseillerComplete && (
+        <Fade in={true}>
+          <Alert severity="success" sx={{ mt: 2 }} icon={<CheckCircle />}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              🎉 Parfait ! Dialogue sélectionné
+            </Typography>
+            <Typography variant="body2">
+              Vous pouvez maintenant passer au jeu de rôle pour améliorer cette
+              interaction.
+            </Typography>
+          </Alert>
+        </Fade>
+      )}
     </Box>
   );
 };

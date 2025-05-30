@@ -71,19 +71,13 @@ export async function GET(request: NextRequest) {
               folderId
             )}${queryParam}`;
 
-            console.log(`🔍 Trying: ${endpoint}`);
-            console.log(`Headers: ${JSON.stringify(headerConfig.headers)}`);
-
             try {
               const response = await fetch(endpoint, {
                 method: "GET",
                 headers: headerConfig.headers,
               });
 
-              console.log(`📡 Response Status: ${response.status}`);
-
               const responseText = await response.text();
-              console.log(`📄 Raw Response: ${responseText}`);
 
               let data;
               try {

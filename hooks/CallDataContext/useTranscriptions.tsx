@@ -42,8 +42,6 @@ export function useTranscriptions(): UseTranscriptionsResult {
           return;
         }
 
-        console.log("✅ Transcription récupérée:", data);
-
         const words: Word[] = data?.word ?? []; // ✅ S'assure que 'words' est toujours un tableau
 
         setTranscription({ callid: callId, words });

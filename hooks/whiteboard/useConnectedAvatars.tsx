@@ -14,8 +14,6 @@ export function useConnectedAvatars() {
   );
 
   const fetchAvatars = useCallback(async () => {
-    console.log("🚀 Tentative de récupération des sessions...");
-
     const { data, error, status } = await supabaseClient
       .schema("whiteboard") // 🔥 Ajoute le schéma ici
       .from("sessions") // 🔥 Essaye sans `.schema("whiteboard")` d'abord

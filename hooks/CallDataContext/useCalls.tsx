@@ -11,8 +11,6 @@ export function useCalls(): UseCallsResult {
 
   // 🔁 Récupération des appels pour une entreprise (avec activités)
   const fetchCalls = useCallback(async (identreprise: number) => {
-    console.log("idEntreprise dansfetchCalls", identreprise);
-
     if (!identreprise) {
       console.warn("⚠️ Aucun identreprise fourni !");
       return;
@@ -99,7 +97,6 @@ export function useCalls(): UseCallsResult {
 
   // ✅ Sélection d’un appel
   const selectCall = useCallback((call: Call) => {
-    console.log(`🎯 Sélection de l'appel ${call.callid}`);
     setSelectedCall(call);
   }, []);
 

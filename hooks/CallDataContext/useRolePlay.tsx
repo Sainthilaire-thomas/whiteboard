@@ -118,7 +118,6 @@ export const useRolePlay = (
           );
         }
 
-        console.log("Jeu de rôle enregistré avec succès:", insertedData);
         setRolePlayData(data);
       } catch (err) {
         console.error("Erreur:", err);
@@ -146,8 +145,6 @@ export const useRolePlay = (
           "Erreur lors de la suppression du jeu de rôle: " + error.message
         );
       }
-
-      console.log("Jeu de rôle supprimé avec succès");
     } catch (err) {
       console.error("Erreur:", err);
       setError(err instanceof Error ? err : new Error(String(err)));

@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
   try {
     // Échanger le code d'autorisation contre un token
     const token = await getTokenFromCode(code);
-    console.log("Token obtenu avec succès");
 
     // Rediriger vers la page principale avec le token en paramètre
     const tokenParam = encodeURIComponent(JSON.stringify(token));

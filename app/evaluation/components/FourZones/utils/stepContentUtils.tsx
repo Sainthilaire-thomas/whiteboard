@@ -1,4 +1,5 @@
-import React, { JSX, useEffect } from "react";
+// utils/stepContentUtils.js - Version corrigée basée sur l'original
+import React, { useEffect } from "react";
 import { useCallData } from "@/context/CallDataContext";
 import { Box, Typography, Paper, IconButton } from "@mui/material";
 import { PlayArrow } from "@mui/icons-material";
@@ -6,9 +7,13 @@ import MicIcon from "@mui/icons-material/Mic";
 import DynamicSpeechToTextForFourZones from "../components/DynamicSpeechToTextForFourZones";
 import { ZoneLegend } from "../components/ZoneLegend";
 import { ClientResponseSection } from "../components/ClientResponseSection";
-import { FinalReviewStep } from "../components/FinalReviewStep";
+import FinalReviewStep from "../components/FinalReviewStep/FinalReviewStep";
 import { PostitType } from "../types/types";
 import { ZONES } from "../constants/zone";
+import {
+  generateFinalConseillerText,
+  hasImprovedContent,
+} from "./generateFinalText";
 
 /**
  * Type pour les paramètres de renderStepContent
@@ -37,7 +42,7 @@ interface RenderStepContentParams {
   toggleSpeechToText: () => void;
   addPostitsFromSpeech: (postits: PostitType[]) => void;
   showNotification: (message: string, severity?: string) => void;
-  renderDropZones: () => JSX.Element;
+  renderDropZones: (improvementMode?: boolean) => JSX.Element;
   addSelectedTextAsPostit: (zone: string) => void;
   mode: string;
   handleOpenZoneMenu?: (
@@ -89,12 +94,19 @@ export const renderStepContent = ({
     conseillerSelection,
   } = useCallData();
 
-  // Dans renderStepContent.tsx
-  useEffect(() => {
-    console.log("Current clientSelection:", clientSelection);
-  }, [clientSelection]);
+  // ✅ Calculer le texte retravaillé
+  const improvedConseillerText = hasImprovedContent(postits)
+    ? generateFinalConseillerText(postits)
+    : null;
 
-  // Rendu de l'étape 1: Sélection du contexte
+  // Debug logs
+  useEffect(() => {
+    console.log("📊 Debug renderStepContent - Step:", activeStep);
+    console.log("- postits:", postits);
+    console.log("- improvedConseillerText:", improvedConseillerText);
+  }, [activeStep, postits, improvedConseillerText]);
+
+  // Rendu de l'étape 0: Sélection du contexte
   const renderStep0 = () => (
     <>
       <ClientResponseSection
@@ -115,7 +127,7 @@ export const renderStepContent = ({
     </>
   );
 
-  // Rendu de l'étape 2: Jeu de rôle
+  // Rendu de l'étape 1: Jeu de rôle
   const renderStep1 = () => (
     <>
       <Box sx={{ mb: 1 }}>
@@ -207,7 +219,7 @@ export const renderStepContent = ({
     </>
   );
 
-  // Rendu de l'étape 3: Suggestions d'amélioration
+  // Rendu de l'étape 2: Suggestions d'amélioration
   const renderStep2 = () => (
     <>
       {/* Section client qui reste visible */}
@@ -247,14 +259,21 @@ export const renderStepContent = ({
     </>
   );
 
-  // Rendu de l'étape 4: Lecture finale
-  const renderStep3 = () => (
-    <FinalReviewStep
-      mode={mode}
-      selectedClientText={selectedClientText}
-      selectedConseillerText={selectedConseillerText}
-    />
-  );
+  // Rendu de l'étape 3: Lecture finale
+  const renderStep3 = () => {
+    console.log("🎙️ Rendu FinalReviewStep avec:");
+    console.log("- selectedConseillerText:", selectedConseillerText);
+    console.log("- improvedConseillerText:", improvedConseillerText);
+
+    return (
+      <FinalReviewStep
+        mode={mode}
+        selectedClientText={selectedClientText}
+        selectedConseillerText={selectedConseillerText}
+        improvedConseillerText={improvedConseillerText}
+      />
+    );
+  };
 
   // Sélectionner le rendu en fonction de l'étape active
   switch (activeStep) {

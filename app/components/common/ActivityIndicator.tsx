@@ -9,16 +9,24 @@ import {
   Typography,
   Button,
   Chip,
+  LinearProgress,
+  Paper,
+  useTheme,
 } from "@mui/material";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import ErrorIcon from "@mui/icons-material/Error";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import BusinessIcon from "@mui/icons-material/Business";
-import CallIcon from "@mui/icons-material/Call";
-import PersonIcon from "@mui/icons-material/Person";
-import AssignmentIcon from "@mui/icons-material/Assignment";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import {
+  CheckCircle,
+  Error,
+  WarningAmber,
+  Business,
+  Call,
+  Person,
+  Assignment,
+  School,
+  PlayArrow,
+  TrendingUp,
+  NavigateBefore,
+  NavigateNext,
+} from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
@@ -26,24 +34,46 @@ import { useConseiller } from "@/context/ConseillerContext";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 const ActivityIndicator = () => {
+  const theme = useTheme();
   const router = useRouter();
   const { selectedEntreprise } = useAppContext();
   const { selectedCall, idCallActivite } = useCallData();
   const { selectedConseiller, conseillers } = useConseiller();
 
   const [currentPhase, setCurrentPhase] = useState<string | null>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
   const conseiller = selectedConseiller
     ? conseillers.find((c) => c.idconseiller === selectedConseiller.id)
     : null;
 
-  // Liste des phases
-  const phaseOrder = ["evaluation", "coaching", "suivi"];
+  // Configuration des phases adaptée au thème
+  const phaseConfig = [
+    {
+      key: "evaluation",
+      label: "Évaluation",
+      icon: <School fontSize="small" />,
+      shortLabel: "Eval",
+    },
+    {
+      key: "coaching",
+      label: "Coaching",
+      icon: <PlayArrow fontSize="small" />,
+      shortLabel: "Coach",
+    },
+    {
+      key: "suivi",
+      label: "Suivi",
+      icon: <TrendingUp fontSize="small" />,
+      shortLabel: "Suivi",
+    },
+  ];
 
   // Récupérer la phase actuelle
   useEffect(() => {
     if (!idCallActivite) {
-      setCurrentPhase(null); // ✅ Réinitialise la phase si aucune activité n'est trouvée
+      setCurrentPhase(null);
       return;
     }
 
@@ -56,7 +86,7 @@ const ActivityIndicator = () => {
 
       if (error) {
         console.error("❌ Erreur récupération de la phase :", error);
-        setCurrentPhase(null); // ✅ Évite les valeurs non définies
+        setCurrentPhase(null);
         return;
       }
 
@@ -66,68 +96,84 @@ const ActivityIndicator = () => {
     fetchCurrentPhase();
   }, [idCallActivite]);
 
-  // Changer la phase (avancer ou reculer)
+  // Changer la phase
   const changePhase = async (direction: "next" | "prev") => {
-    if (
-      !idCallActivite ||
-      !currentPhase ||
-      !phaseOrder.includes(currentPhase)
-    ) {
-      return; // ✅ Évite les erreurs
-    }
+    if (!idCallActivite || !currentPhase) return;
 
-    const currentIndex = phaseOrder.indexOf(currentPhase);
+    const currentIndex = phaseConfig.findIndex((p) => p.key === currentPhase);
     if (currentIndex === -1) return;
 
-    let newPhase: string | null = null;
-
-    if (direction === "next" && currentIndex < phaseOrder.length - 1) {
-      newPhase = phaseOrder[currentIndex + 1];
+    let newIndex = currentIndex;
+    if (direction === "next" && currentIndex < phaseConfig.length - 1) {
+      newIndex = currentIndex + 1;
     } else if (direction === "prev" && currentIndex > 0) {
-      newPhase = phaseOrder[currentIndex - 1];
+      newIndex = currentIndex - 1;
     }
 
-    if (newPhase) {
+    if (newIndex !== currentIndex) {
+      const newPhase = phaseConfig[newIndex].key;
       const { error } = await supabaseClient
         .from("activitesconseillers")
         .update({ nature: newPhase })
         .eq("idactivite", idCallActivite);
 
-      if (error) {
-        console.error("❌ Erreur mise à jour phase :", error);
-      } else {
+      if (!error) {
         setCurrentPhase(newPhase);
       }
     }
   };
 
-  // Icône de validation selon l'état de l'élément
-  const getIconState = (selectedValue: any) => {
-    if (selectedValue) return <CheckCircleIcon color="success" />;
-    if (selectedValue === null) return <ErrorIcon color="error" />;
-    return <WarningAmberIcon color="warning" />;
+  // État des prérequis
+  const getPrerequisiteStatus = () => {
+    return [
+      {
+        key: "entreprise",
+        icon: <Business fontSize="small" />,
+        value: selectedEntreprise,
+        label: "Entreprise",
+        status: selectedEntreprise ? "success" : "error",
+      },
+      {
+        key: "appel",
+        icon: <Call fontSize="small" />,
+        value: selectedCall,
+        label: "Appel",
+        status: selectedCall ? "success" : "error",
+      },
+      {
+        key: "conseiller",
+        icon: <Person fontSize="small" />,
+        value: selectedConseiller,
+        label: "Conseiller",
+        status: selectedConseiller ? "success" : "error",
+      },
+      {
+        key: "activite",
+        icon: <Assignment fontSize="small" />,
+        value: idCallActivite,
+        label: "Activité",
+        status: idCallActivite ? "success" : "warning",
+      },
+    ];
   };
 
-  // Liste des phases avec couleurs
-  const phaseLabels: Record<
-    string,
-    { label: string; color: "primary" | "secondary" | "warning" }
-  > = {
-    evaluation: { label: "Évaluation", color: "primary" },
-    coaching: { label: "Coaching", color: "secondary" },
-    suivi: { label: "Suivi", color: "warning" },
+  // Calcul du pourcentage de progression
+  const getProgressPercentage = () => {
+    if (!currentPhase) return 0;
+    const currentIndex = phaseConfig.findIndex((p) => p.key === currentPhase);
+    return ((currentIndex + 1) / phaseConfig.length) * 100;
   };
 
-  // État du popover
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedItem, setSelectedItem] = useState<
-    "entreprise" | "appel" | "conseiller" | "activité" | null
-  >(null);
+  const currentPhaseConfig = phaseConfig.find((p) => p.key === currentPhase);
+  const prerequisites = getPrerequisiteStatus();
+  const allPrerequisitesMet = prerequisites.every(
+    (p) => p.status === "success"
+  );
+  const currentStepNumber = currentPhase
+    ? phaseConfig.findIndex((p) => p.key === currentPhase) + 1
+    : 0;
 
-  const handleOpen = (
-    event: React.MouseEvent<HTMLElement>,
-    item: "entreprise" | "appel" | "conseiller" | "activité"
-  ) => {
+  const handleOpen = (event: React.MouseEvent<HTMLElement>, item: string) => {
     setAnchorEl(event.currentTarget);
     setSelectedItem(item);
   };
@@ -137,163 +183,319 @@ const ActivityIndicator = () => {
     setSelectedItem(null);
   };
 
+  // Couleurs qui respectent le thème
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "success":
+        return theme.palette.success.main;
+      case "warning":
+        return theme.palette.warning.main;
+      case "error":
+        return theme.palette.error.main;
+      default:
+        return theme.palette.text.secondary;
+    }
+  };
+
   return (
-    <Box
+    <Paper
+      elevation={2}
       sx={{
         display: "flex",
         alignItems: "center",
-        gap: 2,
-        p: 1,
-        bgcolor: "background.paper",
-        boxShadow: 3,
-        borderRadius: "8px",
+        gap: 1.5,
+        px: 2,
+        py: 1,
+        bgcolor: theme.palette.background.paper,
+        borderRadius: 2,
+        border: `1px solid ${theme.palette.divider}`,
+        minWidth: 400,
+        maxWidth: 500,
       }}
     >
-      {/* Icônes compactes avec état et tooltip dynamique */}
-      <Tooltip
-        title={
-          selectedEntreprise
-            ? `Entreprise : ${selectedEntreprise}`
-            : "Aucune entreprise sélectionnée"
-        }
-      >
-        <IconButton onClick={(e) => handleOpen(e, "entreprise")}>
-          <BusinessIcon />
-          {getIconState(selectedEntreprise)}
-        </IconButton>
-      </Tooltip>
+      {/* Section Prérequis - Style sobre */}
+      <Box sx={{ display: "flex", gap: 0.5 }}>
+        {prerequisites.map((prereq) => (
+          <Tooltip
+            key={prereq.key}
+            title={`${prereq.label}: ${
+              prereq.value ? "Configuré" : "Manquant"
+            }`}
+            arrow
+          >
+            <IconButton
+              size="small"
+              onClick={(e) => handleOpen(e, prereq.key)}
+              sx={{
+                color: getStatusColor(prereq.status),
+                "&:hover": {
+                  bgcolor: theme.palette.action.hover,
+                },
+              }}
+            >
+              {prereq.icon}
+            </IconButton>
+          </Tooltip>
+        ))}
+      </Box>
 
-      <Tooltip
-        title={
-          selectedCall
-            ? `Appel : ${selectedCall.filename}`
-            : "Aucun appel sélectionné"
-        }
-      >
-        <IconButton onClick={(e) => handleOpen(e, "appel")}>
-          <CallIcon />
-          {getIconState(selectedCall)}
-        </IconButton>
-      </Tooltip>
+      {/* Séparateur */}
+      <Box
+        sx={{
+          width: 1,
+          height: 32,
+          bgcolor: theme.palette.divider,
+        }}
+      />
 
-      <Tooltip
-        title={
-          conseiller
-            ? `Conseiller : ${conseiller.nom} ${conseiller.prenom}`
-            : "Aucun conseiller sélectionné"
-        }
-      >
-        <IconButton onClick={(e) => handleOpen(e, "conseiller")}>
-          <PersonIcon />
-          {getIconState(selectedConseiller)}
-        </IconButton>
-      </Tooltip>
-
-      <Tooltip
-        title={
-          idCallActivite
-            ? `Activité ID : ${idCallActivite}`
-            : "Aucune activité créée"
-        }
-      >
-        <IconButton onClick={(e) => handleOpen(e, "activité")}>
-          <AssignmentIcon />
-          {getIconState(idCallActivite)}
-        </IconButton>
-      </Tooltip>
-
-      {currentPhase && phaseLabels[currentPhase] ? (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            p: 1,
-            bgcolor: "rgba(84, 83, 83, 0.9)",
-            borderRadius: "8px",
-            boxShadow: 2,
-          }}
-        >
+      {/* Section Phase Actuelle */}
+      {currentPhaseConfig ? (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flex: 1 }}>
+          {/* Chip de phase actuelle */}
           <Chip
-            label={phaseLabels[currentPhase].label} // ✅ Vérifié avant d'être affiché
-            color={phaseLabels[currentPhase].color}
+            icon={currentPhaseConfig.icon}
+            label={currentPhaseConfig.shortLabel}
+            size="small"
+            color="primary"
+            variant={theme.palette.mode === "dark" ? "outlined" : "filled"}
             sx={{
-              fontSize: "1rem",
-              fontWeight: "bold",
-              px: 2,
-              py: 1,
-              textTransform: "uppercase",
+              fontWeight: 600,
+              "& .MuiChip-icon": {
+                fontSize: "1rem",
+              },
             }}
           />
-          <IconButton
-            onClick={() => changePhase("prev")}
-            disabled={phaseOrder.indexOf(currentPhase) === 0}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-          <IconButton
-            onClick={() => changePhase("next")}
-            disabled={
-              phaseOrder.indexOf(currentPhase) === phaseOrder.length - 1
-            }
-          >
-            <ArrowForwardIcon />
-          </IconButton>
+
+          {/* Barre de progression discrète */}
+          <Box sx={{ flex: 1, minWidth: 100 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 0.5,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  color: theme.palette.text.secondary,
+                  fontSize: "0.7rem",
+                }}
+              >
+                Étape {currentStepNumber}/{phaseConfig.length}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: theme.palette.text.secondary,
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                }}
+              >
+                {Math.round(getProgressPercentage())}%
+              </Typography>
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={getProgressPercentage()}
+              sx={{
+                height: 4,
+                borderRadius: 2,
+                bgcolor: theme.palette.action.hover,
+                "& .MuiLinearProgress-bar": {
+                  borderRadius: 2,
+                  bgcolor: theme.palette.primary.main,
+                },
+              }}
+            />
+          </Box>
+
+          {/* Contrôles de navigation sobres */}
+          <Box sx={{ display: "flex", gap: 0.5 }}>
+            <IconButton
+              size="small"
+              onClick={() => changePhase("prev")}
+              disabled={
+                phaseConfig.findIndex((p) => p.key === currentPhase) === 0
+              }
+              sx={{
+                color: theme.palette.text.secondary,
+                "&:hover": {
+                  bgcolor: theme.palette.action.hover,
+                  color: theme.palette.text.primary,
+                },
+                "&:disabled": {
+                  color: theme.palette.action.disabled,
+                },
+              }}
+            >
+              <NavigateBefore fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={() => changePhase("next")}
+              disabled={
+                phaseConfig.findIndex((p) => p.key === currentPhase) ===
+                phaseConfig.length - 1
+              }
+              sx={{
+                color: theme.palette.text.secondary,
+                "&:hover": {
+                  bgcolor: theme.palette.action.hover,
+                  color: theme.palette.text.primary,
+                },
+                "&:disabled": {
+                  color: theme.palette.action.disabled,
+                },
+              }}
+            >
+              <NavigateNext fontSize="small" />
+            </IconButton>
+          </Box>
         </Box>
       ) : (
-        <Typography variant="body2" color="textSecondary">
-          Aucune phase en cours
-        </Typography>
+        <Box sx={{ flex: 1, textAlign: "center", py: 0.5 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: theme.palette.text.secondary,
+              fontSize: "0.8rem",
+            }}
+          >
+            {allPrerequisitesMet ? "Prêt à démarrer" : "Configuration requise"}
+          </Typography>
+          {allPrerequisitesMet && !currentPhase && (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setCurrentPhase("evaluation")}
+              sx={{
+                mt: 0.5,
+                fontSize: "0.7rem",
+                minHeight: 28,
+              }}
+            >
+              Démarrer
+            </Button>
+          )}
+        </Box>
       )}
 
-      {/* Popover dynamique */}
+      {/* Popover sobre et cohérent */}
       <Popover
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
         onClose={handleClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "center",
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        transformOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{
+          "& .MuiPaper-root": {
+            borderRadius: 2,
+            border: `1px solid ${theme.palette.divider}`,
+          },
         }}
       >
-        <Box sx={{ p: 2, minWidth: 250 }}>
+        <Box sx={{ p: 2.5, minWidth: 280 }}>
           {selectedItem === "entreprise" && (
             <>
-              <Typography>
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+                Entreprise
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ mb: 2, color: theme.palette.text.secondary }}
+              >
                 {selectedEntreprise
-                  ? `Entreprise sélectionnée : ${selectedEntreprise}`
+                  ? `Sélectionnée : ${selectedEntreprise}`
                   : "Aucune entreprise sélectionnée"}
               </Typography>
-              <Button onClick={() => router.push("/")}>Modifier</Button>
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={() => {
+                  router.push("/");
+                  handleClose();
+                }}
+              >
+                Modifier l'entreprise
+              </Button>
             </>
           )}
           {selectedItem === "appel" && (
             <>
-              <Typography>
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+                Appel
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ mb: 2, color: theme.palette.text.secondary }}
+              >
                 {selectedCall
-                  ? `Appel : ${selectedCall.filename}`
+                  ? `Fichier : ${selectedCall.filename}`
                   : "Aucun appel sélectionné"}
               </Typography>
-              <Button onClick={() => router.push("/evaluation")}>
-                Modifier
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={() => {
+                  router.push("/evaluation");
+                  handleClose();
+                }}
+              >
+                Sélectionner un appel
               </Button>
             </>
           )}
           {selectedItem === "conseiller" && (
             <>
-              <Typography>
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+                Conseiller
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ mb: 2, color: theme.palette.text.secondary }}
+              >
                 {conseiller
-                  ? `Conseiller : ${conseiller.nom} ${conseiller.prenom}`
+                  ? `${conseiller.nom} ${conseiller.prenom}`
                   : "Aucun conseiller sélectionné"}
               </Typography>
-              <Button onClick={() => router.push("/evaluation")}>
-                Modifier
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={() => {
+                  router.push("/evaluation");
+                  handleClose();
+                }}
+              >
+                Changer de conseiller
               </Button>
+            </>
+          )}
+          {selectedItem === "activite" && (
+            <>
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+                Activité
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ mb: 2, color: theme.palette.text.secondary }}
+              >
+                {idCallActivite
+                  ? `ID : ${idCallActivite}`
+                  : "Aucune activité créée"}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{ color: theme.palette.text.disabled }}
+              >
+                L'activité est créée automatiquement lors du premier passage.
+              </Typography>
             </>
           )}
         </Box>
       </Popover>
-    </Box>
+    </Paper>
   );
 };
 

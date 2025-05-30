@@ -1,5 +1,14 @@
 import React, { useState } from "react";
-import { Paper, Box, Typography, IconButton } from "@mui/material";
+import {
+  Paper,
+  Box,
+  Typography,
+  IconButton,
+  Divider,
+  Chip,
+  Collapse,
+  Tooltip,
+} from "@mui/material";
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -7,6 +16,10 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import WarningIcon from "@mui/icons-material/Warning";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import HistoryIcon from "@mui/icons-material/History";
+import EditIcon from "@mui/icons-material/Edit";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { SortablePostit } from "../SortablePostit";
 import { DroppableZoneProps, PostitType } from "../../types/types";
 import { NewPostitForm } from "./NewPostitForm";
@@ -39,12 +52,25 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
     useState<PostitType | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Correction de l'état pour la suggestion d'IA
+  // États pour les suggestions d'IA
   const [postitWithSuggestion, setPostitWithSuggestion] = useState<
     string | null
   >(null);
   const [suggestedContent, setSuggestedContent] = useState<string>("");
   const [originalContent, setOriginalContent] = useState<string>("");
+
+  // NOUVEAU : État pour l'affichage des sections
+  const [showOriginalSection, setShowOriginalSection] = useState<boolean>(true);
+  const [showImprovedSection, setShowImprovedSection] = useState<boolean>(true);
+
+  // Séparer les post-its originaux et retravaillés
+  const originalPostits = postits.filter((postit) => postit.isOriginal);
+  const improvedPostits = postits.filter((postit) => !postit.isOriginal);
+
+  // Compter les éléments
+  const originalCount = originalPostits.length;
+  const improvedCount = improvedPostits.length;
+  const totalCount = originalCount + improvedCount;
 
   // Gestion de l'ajout de post-it
   const handleAddClick = () => {
@@ -79,7 +105,7 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
     setSelectedPostitForAI(null);
   };
 
-  // Fonction pour recevoir les suggestions d'IA
+  // Fonctions pour les suggestions d'IA
   const handleSuggestImprovement = (
     id: string,
     content: string,
@@ -90,17 +116,14 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
     setOriginalContent(original);
   };
 
-  // Fonction pour choisir la bonne fonction d'édition (directe ou via boîte de dialogue)
   const getEditFunction = () => {
     return updatePostitContent || onEdit;
   };
 
-  // Ajout des fonctions manquantes pour accepter/rejeter les suggestions
   const handleAcceptSuggestion = () => {
     if (postitWithSuggestion && suggestedContent) {
       const editFunction = updatePostitContent || onEdit;
       editFunction(postitWithSuggestion, suggestedContent);
-      // Réinitialiser
       setPostitWithSuggestion(null);
       setSuggestedContent("");
       setOriginalContent("");
@@ -108,7 +131,6 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
   };
 
   const handleRejectSuggestion = () => {
-    // Réinitialiser
     setPostitWithSuggestion(null);
     setSuggestedContent("");
     setOriginalContent("");
@@ -120,6 +142,121 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
     } else {
       onEdit(id, content);
     }
+  };
+
+  // Rendu d'une section de post-its
+  const renderPostitsSection = (
+    sectionPostits: PostitType[],
+    isOriginalSection: boolean,
+    sectionTitle: string,
+    sectionIcon: React.ReactNode,
+    isExpanded: boolean,
+    onToggleExpand: () => void
+  ) => {
+    if (sectionPostits.length === 0) return null;
+
+    return (
+      <Box sx={{ mb: 2 }}>
+        {/* En-tête de section */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            p: 1,
+            backgroundColor: isOriginalSection
+              ? "rgba(0, 0, 0, 0.04)"
+              : "rgba(25, 118, 210, 0.08)",
+            borderRadius: 1,
+            cursor: "pointer",
+            "&:hover": {
+              backgroundColor: isOriginalSection
+                ? "rgba(0, 0, 0, 0.08)"
+                : "rgba(25, 118, 210, 0.12)",
+            },
+          }}
+          onClick={onToggleExpand}
+        >
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            {sectionIcon}
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: "bold",
+                color: isOriginalSection ? "text.secondary" : "primary.main",
+                ml: 0.5,
+              }}
+            >
+              {sectionTitle}
+            </Typography>
+            <Chip
+              label={sectionPostits.length}
+              size="small"
+              sx={{
+                ml: 1,
+                height: 16,
+                fontSize: "0.7rem",
+                backgroundColor: isOriginalSection
+                  ? "rgba(0, 0, 0, 0.12)"
+                  : "rgba(25, 118, 210, 0.2)",
+                color: isOriginalSection ? "text.secondary" : "primary.main",
+              }}
+            />
+          </Box>
+          {isExpanded ? (
+            <ExpandLessIcon fontSize="small" />
+          ) : (
+            <ExpandMoreIcon fontSize="small" />
+          )}
+        </Box>
+
+        {/* Contenu de la section */}
+        <Collapse in={isExpanded}>
+          <Box sx={{ mt: 1 }}>
+            {improvementMode ? (
+              // Mode amélioration
+              sectionPostits.map((postit) => (
+                <ImprovedPostit
+                  key={postit.id}
+                  postit={postit}
+                  fontSize={fontSize}
+                  onEdit={getEditFunction()}
+                  onDelete={onDelete}
+                  onAiMenu={handleOpenAiMenu}
+                  isLoading={isLoading}
+                  showSuggestion={postitWithSuggestion === postit.id}
+                  suggestedContent={
+                    postitWithSuggestion === postit.id ? suggestedContent : ""
+                  }
+                  originalContent={
+                    postitWithSuggestion === postit.id ? originalContent : ""
+                  }
+                  onAcceptSuggestion={handleAcceptSuggestion}
+                  onRejectSuggestion={handleRejectSuggestion}
+                />
+              ))
+            ) : (
+              // Mode normal avec drag & drop
+              <SortableContext
+                items={sectionPostits.map((p) => p.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {sectionPostits.map((postit) => (
+                  <SortablePostit
+                    key={postit.id}
+                    postit={postit}
+                    fontSize={fontSize}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    isOriginal={postit.isOriginal}
+                  />
+                ))}
+              </SortableContext>
+            )}
+          </Box>
+        </Collapse>
+      </Box>
+    );
   };
 
   return (
@@ -158,15 +295,24 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
           <Typography variant="subtitle2" fontWeight="bold">
             {title} {improvementMode && "(Mode amélioration)"}
           </Typography>
+          {totalCount > 0 && (
+            <Chip
+              label={`${totalCount} élément${totalCount > 1 ? "s" : ""}`}
+              size="small"
+              sx={{ ml: 1, height: 18, fontSize: "0.7rem" }}
+            />
+          )}
         </Box>
-        <IconButton size="small" onClick={handleAddClick}>
-          <AddIcon />
-        </IconButton>
+        <Tooltip title="Ajouter un post-it">
+          <IconButton size="small" onClick={handleAddClick}>
+            <AddIcon />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* Contenu de la zone */}
       <Box sx={{ overflowY: "auto", flex: 1 }}>
-        {postits.length === 0 ? (
+        {totalCount === 0 ? (
           <Typography
             variant="body2"
             sx={{
@@ -178,46 +324,34 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
           >
             Aucun élément. Cliquez sur + pour ajouter.
           </Typography>
-        ) : improvementMode ? (
-          // Mode amélioration
-          postits.map((postit) => (
-            <ImprovedPostit
-              key={postit.id}
-              postit={postit}
-              fontSize={fontSize}
-              onEdit={getEditFunction()}
-              onDelete={onDelete}
-              onAiMenu={handleOpenAiMenu}
-              isLoading={isLoading}
-              // Prop pour afficher une suggestion
-              showSuggestion={postitWithSuggestion === postit.id}
-              suggestedContent={
-                postitWithSuggestion === postit.id ? suggestedContent : ""
-              }
-              originalContent={
-                postitWithSuggestion === postit.id ? originalContent : ""
-              }
-              onAcceptSuggestion={handleAcceptSuggestion}
-              onRejectSuggestion={handleRejectSuggestion}
-            />
-          ))
         ) : (
-          // Mode normal
-          <SortableContext
-            items={postits.map((p) => p.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {postits.map((postit) => (
-              <SortablePostit
-                key={postit.id}
-                postit={postit}
-                fontSize={fontSize}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                isOriginal={postit.isOriginal}
-              />
-            ))}
-          </SortableContext>
+          <>
+            {/* Section des textes originaux */}
+            {renderPostitsSection(
+              originalPostits,
+              true,
+              "Textes originaux",
+              <HistoryIcon sx={{ fontSize: 14, color: "text.secondary" }} />,
+              showOriginalSection,
+              () => setShowOriginalSection(!showOriginalSection)
+            )}
+
+            {/* Séparateur si les deux sections existent */}
+            {originalCount > 0 &&
+              improvedCount > 0 &&
+              showOriginalSection &&
+              showImprovedSection && <Divider sx={{ my: 1, opacity: 0.5 }} />}
+
+            {/* Section des textes retravaillés */}
+            {renderPostitsSection(
+              improvedPostits,
+              false,
+              "Textes retravaillés",
+              <EditIcon sx={{ fontSize: 14, color: "primary.main" }} />,
+              showImprovedSection,
+              () => setShowImprovedSection(!showImprovedSection)
+            )}
+          </>
         )}
 
         {/* Formulaire de création de post-it */}

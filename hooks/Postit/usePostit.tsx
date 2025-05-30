@@ -22,8 +22,6 @@ export function usePostit() {
   const [readyToDisplayGrids, setReadyToDisplayGrids] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
 
-  console.log("isCompleted", isCompleted);
-
   // État pour suivre si un changement a été effectué dans une étape
   const [stepChanges, setStepChanges] = useState({
     0: false, // Étape contexte

@@ -37,12 +37,10 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
   const [highlightSpeakers, setHighlightSpeakers] = useState(true);
 
   const toggleHighlightTurnOne = useCallback(() => {
-    console.log("🔄 toggleHighlightTurnOne appelé");
     setHighlightTurnOne((prev) => !prev);
   }, []);
 
   const toggleHighlightSpeakers = useCallback(() => {
-    console.log("🔄 toggleHighlightSpeakers appelé");
     setHighlightSpeakers((prev) => !prev);
   }, []);
 
@@ -155,10 +153,9 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
   }, [displayMode]);
 
   const setContextFullWidth = useCallback(() => {
-    console.log("🔄 setContextFullWidth called, current mode:", displayMode);
     const newMode =
       displayMode === "context-fullwidth" ? "normal" : "context-fullwidth";
-    console.log("🔄 switching to:", newMode);
+
     setDisplayMode(newMode);
   }, [displayMode]);
 
@@ -238,14 +235,6 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
       setDisplayMode("normal");
     }
   }, [view, selectedPostit]);
-
-  // Debug logs
-  useEffect(() => {
-    console.log("🔍 DisplayMode changed:", displayMode);
-    console.log("📊 shouldShowTranscript:", shouldShowTranscript);
-    console.log("📊 shouldShowContext:", shouldShowContext);
-    console.log("📊 view:", view);
-  }, [displayMode, shouldShowTranscript, shouldShowContext, view]);
 
   return (
     <>

@@ -41,8 +41,6 @@ interface CallSelectionProps {
 export default function CallSelection({
   selectedEntreprise,
 }: CallSelectionProps) {
-  console.log("selectedEntreprise", selectedEntreprise);
-
   const {
     calls,
     fetchCalls,

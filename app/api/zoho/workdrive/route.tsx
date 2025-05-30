@@ -8,11 +8,8 @@ import {
 import { ZohoAuthToken } from "@/app/zohoworkdrive/types/zoho";
 
 export async function GET(request: NextRequest) {
-  console.log("WorkDrive API route called");
-
   // Récupérer le token depuis les headers
   const authHeader = request.headers.get("authorization");
-  console.log("Authorization header présent:", !!authHeader);
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return NextResponse.json(
@@ -28,28 +25,18 @@ export async function GET(request: NextRequest) {
       Buffer.from(tokenStr, "base64").toString()
     ) as ZohoAuthToken;
 
-    console.log(
-      "Token parsed successfully, access_token length:",
-      token.access_token.length
-    );
-
     // Récupérer les paramètres de la requête
     const searchParams = request.nextUrl.searchParams;
     const action = searchParams.get("action");
 
-    console.log("Action requested:", action);
-
     const folderId = searchParams.get("folderId");
     const fileId = searchParams.get("fileId");
-
-    console.log("Received parameters:", { folderId, fileId });
 
     // Action à effectuer
     switch (action) {
       case "list":
         // Récupérer la liste des fichiers d'un dossier
         const folderIdStr = folderId || "ly5m40e0e2d4ae7604a1fa0f5d42905cb94c9";
-        console.log("Making request to Zoho API for folder:", folderIdStr);
 
         try {
           // Utiliser le domaine API fourni par le token
@@ -57,8 +44,6 @@ export async function GET(request: NextRequest) {
           const WORKDRIVE_API_URL = `${baseUrl}/workdrive/api/v1`;
 
           const endpoint = `${WORKDRIVE_API_URL}/files/${folderIdStr}/files`;
-
-          console.log("Requesting endpoint:", endpoint);
 
           const response = await fetch(endpoint, {
             method: "GET",
@@ -68,12 +53,6 @@ export async function GET(request: NextRequest) {
               Accept: "application/vnd.api+json",
             },
           });
-
-          console.log(
-            "API response status:",
-            response.status,
-            response.statusText
-          );
 
           if (!response.ok) {
             const errorData = await response.json();
@@ -100,8 +79,6 @@ export async function GET(request: NextRequest) {
             parentId: item.attributes?.parent_id || "",
             thumbnailUrl: item.attributes?.thumbnail_url || "",
           }));
-
-          console.log("Found", files.length, "files");
 
           return NextResponse.json({
             data: files,

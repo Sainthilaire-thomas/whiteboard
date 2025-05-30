@@ -145,7 +145,7 @@ export const LABELS = {
 
   STATS: {
     PASSAGES: "passages",
-    A_TRAITER: "à traiter",
+    A_TRAITER: "non qualité à traiter",
   },
 };
 

@@ -83,8 +83,6 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
   // FONCTION UPDATEPOSTIT CORRIGÉE
   const updatePostit = useCallback(
     async (id: number, updatedFields: Record<string, any>) => {
-      console.log("💾 updatePostit appelé:", { id, updatedFields });
-
       if (
         !id ||
         typeof updatedFields !== "object" ||
@@ -112,10 +110,7 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
           safeUpdatedFields.pratique = updatedFields.pratique;
         if ("idpratique" in updatedFields) {
           safeUpdatedFields.idpratique = updatedFields.idpratique ?? null;
-          console.log("✅ idpratique inclus:", updatedFields.idpratique);
         }
-
-        console.log("📤 Données pour Supabase:", safeUpdatedFields);
 
         // Mise à jour Supabase
         const { data, error } = await supabaseClient
@@ -129,8 +124,6 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
           return;
         }
 
-        console.log("✅ Supabase mis à jour:", data);
-
         // Mise à jour des états locaux avec fonction pour éviter stale closure
         setAllPostits((prevPostits) => {
           return prevPostits.map((postit) =>
@@ -143,8 +136,6 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
             postit.id === id ? { ...postit, ...safeUpdatedFields } : postit
           );
         });
-
-        console.log("✅ États locaux mis à jour");
       } catch (error) {
         console.error("❌ Erreur dans updatePostit:", error);
       }
@@ -167,7 +158,7 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
   const updatePostitToPratiqueMap = useCallback(
     (postitId: number, pratiqueId: number | null) => {
       // Changé de string vers number
-      console.log("🔄 updatePostitToPratiqueMap:", { postitId, pratiqueId });
+
       setPostitToPratiqueMap((prev) => ({
         ...prev,
         [postitId]: pratiqueId, // Stocke l'ID, pas le nom
@@ -224,7 +215,6 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
       initialPratiqueMap[postit.id] = postit.idpratique ?? null;
     });
 
-    console.log("🔄 Initialisation pratiqueMap:", initialPratiqueMap);
     setPostitToPratiqueMap(initialPratiqueMap);
   }, [appelPostits, selectedCallId]);
 

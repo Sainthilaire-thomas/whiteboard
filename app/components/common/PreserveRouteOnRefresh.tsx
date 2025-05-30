@@ -18,30 +18,12 @@ export default function PreserveRouteOnRefresh() {
         // Vérifier si un callId est présent dans l'URL
         const callIdParam = searchParams.get("callId");
 
-        console.log("PreserveRouteOnRefresh - callIdParam:", callIdParam);
-        console.log(
-          "PreserveRouteOnRefresh - calls disponibles:",
-          calls.length
-        );
-        console.log(
-          "PreserveRouteOnRefresh - selectedCall:",
-          selectedCall ? selectedCall.callid : "aucun"
-        );
-
         // Si un callId est dans l'URL et qu'aucun appel n'est actuellement sélectionné
         if (callIdParam && !selectedCall && calls && calls.length > 0) {
-          console.log(
-            "PreserveRouteOnRefresh - recherche de l'appel avec ID:",
-            callIdParam
-          );
-
           // Trouver l'appel correspondant
           const call = calls.find((c) => c.callid.toString() === callIdParam);
 
           if (call) {
-            console.log(
-              "PreserveRouteOnRefresh - appel trouvé, sélection en cours"
-            );
             // Sélectionner cet appel - cela devrait déclencher l'autre useEffect dans Evaluation.tsx
             selectCall(call);
           } else {
@@ -53,9 +35,6 @@ export default function PreserveRouteOnRefresh() {
 
         // Si aucun paramètre view n'est présent et qu'un appel est sélectionné
         if (!searchParams.get("view") && selectedCall) {
-          console.log(
-            "PreserveRouteOnRefresh - aucune vue spécifiée, redirection vers synthese"
-          );
           // Construire l'URL avec à la fois le view et le callId
           const newUrl = `/evaluation?view=synthese&callId=${selectedCall.callid}`;
           router.replace(newUrl, { scroll: false });
