@@ -163,7 +163,7 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            p: 1,
+            p: 0.5,
             backgroundColor: isOriginalSection
               ? "rgba(0, 0, 0, 0.04)"
               : "rgba(25, 118, 210, 0.08)",
@@ -280,7 +280,7 @@ export const DroppableZone: React.FC<DroppableZoneProps> = ({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          mb: 1,
+          mb: 0.5,
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center" }}>

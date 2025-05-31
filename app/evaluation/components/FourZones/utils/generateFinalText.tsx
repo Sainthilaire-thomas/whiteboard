@@ -317,3 +317,46 @@ export const hasReworkedContent = (postits: PostitType[]): boolean => {
       ].includes(postit.zone)
   );
 };
+
+export const createDefaultReadingOrder = (
+  postits: PostitType[]
+): PostitType[] => {
+  const improvedPostits = postits.filter((postit) => !postit.isOriginal);
+
+  const zoneOrder = [
+    ZONES.VOUS_AVEZ_FAIT,
+    ZONES.JE_FAIS,
+    ZONES.ENTREPRISE_FAIT,
+    ZONES.VOUS_FEREZ,
+  ];
+
+  const orderedPostits: PostitType[] = [];
+
+  zoneOrder.forEach((zone) => {
+    const zonePostits = improvedPostits.filter((p) => p.zone === zone);
+    orderedPostits.push(...zonePostits);
+  });
+
+  return orderedPostits;
+};
+
+export const generateFinalConseillerTextWithCustomOrder = (
+  postits: PostitType[],
+  customOrder?: PostitType[]
+): string => {
+  if (customOrder && customOrder.length > 0) {
+    // Utiliser l'ordre personnalisé
+    const elements = customOrder
+      .map((p) => formatContentForTTS(p.content.trim()))
+      .filter((content) => content.length > 0);
+
+    if (elements.length === 0) return "";
+
+    const finalText = elements.join(", ");
+    const cleanedText = finalText.replace(/[.]{2,}/g, ".").replace(/[,.]$/, "");
+    return cleanedText + ".";
+  }
+
+  // Sinon, utiliser la fonction existante avec ordre par défaut
+  return generateFinalConseillerText(postits);
+};

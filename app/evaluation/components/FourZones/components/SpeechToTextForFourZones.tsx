@@ -280,7 +280,7 @@ const SpeechToTextForFourZones: React.FC<SpeechToTextForFourZonesProps> = ({
       content: selection.text,
       zone: selection.zone,
       color: zoneColors[selection.zone],
-      isOriginal: true,
+      isOriginal: false, // ← CHANGEMENT ICI : false au lieu de true
     }));
 
     // Appeler la fonction callback avec les nouveaux post-its

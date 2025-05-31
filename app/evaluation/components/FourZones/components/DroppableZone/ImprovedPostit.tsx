@@ -200,7 +200,7 @@ export const ImprovedPostit: React.FC<ImprovedPostitProps> = ({
   return (
     <Card
       sx={{
-        mb: 1.5,
+        mb: 0.25, // ⭐ RÉDUIT de 0.5 à 0.25 - GAIN IMPORTANT
         boxShadow: 1,
         backgroundColor: "rgba(28, 28, 28, 0.9)",
         transition: "all 0.2s ease",
@@ -210,13 +210,27 @@ export const ImprovedPostit: React.FC<ImprovedPostitProps> = ({
         },
       }}
     >
-      <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-        <Typography fontSize={fontSize}>{postit.content}</Typography>
+      <CardContent
+        sx={{
+          p: 0.75, // ⭐ RÉDUIT de 1.5 à 0.75 - GAIN ÉNORME
+          "&:last-child": { pb: 0.75 }, // ⭐ RÉDUIT aussi le padding bottom
+          minHeight: "auto", // ⭐ AJOUTE - hauteur automatique
+        }}
+      >
+        <Typography
+          fontSize={fontSize}
+          sx={{
+            lineHeight: 1.3, // ⭐ AJOUTE - réduit l'interligne
+            margin: 0, // ⭐ AJOUTE - supprime les marges par défaut
+          }}
+        >
+          {postit.content}
+        </Typography>
         <Box
           sx={{
             display: "flex",
             justifyContent: "flex-end",
-            mt: 1,
+            mt: 0.5, // ⭐ RÉDUIT de 1 à 0.5 - GAIN IMPORTANT
             opacity: 0.7,
             "&:hover": { opacity: 1 },
           }}
@@ -225,23 +239,29 @@ export const ImprovedPostit: React.FC<ImprovedPostitProps> = ({
             size="small"
             onClick={handleStartEdit}
             title="Modifier manuellement"
+            sx={{ p: 0.25 }} // ⭐ AJOUTE - boutons plus compacts
           >
-            <EditIcon fontSize="small" />
+            <EditIcon sx={{ fontSize: 16 }} />{" "}
+            {/* ⭐ AJOUTE - icône plus petite */}
           </IconButton>
           <IconButton
             size="small"
             onClick={(e) => onAiMenu(e, postit)}
             title="Améliorer avec l'IA"
             disabled={isLoading}
+            sx={{ p: 0.25 }} // ⭐ AJOUTE - boutons plus compacts
           >
-            <AutoFixHighIcon fontSize="small" />
+            <AutoFixHighIcon sx={{ fontSize: 16 }} />{" "}
+            {/* ⭐ AJOUTE - icône plus petite */}
           </IconButton>
           <IconButton
             size="small"
             onClick={() => onDelete(postit.id)}
             title="Supprimer"
+            sx={{ p: 0.25 }} // ⭐ AJOUTE - boutons plus compacts
           >
-            <DeleteIcon fontSize="small" />
+            <DeleteIcon sx={{ fontSize: 16 }} />{" "}
+            {/* ⭐ AJOUTE - icône plus petite */}
           </IconButton>
         </Box>
       </CardContent>

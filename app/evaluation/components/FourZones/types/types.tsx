@@ -92,7 +92,25 @@ export interface DroppableZoneProps {
   onDelete: (id: string) => void;
   onAddClick: (zone: string, content: string) => void;
   isEntrepriseZone?: boolean;
+  improvementMode?: boolean;
   updatePostitContent?: (id: string, content: string) => void;
+  // Nouvelles props pour TTS
+  onPlayPostit?: (id: string, text: string) => void;
+  onPlayZone?: (zoneId: string, text: string) => void;
+  currentPlayingId?: string | null;
+  isPlaying?: boolean;
+}
+
+// Nouveaux types pour TTS
+export interface TTSState {
+  isPlaying: boolean;
+  currentPlayingId: string | null;
+  currentText: string;
+  playingType: "postit" | "zone" | "global" | null;
+}
+
+export interface TTSCache {
+  [key: string]: string; // ID -> Audio URL blob
 }
 
 /**

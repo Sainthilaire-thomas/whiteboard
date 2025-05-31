@@ -92,7 +92,6 @@ const FourZones: React.FC<FourZonesProps> = ({
     saveRolePlayData,
     isLoadingRolePlay,
     setTranscriptSelectionMode,
-    // fontSize,
   } = callDataContext as unknown as CallDataContextType;
 
   const { audioSrc, play, seekTo } = useAudio();
@@ -193,8 +192,68 @@ const FourZones: React.FC<FourZonesProps> = ({
     return null;
   }, [postits]);
 
+  // NOUVELLE FONCTION: Gérer la navigation via le stepper
+  const canNavigateToStep = (targetStep: number) => {
+    // Navigation libre - l'utilisateur peut aller partout
+    return targetStep >= 0 && targetStep < steps.length;
+  };
+
+  // Fonction pour gérer la navigation avec guidage intelligent
+  const handleStepClick = (targetStep: number) => {
+    if (canNavigateToStep(targetStep)) {
+      setActiveStep(targetStep);
+
+      // Guidage contextuel intelligent (sans bloquer)
+      if (targetStep > 0 && !hasOriginalPostits) {
+        showNotification(
+          `💡 Astuce: Pour tirer le meilleur parti de cette étape, commencez par catégoriser du contenu à l'étape 1`,
+          "info"
+        );
+      }
+
+      // Messages d'aide spécifiques par étape
+      switch (targetStep) {
+        case 0:
+          if (postits.length > 0) {
+            showNotification(
+              "✅ Vous avez déjà du contenu catégorisé",
+              "success"
+            );
+          }
+          break;
+        case 1:
+          if (!hasOriginalPostits) {
+            showNotification(
+              "ℹ️ Catégorisez d'abord du contenu pour commencer le jeu de rôle",
+              "info"
+            );
+          }
+          break;
+        case 2:
+          if (!hasOriginalPostits) {
+            showNotification(
+              "ℹ️ Cette étape vous permettra d'améliorer vos réponses une fois que vous aurez du contenu",
+              "info"
+            );
+          }
+          break;
+        case 3:
+          if (!hasOriginalPostits) {
+            showNotification(
+              "ℹ️ Ici vous pourrez réviser votre travail final",
+              "info"
+            );
+          }
+          break;
+      }
+    }
+  };
+
   // AJOUT: Écouter les événements de sélection de texte (important !)
   useEffect(() => {
+    console.log("activeStep:", activeStep);
+
+    if (activeStep !== 0) return;
     const handleTextSelection = () => {
       const selection = window.getSelection();
       if (selection && selection.toString().trim().length > 0) {
@@ -212,7 +271,7 @@ const FourZones: React.FC<FourZonesProps> = ({
 
     document.addEventListener("mouseup", handleTextSelection);
     return () => document.removeEventListener("mouseup", handleTextSelection);
-  }, [selectionMode]);
+  }, [selectionMode, activeStep]);
 
   // Gérer le menu contextuel
   const handleOpenZoneMenu = (
@@ -339,8 +398,9 @@ const FourZones: React.FC<FourZonesProps> = ({
         sx={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
-          gridTemplateRows: "1fr 1fr",
-          gap: 1,
+          gridTemplateRows: "auto auto",
+          alignItems: "start",
+          gap: 0.5,
           flex: 1,
           minHeight: "400px",
         }}
@@ -442,29 +502,33 @@ const FourZones: React.FC<FourZonesProps> = ({
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        overflow: "hidden", // Important pour que sticky fonctionne
+        overflow: "hidden",
       }}
     >
-      {/* Stepper fixe en haut */}
+      {/* Stepper interactif fixe en haut */}
       <Box
         sx={{
-          flexShrink: 0, // Ne se réduit pas
+          flexShrink: 0,
           backgroundColor: "background.paper",
           borderBottom: "1px solid",
           borderColor: "divider",
-          p: 2,
-          px: 2,
           boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
         }}
       >
-        <StepperHeader steps={steps} activeStep={activeStep} mode={mode} />
+        <StepperHeader
+          steps={steps}
+          activeStep={activeStep}
+          mode={mode}
+          onStepClick={handleStepClick}
+          canNavigateToStep={canNavigateToStep}
+        />
       </Box>
 
-      {/* Contenu scrollable */}
+      {/* Contenu scrollable - prend tout l'espace disponible */}
       <Box
         sx={{
           flex: 1,
-          overflow: "auto", // Permet le scroll
+          overflow: "auto",
           p: 1,
         }}
       >
@@ -502,28 +566,7 @@ const FourZones: React.FC<FourZonesProps> = ({
         })}
       </Box>
 
-      {/* Navigation fixe en bas */}
-      <Box
-        sx={{
-          flexShrink: 0, // Ne se réduit pas
-          backgroundColor: "background.paper",
-          borderTop: "1px solid",
-          borderColor: "divider",
-          p: 2,
-          boxShadow: "0 -2px 4px rgba(0,0,0,0.1)",
-        }}
-      >
-        <StepNavigation
-          activeStep={activeStep}
-          stepsLength={steps.length}
-          handleBack={handleBack}
-          handleNext={handleNext}
-          canProceedToNextStep={canProceedToNextStep()}
-          mode={mode}
-        />
-      </Box>
-
-      {/* Menu contextuel pour l'ajout à une zone */}
+      {/* Autres composants (dialogs, menu, snackbar) restent identiques */}
       <Menu
         anchorEl={menuAnchorEl}
         open={Boolean(menuAnchorEl)}
@@ -543,7 +586,6 @@ const FourZones: React.FC<FourZonesProps> = ({
         </MenuItem>
       </Menu>
 
-      {/* Boîte de dialogue pour modifier un post-it */}
       <EditPostitDialog
         open={isEditDialogOpen}
         content={editPostitContent}
@@ -552,7 +594,6 @@ const FourZones: React.FC<FourZonesProps> = ({
         onSave={savePostitEdit}
       />
 
-      {/* Boîte de dialogue pour catégoriser le texte du conseiller */}
       <CategoryDialog
         open={showCategoryDialog}
         text={textToCategorizze}
@@ -562,7 +603,6 @@ const FourZones: React.FC<FourZonesProps> = ({
         onSave={handleAddCategorizedText}
       />
 
-      {/* Notification */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}

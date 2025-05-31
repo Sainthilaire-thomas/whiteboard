@@ -1,8 +1,8 @@
-// utils/stepContentUtils.js - Version corrigée basée sur l'original
+// utils/stepContentUtils.js - Version adaptée avec TTS
 import React, { useEffect } from "react";
 import { useCallData } from "@/context/CallDataContext";
-import { Box, Typography, Paper, IconButton } from "@mui/material";
-import { PlayArrow } from "@mui/icons-material";
+import { Box, Typography, Paper, IconButton, Button } from "@mui/material";
+import { PlayArrow, RecordVoiceOver } from "@mui/icons-material";
 import MicIcon from "@mui/icons-material/Mic";
 import DynamicSpeechToTextForFourZones from "../components/DynamicSpeechToTextForFourZones";
 import { ZoneLegend } from "../components/ZoneLegend";
@@ -51,6 +51,9 @@ interface RenderStepContentParams {
   ) => void;
   postits: PostitType[];
   setPostits: (postits: PostitType[]) => void;
+  // Nouvelles props TTS
+  ttsStudioVisible?: boolean;
+  toggleTTSStudio?: () => void;
 }
 
 /**
@@ -86,6 +89,8 @@ export const renderStepContent = ({
   handleOpenZoneMenu,
   postits,
   setPostits,
+  ttsStudioVisible,
+  toggleTTSStudio,
 }: RenderStepContentParams) => {
   const {
     transcriptSelectionMode,
@@ -106,7 +111,7 @@ export const renderStepContent = ({
     console.log("- improvedConseillerText:", improvedConseillerText);
   }, [activeStep, postits, improvedConseillerText]);
 
-  // Rendu de l'étape 0: Sélection du contexte
+  // Rendu de l'étape 0: Sélection du contexte (INCHANGÉ)
   const renderStep0 = () => (
     <>
       <ClientResponseSection
@@ -127,7 +132,7 @@ export const renderStepContent = ({
     </>
   );
 
-  // Rendu de l'étape 1: Jeu de rôle
+  // Rendu de l'étape 1: Jeu de rôle (INCHANGÉ)
   const renderStep1 = () => (
     <>
       <Box sx={{ mb: 1 }}>
@@ -219,7 +224,7 @@ export const renderStepContent = ({
     </>
   );
 
-  // Rendu de l'étape 2: Suggestions d'amélioration
+  // Rendu de l'étape 2: Suggestions d'amélioration AVEC TTS
   const renderStep2 = () => (
     <>
       {/* Section client qui reste visible */}
@@ -240,26 +245,59 @@ export const renderStepContent = ({
         </Typography>
       </Paper>
 
-      {/* Guide d'amélioration */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Améliorez les éléments de votre réponse:
+      {/* Barre d'outils avec bouton TTS */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 0.5, // ⭐ RÉDUIT de 2 à 0.5
+          p: 0.75, // ⭐ RÉDUIT de 2 à 0.75
+          backgroundColor: "background.paper",
+          borderRadius: 1,
+          boxShadow: 1,
+          minHeight: "36px", // ⭐ HAUTEUR FIXE MINIMALE
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: "bold",
+            fontSize: "0.8rem",
+          }}
+        >
+          Améliorez vos réponses • IA disponible
         </Typography>
-        <Typography variant="body2" color="text.secondary" paragraph>
-          Dans cette étape, vous pouvez améliorer directement le contenu de
-          chaque zone. Cliquez sur les éléments pour les modifier ou utilisez
-          l'IA pour les optimiser.
-        </Typography>
+
+        {toggleTTSStudio && (
+          <Button
+            variant={ttsStudioVisible ? "contained" : "outlined"}
+            startIcon={<RecordVoiceOver sx={{ fontSize: 16 }} />}
+            onClick={toggleTTSStudio}
+            size="small"
+            sx={{ fontSize: "0.75rem", py: 0.25 }}
+          >
+            TTS
+          </Button>
+        )}
       </Box>
 
       <ZoneLegend />
 
-      {/* Utiliser les zones de drop avec le mode amélioration activé */}
-      {renderDropZones(true)}
+      {/* Zones d'amélioration avec hauteur adaptative */}
+      <Box
+        sx={{
+          // Ajuster la hauteur si TTS Studio visible
+          maxHeight: ttsStudioVisible ? "50vh" : "none",
+          overflow: ttsStudioVisible ? "auto" : "visible",
+        }}
+      >
+        {renderDropZones(true)}
+      </Box>
     </>
   );
 
-  // Rendu de l'étape 3: Lecture finale
+  // Rendu de l'étape 3: Lecture finale (INCHANGÉ)
   const renderStep3 = () => {
     console.log("🎙️ Rendu FinalReviewStep avec:");
     console.log("- selectedConseillerText:", selectedConseillerText);

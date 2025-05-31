@@ -1,44 +1,44 @@
+// hooks/useStepNavigation.ts - Version épurée
+
 import { useState } from "react";
 
-/**
- * Hook personnalisé pour gérer la navigation entre les étapes
- * @param {Object} params Paramètres du hook
- * @param {Array} params.steps Liste des étapes
- * @param {Object} params.postitsState État des post-its pour vérifier les conditions
- * @returns {Object} État et fonctions pour la navigation
- */
-export const useStepNavigation = ({ steps, postitsState }) => {
-  const [activeStep, setActiveStep] = useState(0);
+interface UseStepNavigationProps {
+  steps: string[];
+  postitsState: any; // Remplacez par le type approprié
+}
 
-  const { postits, selectedClientText, selectedConseillerText } = postitsState;
+export const useStepNavigation = ({
+  steps,
+  postitsState,
+}: UseStepNavigationProps) => {
+  const [activeStep, setActiveStep] = useState<number>(0);
+  const { hasOriginalPostits } = postitsState;
 
-  // Navigation vers l'étape suivante
+  // Fonction pour aller à l'étape suivante (gardée pour la navigation automatique)
   const handleNext = () => {
-    setActiveStep((prevActiveStep) =>
-      Math.min(prevActiveStep + 1, steps.length - 1)
-    );
+    if (activeStep < steps.length - 1 && canProceedToNextStep()) {
+      setActiveStep(activeStep + 1);
+    }
   };
 
-  // Navigation vers l'étape précédente
+  // Fonction pour revenir à l'étape précédente (gardée pour compatibilité)
   const handleBack = () => {
-    setActiveStep((prevActiveStep) => Math.max(prevActiveStep - 1, 0));
+    if (activeStep > 0) {
+      setActiveStep(activeStep - 1);
+    }
   };
 
-  // Vérifier si on peut passer à l'étape suivante
+  // Vérifier si on peut procéder à l'étape suivante
   const canProceedToNextStep = () => {
     switch (activeStep) {
-      case 0:
-        // Nécessite au moins un texte client et une réponse conseiller
-        return (
-          selectedClientText.trim() !== "" &&
-          selectedConseillerText.trim() !== ""
-        );
-      case 1:
-        // Nécessite au moins un post-it dans n'importe quelle zone
-        return postits.length > 0;
-      case 2:
-        // Peut toujours passer à l'étape de lecture
-        return true;
+      case 0: // Sélection du contexte
+        return postitsState.hasOriginalPostits; // hasOriginalPostits est une valeur booléenne
+      case 1: // Jeu de rôle
+        return postitsState.hasOriginalPostits;
+      case 2: // Suggestions d'amélioration
+        return postitsState.hasOriginalPostits;
+      case 3: // Lecture finale
+        return false; // Dernière étape, pas de suivant
       default:
         return false;
     }
@@ -46,9 +46,9 @@ export const useStepNavigation = ({ steps, postitsState }) => {
 
   return {
     activeStep,
-    setActiveStep,
-    handleNext,
-    handleBack,
+    setActiveStep, // Exposé pour la navigation directe via stepper
+    handleNext, // Gardé pour la navigation automatique
+    handleBack, // Gardé pour compatibilité
     canProceedToNextStep,
   };
 };
