@@ -1,5 +1,5 @@
-// FinalReviewStep.tsx - Version complète avec studio TTS intégré
-import React, { useState } from "react";
+// FinalReviewStep.tsx - Version épurée avec affichage discret des zones
+import React, { useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -29,38 +29,62 @@ import type { RoleVoiceSettings } from "./extensions/VoiceByRole";
 import type { ConversationalSettings } from "./extensions/ConversationalAgent";
 import type { TextSegment as TextSegmentType } from "./extensions/SmartTextSegmentation";
 
+// Imports pour les zones
+import {
+  generateZoneAwareComposition,
+  createOriginalComposition,
+  hasImprovedContent,
+  ZoneComposition,
+  ZoneAwareTextSegment,
+} from "../../utils/generateFinalText";
+import { PostitType } from "../../types/types";
+
+// ✅ NOUVEAU : Import du composant d'affichage enrichi
+import EnrichedTextDisplay from "./components/EnrichedTextDisplay";
+
 interface FinalReviewStepProps {
   mode: string;
   selectedClientText: string;
-  selectedConseillerText: string; // Texte initial sélectionné
-  improvedConseillerText?: string; // Texte retravaillé dans les 4 zones
+  selectedConseillerText: string;
+  improvedConseillerText?: string;
+  postits: PostitType[];
+  zoneColors: Record<string, string>;
 }
 
 /**
  * Composant principal pour l'étape finale avec studio TTS complet
- * Intègre toutes les fonctionnalités avancées de synthèse vocale
+ * ✅ Version épurée avec affichage discret des zones d'origine
  */
 export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
   mode,
   selectedClientText,
   selectedConseillerText,
-  improvedConseillerText, // Nouveau prop
+  improvedConseillerText,
+  postits,
+  zoneColors,
 }) => {
-  // ✅ Debug pour vérifier ce qui est reçu
-  console.log("🎙️ FinalReviewStep props reçus:");
-  console.log("- selectedConseillerText:", selectedConseillerText);
-  console.log("- improvedConseillerText:", improvedConseillerText);
-
   // Hook TTS principal
   const tts = useTTS();
 
-  // Utiliser le texte amélioré s'il existe, sinon le texte original
-  const finalConseillerText = improvedConseillerText || selectedConseillerText;
+  // Génération de la composition enrichie
+  const zoneComposition = useMemo((): ZoneComposition => {
+    if (hasImprovedContent(postits)) {
+      const result = generateZoneAwareComposition(
+        postits,
+        zoneColors,
+        selectedConseillerText
+      );
 
-  console.log("- finalConseillerText utilisé:", finalConseillerText);
-  console.log("- Texte retravaillé actif:", !!improvedConseillerText);
+      return result;
+    }
 
-  // État des paramètres
+    return createOriginalComposition(selectedConseillerText, zoneColors);
+  }, [postits, zoneColors, selectedConseillerText]);
+
+  // Utiliser le texte de la composition
+  const finalConseillerText = zoneComposition.fullText;
+
+  // État des paramètres TTS
   const [basicSettings, setBasicSettings] = useState<TTSSettings>({
     voice: "alloy",
     speed: 1.0,
@@ -88,9 +112,59 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
   // État des segments et lecture
   const [activeSegment, setActiveSegment] = useState<string | null>(null);
   const [textSegments, setTextSegments] = useState<TextSegmentType[]>([]);
-  const [playMode, setPlayMode] = useState<"simple" | "segmented" | "complete">(
-    "simple"
-  );
+
+  // Gestion de la lecture des segments de zone
+  const handlePlayZoneSegment = async (segment: ZoneAwareTextSegment) => {
+    if (activeSegment === segment.id && tts.isPlaying) {
+      tts.stopAudio();
+      setActiveSegment(null);
+      return;
+    }
+
+    let effectiveSettings = basicSettings;
+
+    if (roleVoiceSettings.enabled) {
+      effectiveSettings = {
+        ...basicSettings,
+        voice: roleVoiceSettings.conseiller.voice,
+        speed: roleVoiceSettings.conseiller.speed,
+      };
+    }
+
+    setActiveSegment(segment.id);
+    await tts.speak(segment.content, effectiveSettings);
+
+    if (!tts.isPlaying) {
+      setActiveSegment(null);
+    }
+  };
+
+  // Téléchargement d'un segment de zone
+  const handleDownloadZoneSegment = async (segment: ZoneAwareTextSegment) => {
+    if (!segment.content.trim()) return;
+
+    const effectiveSettings = roleVoiceSettings.enabled
+      ? {
+          ...basicSettings,
+          voice: roleVoiceSettings.conseiller.voice,
+          speed: roleVoiceSettings.conseiller.speed,
+        }
+      : basicSettings;
+
+    const audioUrl = await tts.generateSpeech(
+      segment.content,
+      effectiveSettings
+    );
+    if (audioUrl) {
+      const link = document.createElement("a");
+      link.href = audioUrl;
+      link.download = `zone_${segment.sourceZone}_${Date.now()}.mp3`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(audioUrl), 1000);
+    }
+  };
 
   // Gestion de la lecture simple (par rôle)
   const handlePlayRole = async (role: "client" | "conseiller") => {
@@ -102,7 +176,6 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
       return;
     }
 
-    // Déterminer les paramètres selon le mode
     let effectiveSettings = basicSettings;
 
     if (roleVoiceSettings.enabled) {
@@ -132,14 +205,12 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
     let fullText = "";
 
     if (conversationalSettings.enabled) {
-      // Mode conversationnel - utiliser l'API Chat Completions
       fullText = `En tant que ${
         conversationalSettings.style === "professional"
           ? "conseiller professionnel"
           : "assistant empathique"
       }, lisez cette conversation de manière naturelle: Message du client: "${selectedClientText}" Réponse du conseiller: "${finalConseillerText}"`;
     } else {
-      // Mode standard
       fullText = `Message du client: ${selectedClientText}. Réponse du conseiller: ${finalConseillerText}`;
     }
 
@@ -151,7 +222,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
     }
   };
 
-  // Lecture des segments
+  // Lecture des segments standards
   const handlePlaySegment = async (segment: TextSegmentType) => {
     setActiveSegment(segment.id);
     await tts.speak(segment.content, basicSettings);
@@ -198,11 +269,12 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
   const hasAdvancedFeatures =
     roleVoiceSettings.enabled ||
     conversationalSettings.enabled ||
-    textSegments.length > 1;
+    textSegments.length > 1 ||
+    zoneComposition.hasReworkedContent;
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* En-tête */}
+      {/* En-tête épuré */}
       <Box sx={{ textAlign: "center", mb: 3 }}>
         <Typography variant="h5" gutterBottom sx={{ fontWeight: "bold" }}>
           🎙️ Studio de test vocal
@@ -211,6 +283,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
           Écoutez et perfectionnez la réponse avec des outils TTS avancés
         </Typography>
 
+        {/* Indicateurs compacts des fonctionnalités actives */}
         {hasAdvancedFeatures && (
           <Box sx={{ mt: 1, display: "flex", justify: "center", gap: 1 }}>
             {roleVoiceSettings.enabled && (
@@ -223,9 +296,9 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
                 color="secondary"
               />
             )}
-            {textSegments.length > 1 && (
+            {zoneComposition.hasReworkedContent && (
               <Chip
-                label={`${textSegments.length} segments`}
+                label={`${zoneComposition.segments.length} zones enrichies`}
                 size="small"
                 color="success"
               />
@@ -242,7 +315,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
       )}
 
       <Grid container spacing={3}>
-        {/* Zone principale */}
+        {/* Zone principale épurée */}
         <Grid item xs={12} lg={8}>
           <Paper
             elevation={2}
@@ -253,7 +326,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
                 mode === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)",
             }}
           >
-            {/* Segments de texte principaux */}
+            {/* Section client standard */}
             <TextSegment
               id="client"
               text={selectedClientText}
@@ -269,31 +342,91 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
               editable={false}
             />
 
-            <TextSegment
-              id="conseiller"
-              text={finalConseillerText}
-              title="Réponse conseiller"
-              role="conseiller"
-              isPlaying={activeSegment === "conseiller"}
-              isLoading={tts.isLoading && activeSegment === "conseiller"}
-              progress={activeSegment === "conseiller" ? tts.progress : 0}
-              onPlay={() => handlePlayRole("conseiller")}
-              onStop={() => tts.stopAudio()}
-              onDownload={() => handleDownloadAudio("conseiller")}
-              mode={mode}
-              editable={false}
-            />
-            {improvedConseillerText && (
-              <>
-                <br />• <strong>✨ Texte retravaillé utilisé</strong>
-                <br />• Amélioration:{" "}
-                {finalConseillerText.length - selectedConseillerText.length > 0
-                  ? "+"
-                  : ""}
-                {finalConseillerText.length - selectedConseillerText.length}{" "}
-                caractères
-              </>
-            )}
+            {/* ✅ Section conseiller avec affichage enrichi discret */}
+            <Paper
+              elevation={1}
+              sx={{
+                p: 2,
+                mb: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                bgcolor: "background.paper",
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: "bold", flexGrow: 1 }}
+                >
+                  Réponse conseiller
+                </Typography>
+
+                {/* Contrôles compacts */}
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Button
+                    size="small"
+                    startIcon={
+                      activeSegment === "conseiller" && tts.isPlaying ? (
+                        <Stop />
+                      ) : (
+                        <PlayArrow />
+                      )
+                    }
+                    onClick={() => handlePlayRole("conseiller")}
+                    disabled={tts.isLoading && activeSegment !== "conseiller"}
+                    color={
+                      activeSegment === "conseiller" && tts.isPlaying
+                        ? "secondary"
+                        : "primary"
+                    }
+                  >
+                    {activeSegment === "conseiller" && tts.isPlaying
+                      ? "Arrêter"
+                      : "Lire"}
+                  </Button>
+
+                  <Button
+                    size="small"
+                    startIcon={<Download />}
+                    onClick={() => handleDownloadAudio("conseiller")}
+                    disabled={tts.isLoading}
+                    variant="outlined"
+                  >
+                    MP3
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* Barre de progression si lecture active */}
+              {activeSegment === "conseiller" && tts.isLoading && (
+                <Box sx={{ mb: 2 }}>
+                  <LinearProgress variant="indeterminate" sx={{ height: 2 }} />
+                </Box>
+              )}
+
+              {activeSegment === "conseiller" &&
+                !tts.isLoading &&
+                tts.isPlaying && (
+                  <Box sx={{ mb: 2 }}>
+                    <LinearProgress
+                      variant="determinate"
+                      value={tts.progress}
+                      sx={{ height: 4, borderRadius: 2 }}
+                    />
+                  </Box>
+                )}
+
+              {/* ✅ AFFICHAGE ENRICHI DISCRET du texte conseiller */}
+              <EnrichedTextDisplay
+                composition={zoneComposition}
+                fontSize={16}
+                mode={mode}
+                showZoneIndicators={zoneComposition.hasReworkedContent}
+              />
+
+              {/* ✅ DEBUG: Affichage temporaire des stats de composition */}
+            </Paper>
+
             <Divider sx={{ my: 3 }} />
 
             {/* Actions de lecture globale */}
@@ -393,23 +526,29 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
             onRoleVoiceChange={setRoleVoiceSettings}
             conversationalSettings={conversationalSettings}
             onConversationalChange={setConversationalSettings}
-            text={finalConseillerText} // Utiliser le texte retravaillé pour segmentation
+            text={finalConseillerText}
             segments={textSegments}
             onSegmentsChange={setTextSegments}
             onPlaySegment={handlePlaySegment}
             onStopSegment={handleStopSegment}
+            zoneComposition={zoneComposition}
+            onPlayZoneSegment={handlePlayZoneSegment}
+            onDownloadZoneSegment={handleDownloadZoneSegment}
+            activeSegmentId={activeSegment}
+            isLoading={tts.isLoading}
+            progress={tts.progress}
             disabled={tts.isLoading}
             mode={mode}
           />
 
-          {/* Statistiques et infos */}
+          {/* Statistiques épurées */}
           <Paper sx={{ mt: 2, p: 2, bgcolor: "action.hover" }}>
             <Typography variant="subtitle2" gutterBottom>
               📊 Statistiques
             </Typography>
             <Typography variant="body2" color="text.secondary">
               • Client: {selectedClientText.length} caractères
-              <br />• Conseiller: {selectedConseillerText.length} caractères
+              <br />• Conseiller: {finalConseillerText.length} caractères
               <br />• Temps estimé: ~
               {Math.round(
                 (selectedClientText.length + finalConseillerText.length) / 120

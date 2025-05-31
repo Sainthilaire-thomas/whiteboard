@@ -1,4 +1,4 @@
-// utils/stepContentUtils.js - Version adaptée avec TTS
+// utils/stepContentUtils.js - Version enrichie avec passage des props zones
 import React, { useEffect } from "react";
 import { useCallData } from "@/context/CallDataContext";
 import { Box, Typography, Paper, IconButton, Button } from "@mui/material";
@@ -16,7 +16,7 @@ import {
 } from "./generateFinalText";
 
 /**
- * Type pour les paramètres de renderStepContent
+ * Type pour les paramètres de renderStepContent ✅ ENRICHI
  */
 interface RenderStepContentParams {
   activeStep: number;
@@ -51,13 +51,14 @@ interface RenderStepContentParams {
   ) => void;
   postits: PostitType[];
   setPostits: (postits: PostitType[]) => void;
-  // Nouvelles props TTS
+  // Props TTS existantes
   ttsStudioVisible?: boolean;
   toggleTTSStudio?: () => void;
 }
 
 /**
  * Fonction utilitaire pour le rendu du contenu en fonction de l'étape active
+ * ✅ Version enrichie avec support des zones
  */
 export const renderStepContent = ({
   activeStep,
@@ -99,17 +100,19 @@ export const renderStepContent = ({
     conseillerSelection,
   } = useCallData();
 
-  // ✅ Calculer le texte retravaillé
+  // ✅ Calculer le texte retravaillé (logique existante)
   const improvedConseillerText = hasImprovedContent(postits)
     ? generateFinalConseillerText(postits)
     : null;
 
-  // Debug logs
+  // Debug logs enrichis
   useEffect(() => {
     console.log("📊 Debug renderStepContent - Step:", activeStep);
     console.log("- postits:", postits);
+    console.log("- zoneColors:", zoneColors);
     console.log("- improvedConseillerText:", improvedConseillerText);
-  }, [activeStep, postits, improvedConseillerText]);
+    console.log("- hasImprovedContent:", hasImprovedContent(postits));
+  }, [activeStep, postits, zoneColors, improvedConseillerText]);
 
   // Rendu de l'étape 0: Sélection du contexte (INCHANGÉ)
   const renderStep0 = () => (
@@ -224,7 +227,7 @@ export const renderStepContent = ({
     </>
   );
 
-  // Rendu de l'étape 2: Suggestions d'amélioration AVEC TTS
+  // Rendu de l'étape 2: Suggestions d'amélioration AVEC TTS (INCHANGÉ)
   const renderStep2 = () => (
     <>
       {/* Section client qui reste visible */}
@@ -251,12 +254,12 @@ export const renderStepContent = ({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          mb: 0.5, // ⭐ RÉDUIT de 2 à 0.5
-          p: 0.75, // ⭐ RÉDUIT de 2 à 0.75
+          mb: 0.5,
+          p: 0.75,
           backgroundColor: "background.paper",
           borderRadius: 1,
           boxShadow: 1,
-          minHeight: "36px", // ⭐ HAUTEUR FIXE MINIMALE
+          minHeight: "36px",
         }}
       >
         <Typography
@@ -287,7 +290,6 @@ export const renderStepContent = ({
       {/* Zones d'amélioration avec hauteur adaptative */}
       <Box
         sx={{
-          // Ajuster la hauteur si TTS Studio visible
           maxHeight: ttsStudioVisible ? "50vh" : "none",
           overflow: ttsStudioVisible ? "auto" : "visible",
         }}
@@ -297,11 +299,13 @@ export const renderStepContent = ({
     </>
   );
 
-  // Rendu de l'étape 3: Lecture finale (INCHANGÉ)
+  // Rendu de l'étape 3: Lecture finale ✅ ENRICHI avec passage des nouvelles props
   const renderStep3 = () => {
-    console.log("🎙️ Rendu FinalReviewStep avec:");
+    console.log("🎙️ Rendu FinalReviewStep enrichi avec:");
     console.log("- selectedConseillerText:", selectedConseillerText);
     console.log("- improvedConseillerText:", improvedConseillerText);
+    console.log("- postits (count):", postits.length);
+    console.log("- zoneColors:", Object.keys(zoneColors));
 
     return (
       <FinalReviewStep
@@ -309,6 +313,9 @@ export const renderStepContent = ({
         selectedClientText={selectedClientText}
         selectedConseillerText={selectedConseillerText}
         improvedConseillerText={improvedConseillerText}
+        // ✅ NOUVELLES PROPS nécessaires pour les zones
+        postits={postits}
+        zoneColors={zoneColors}
       />
     );
   };
@@ -326,4 +333,68 @@ export const renderStepContent = ({
     default:
       return <Typography>Étape inconnue</Typography>;
   }
+};
+
+// ✅ NOUVELLES FONCTIONS UTILITAIRES pour les zones (optionnelles)
+
+/**
+ * Vérifie si les post-its contiennent des zones spécifiques
+ */
+export const hasZoneContent = (
+  postits: PostitType[],
+  zone: string
+): boolean => {
+  return postits.some(
+    (postit) =>
+      !postit.isOriginal &&
+      postit.zone === zone &&
+      postit.content.trim().length > 0
+  );
+};
+
+/**
+ * Compte le nombre de zones actives avec du contenu retravaillé
+ */
+export const countActiveZones = (postits: PostitType[]): number => {
+  const activeZones = new Set();
+
+  postits.forEach((postit) => {
+    if (
+      !postit.isOriginal &&
+      postit.zone &&
+      postit.content.trim().length > 0 &&
+      [
+        ZONES.VOUS_AVEZ_FAIT,
+        ZONES.JE_FAIS,
+        ZONES.ENTREPRISE_FAIT,
+        ZONES.VOUS_FEREZ,
+      ].includes(postit.zone)
+    ) {
+      activeZones.add(postit.zone);
+    }
+  });
+
+  return activeZones.size;
+};
+
+/**
+ * Génère un résumé des zones utilisées
+ */
+export const getActiveZonesSummary = (
+  postits: PostitType[],
+  zoneColors: Record<string, string>
+): Array<{ zone: string; count: number; color: string }> => {
+  const zoneCounts: Record<string, number> = {};
+
+  postits.forEach((postit) => {
+    if (!postit.isOriginal && postit.zone && postit.content.trim().length > 0) {
+      zoneCounts[postit.zone] = (zoneCounts[postit.zone] || 0) + 1;
+    }
+  });
+
+  return Object.entries(zoneCounts).map(([zone, count]) => ({
+    zone,
+    count,
+    color: zoneColors[zone] || "#gray",
+  }));
 };

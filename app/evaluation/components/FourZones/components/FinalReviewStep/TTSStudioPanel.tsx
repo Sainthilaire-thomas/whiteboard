@@ -1,4 +1,4 @@
-// TTSStudioPanel.tsx - Panneau de contrôle principal
+// TTSStudioPanel.tsx - Version enrichie avec support des zones
 import React, { useState } from "react";
 import {
   Box,
@@ -39,6 +39,13 @@ import {
 } from "./extensions/SmartTextSegmentation";
 import { TTSSettings } from "./hooks/useTTS";
 
+// ✅ NOUVEAUX IMPORTS pour les zones
+import {
+  ZoneComposition,
+  ZoneAwareTextSegment,
+} from "../../utils/generateFinalText";
+import ZoneAwareSegmentationDisplay from "./components/ZoneAwareSegmentationDisplay";
+
 interface TTSStudioPanelProps {
   // Paramètres de base
   basicSettings: TTSSettings;
@@ -57,6 +64,14 @@ interface TTSStudioPanelProps {
   onSegmentsChange: (segments: TextSegment[]) => void;
   onPlaySegment: (segment: TextSegment) => void;
   onStopSegment: (segmentId: string) => void;
+
+  // ✅ NOUVELLES PROPS pour les zones
+  zoneComposition?: ZoneComposition;
+  onPlayZoneSegment?: (segment: ZoneAwareTextSegment) => void;
+  onDownloadZoneSegment?: (segment: ZoneAwareTextSegment) => void;
+  activeSegmentId?: string | null;
+  isLoading?: boolean;
+  progress?: number;
 
   // État
   disabled?: boolean;
@@ -100,6 +115,14 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
   onSegmentsChange,
   onPlaySegment,
   onStopSegment,
+  // ✅ NOUVELLES PROPS
+  zoneComposition,
+  onPlayZoneSegment,
+  onDownloadZoneSegment,
+  activeSegmentId,
+  isLoading = false,
+  progress = 0,
+  // Props existantes
   disabled = false,
   mode = "light",
 }) => {
@@ -110,12 +133,32 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
     setActiveTab(newValue);
   };
 
+  // ✅ Gestion du callback pour les segments de zone
+  const handlePlayZoneSegment = (segment: ZoneAwareTextSegment) => {
+    if (onPlayZoneSegment) {
+      onPlayZoneSegment(segment);
+    }
+  };
+
+  const handleStopZoneSegment = (segmentId: string) => {
+    if (onStopSegment) {
+      onStopSegment(segmentId);
+    }
+  };
+
   // Comptage des fonctionnalités actives
   const activeFeatures = [
     roleVoiceSettings.enabled && "Voix par rôle",
     conversationalSettings.enabled && "Agent conversationnel",
     segments.length > 1 && "Découpage intelligent",
+    zoneComposition?.hasReworkedContent && "Zones retravaillées", // ✅ NOUVEAU
   ].filter(Boolean);
+
+  // ✅ Déterminer quel type de découpage afficher
+  const hasZoneComposition =
+    zoneComposition && zoneComposition.segments.length > 0;
+  const hasStandardSegments = segments.length > 1;
+  const hasTextContent = text.trim().length > 0;
 
   return (
     <Paper
@@ -164,7 +207,9 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
                 key={index}
                 label={feature}
                 size="small"
-                color="primary"
+                color={
+                  feature === "Zones retravaillées" ? "secondary" : "primary"
+                }
                 variant="filled"
                 sx={{ fontSize: "11px" }}
               />
@@ -200,7 +245,7 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
             />
             <Tab
               icon={<ContentCut />}
-              label="Découpage"
+              label={hasZoneComposition ? "Découpage par zones" : "Découpage"}
               sx={{ minHeight: 40, py: 1 }}
             />
           </Tabs>
@@ -333,28 +378,78 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
             />
           </TabPanel>
 
-          {/* Onglet 4: Découpage intelligent */}
+          {/* Onglet 4: Découpage intelligent ✅ MODIFIÉ */}
           <TabPanel value={activeTab} index={3}>
-            {text.trim() ? (
-              <SmartTextSegmentationExtension
-                text={text}
-                onSegmentsChange={onSegmentsChange}
-                onPlaySegment={onPlaySegment}
-                onStopSegment={onStopSegment}
-                disabled={disabled}
-              />
+            {hasZoneComposition ? (
+              // ✅ NOUVEAU : Affichage enrichi par zones
+              <>
+                <Box
+                  sx={{
+                    mb: 2,
+                    p: 2,
+                    bgcolor: "success.light",
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography
+                    variant="subtitle2"
+                    color="success.dark"
+                    gutterBottom
+                  >
+                    ✨ Mode zones enrichies activé
+                  </Typography>
+                  <Typography variant="body2" color="success.dark">
+                    Le texte provient de vos améliorations dans les zones de
+                    travail. Vous pouvez écouter chaque zone individuellement.
+                  </Typography>
+                </Box>
+
+                <ZoneAwareSegmentationDisplay
+                  composition={zoneComposition}
+                  onPlaySegment={handlePlayZoneSegment}
+                  onStopSegment={handleStopZoneSegment}
+                  onDownloadSegment={onDownloadZoneSegment}
+                  activeSegmentId={activeSegmentId}
+                  isLoading={isLoading}
+                  progress={progress}
+                  disabled={disabled}
+                  mode={mode}
+                />
+              </>
+            ) : hasTextContent ? (
+              // Affichage standard existant
+              <>
+                {hasStandardSegments && (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    <Typography variant="body2">
+                      Découpage automatique du texte. Pour un contrôle plus fin,
+                      utilisez les zones de travail dans l'étape précédente.
+                    </Typography>
+                  </Alert>
+                )}
+
+                <SmartTextSegmentationExtension
+                  text={text}
+                  onSegmentsChange={onSegmentsChange}
+                  onPlaySegment={onPlaySegment}
+                  onStopSegment={onStopSegment}
+                  disabled={disabled}
+                />
+              </>
             ) : (
+              // Aucun contenu
               <Alert severity="warning">
                 <Typography variant="body2">
                   Aucun texte disponible pour le découpage. Assurez-vous qu'il y
-                  a du contenu à analyser.
+                  a du contenu à analyser ou utilisez les zones de travail pour
+                  créer une composition enrichie.
                 </Typography>
               </Alert>
             )}
           </TabPanel>
         </Box>
 
-        {/* Résumé de configuration */}
+        {/* Résumé de configuration ✅ ENRICHI */}
         <Divider />
         <Box sx={{ p: 2, bgcolor: "action.hover" }}>
           <Typography variant="caption" color="text.secondary">
@@ -363,7 +458,11 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
             {roleVoiceSettings.enabled && " • Voix différenciées"}
             {conversationalSettings.enabled &&
               ` • IA ${conversationalSettings.style}`}
-            {segments.length > 1 && ` • ${segments.length} segments`}
+            {hasZoneComposition &&
+              ` • ${zoneComposition.segments.length} zones enrichies`}
+            {!hasZoneComposition &&
+              segments.length > 1 &&
+              ` • ${segments.length} segments standards`}
           </Typography>
         </Box>
       </Collapse>

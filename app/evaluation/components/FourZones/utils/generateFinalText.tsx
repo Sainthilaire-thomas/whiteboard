@@ -1,6 +1,259 @@
-// utils/generateFinalText.ts
+// utils/generateFinalText.ts - Version enrichie avec métadonnées de zones
 import { PostitType } from "../types/types";
 import { ZONES } from "../constants/zone";
+
+// ✅ NOUVEAUX TYPES pour les segments enrichis
+export interface ZoneAwareTextSegment {
+  id: string;
+  content: string;
+  type: "zone" | "sentence" | "paragraph";
+
+  // Métadonnées d'origine
+  sourceZone?: string; // Clé de la zone (VOUS_AVEZ_FAIT, JE_FAIS, etc.)
+  zoneName?: string; // Nom affiché de la zone
+  zoneOrder?: number; // Ordre dans la séquence (1, 2, 3, 4)
+  zoneColor?: string; // Couleur associée à la zone
+  isFromRework?: boolean; // Vrai si provient d'un post-it retravaillé
+  postitIds?: string[]; // IDs des post-its sources
+}
+
+export interface ZoneComposition {
+  segments: ZoneAwareTextSegment[];
+  fullText: string;
+  hasReworkedContent: boolean;
+  originalText?: string;
+  stats: {
+    totalSegments: number;
+    reworkedSegments: number;
+    originalLength: number;
+    finalLength: number;
+    proactivityPercentage: number; // ✅ NOUVEAU
+  };
+}
+
+/**
+ * Formate un contenu de post-it pour optimiser la lecture TTS
+ */
+const formatContentForTTS = (content: string): string => {
+  let formatted = content.trim();
+
+  // Supprimer les points en fin s'il y en a (pour éviter les doublons)
+  formatted = formatted.replace(/[.,;!?]+$/, "");
+
+  // Ajouter des pauses après certains mots de liaison
+  formatted = formatted.replace(
+    /\b(alors|donc|ensuite|puis|également|aussi|en effet|par ailleurs|cependant|néanmoins)\b/gi,
+    "$1,"
+  );
+
+  // Ajouter une pause après "Monsieur" ou "Madame"
+  formatted = formatted.replace(
+    /\b(Monsieur|Madame|M\.|Mme)\s+([A-Z])/g,
+    "$1, $2"
+  );
+
+  // Ajouter des pauses pour les expressions temporelles
+  formatted = formatted.replace(
+    /\b(aujourd'hui|demain|cette semaine|la semaine prochaine|dans \d+\s+jours?)\b/gi,
+    "$1,"
+  );
+
+  // Ajouter des pauses pour les formules de politesse en début
+  formatted = formatted.replace(
+    /^(Je vous remercie|Merci|Excusez-moi|Pardon)/i,
+    "$1,"
+  );
+
+  return formatted;
+};
+
+/**
+ * Calcule le pourcentage de proactivité basé sur les zones d'action vs contexte
+ * Zones proactives : VOUS_AVEZ_FAIT, JE_FAIS, VOUS_FEREZ
+ * Zones contextuelles : ENTREPRISE_FAIT
+ */
+const calculateProactivityPercentage = (
+  segments: ZoneAwareTextSegment[]
+): number => {
+  if (!segments || segments.length === 0) {
+    return 0;
+  }
+
+  // Zones considérées comme proactives (action orientée client)
+  const proactiveZones = [
+    ZONES.VOUS_AVEZ_FAIT, // Reconnaissance
+    ZONES.JE_FAIS, // Actions conseiller
+    ZONES.VOUS_FEREZ, // Prochaines étapes client
+  ];
+
+  let totalLength = 0;
+  let proactiveLength = 0;
+
+  segments.forEach((segment, index) => {
+    const segmentLength = segment.content?.length || 0;
+    totalLength += segmentLength;
+
+    if (segment.sourceZone && proactiveZones.includes(segment.sourceZone)) {
+      proactiveLength += segmentLength;
+    } else {
+      console.log(`❌ Zone non-proactive ou undefined: ${segment.sourceZone}`);
+    }
+  });
+
+  if (totalLength === 0) {
+    return 0;
+  }
+
+  const percentage = Math.round((proactiveLength / totalLength) * 100);
+
+  return percentage;
+};
+
+// ✅ FONCTION PRINCIPALE - Génération de composition enrichie
+export const generateZoneAwareComposition = (
+  postits: PostitType[],
+  zoneColors: Record<string, string>,
+  originalText?: string
+): ZoneComposition => {
+  // Filtrer uniquement les post-its retravaillés
+  const improvedPostits = postits.filter((postit) => !postit.isOriginal);
+
+  // Configuration des zones dans l'ordre logique
+  const orderedZones = [
+    {
+      key: ZONES.VOUS_AVEZ_FAIT,
+      name: "Reconnaissance",
+      order: 1,
+      description: "Ce que vous avez fait",
+    },
+    {
+      key: ZONES.JE_FAIS,
+      name: "Actions conseiller",
+      order: 2,
+      description: "Ce que je fais pour vous",
+    },
+    {
+      key: ZONES.ENTREPRISE_FAIT,
+      name: "Contexte entreprise",
+      order: 3,
+      description: "Notre organisation",
+    },
+    {
+      key: ZONES.VOUS_FEREZ,
+      name: "Prochaines étapes",
+      order: 4,
+      description: "Vos prochaines étapes",
+    },
+  ];
+
+  const segments: ZoneAwareTextSegment[] = [];
+  const textParts: string[] = [];
+
+  // Traitement zone par zone
+  orderedZones.forEach((zone) => {
+    const zonePostits = improvedPostits.filter((p) => p.zone === zone.key);
+
+    if (zonePostits.length > 0) {
+      // Concaténer et formater le contenu de la zone
+      const elements = zonePostits
+        .map((p) => formatContentForTTS(p.content.trim()))
+        .filter((content) => content.length > 0);
+
+      if (elements.length > 0) {
+        const content = elements.join(", ");
+
+        // Créer le segment enrichi
+        const segment: ZoneAwareTextSegment = {
+          id: `zone-${zone.key}`,
+          content,
+          type: "zone",
+          sourceZone: zone.key,
+          zoneName: zone.name,
+          zoneOrder: zone.order,
+          zoneColor: zoneColors[zone.key],
+          isFromRework: true,
+          postitIds: zonePostits.map(
+            (p) => p.id?.toString() || `postit-${Date.now()}`
+          ),
+        };
+
+        segments.push(segment);
+        textParts.push(content);
+      }
+    }
+  });
+
+  // Texte final assemblé
+  const fullText = textParts.length > 0 ? textParts.join(". ") + "." : "";
+
+  // Calcul du pourcentage de proactivité avec logs explicites
+
+  let proactivityPercentage = 0;
+
+  try {
+    proactivityPercentage = calculateProactivityPercentage(segments);
+  } catch (error) {
+    console.error("❌ Erreur dans calculateProactivityPercentage:", error);
+    proactivityPercentage = 0;
+  }
+
+  // Statistiques avec le calcul de proactivité
+  const stats = {
+    totalSegments: segments.length,
+    reworkedSegments: segments.filter((s) => s.isFromRework).length,
+    originalLength: originalText?.length || 0,
+    finalLength: fullText.length,
+    proactivityPercentage, // ✅ Maintenant inclus !
+  };
+
+  const result = {
+    segments,
+    fullText,
+    hasReworkedContent: segments.length > 0,
+    originalText,
+    stats,
+  };
+
+  return result;
+};
+
+// ✅ FONCTION pour créer une composition à partir du texte original (fallback)
+export const createOriginalComposition = (
+  originalText: string,
+  zoneColors: Record<string, string>
+): ZoneComposition => {
+  const segments: ZoneAwareTextSegment[] = [];
+
+  if (originalText.trim()) {
+    segments.push({
+      id: "original-text",
+      content: originalText,
+      type: "zone",
+      sourceZone: "ORIGINAL",
+      zoneName: "Texte original",
+      zoneOrder: 1,
+      zoneColor: zoneColors.default || "#9e9e9e",
+      isFromRework: false,
+      postitIds: [],
+    });
+  }
+
+  return {
+    segments,
+    fullText: originalText,
+    hasReworkedContent: false,
+    originalText,
+    stats: {
+      totalSegments: segments.length,
+      reworkedSegments: 0,
+      originalLength: originalText.length,
+      finalLength: originalText.length,
+      proactivityPercentage: 0, // ✅ Pas de calcul pour le texte original
+    },
+  };
+};
+
+// ✅ FONCTIONS EXISTANTES (gardées pour compatibilité)
 
 /**
  * Génère le texte final du conseiller UNIQUEMENT à partir des post-its retravaillés
@@ -51,238 +304,6 @@ export const generateFinalConseillerText = (postits: PostitType[]): string => {
 };
 
 /**
- * Formate un contenu de post-it pour optimiser la lecture TTS
- */
-const formatContentForTTS = (content: string): string => {
-  let formatted = content.trim();
-
-  // Supprimer les points en fin s'il y en a (pour éviter les doublons)
-  formatted = formatted.replace(/[.,;!?]+$/, "");
-
-  // Ajouter des pauses après certains mots de liaison
-  formatted = formatted.replace(
-    /\b(alors|donc|ensuite|puis|également|aussi|en effet|par ailleurs|cependant|néanmoins)\b/gi,
-    "$1,"
-  );
-
-  // Ajouter une pause après "Monsieur" ou "Madame"
-  formatted = formatted.replace(
-    /\b(Monsieur|Madame|M\.|Mme)\s+([A-Z])/g,
-    "$1, $2"
-  );
-
-  // Ajouter des pauses pour les expressions temporelles
-  formatted = formatted.replace(
-    /\b(aujourd'hui|demain|cette semaine|la semaine prochaine|dans \d+\s+jours?)\b/gi,
-    "$1,"
-  );
-
-  // Ajouter des pauses pour les formules de politesse en début
-  formatted = formatted.replace(
-    /^(Je vous remercie|Merci|Excusez-moi|Pardon)/i,
-    "$1,"
-  );
-
-  return formatted;
-};
-
-/**
- * VERSION ALTERNATIVE : Génère le texte avec des pauses SSML pour un contrôle avancé
- * Compatible avec les moteurs TTS qui supportent SSML
- */
-export const generateFinalConseillerTextSSML = (
-  postits: PostitType[]
-): string => {
-  const improvedPostits = postits.filter((postit) => !postit.isOriginal);
-
-  const orderedZones = [
-    { zone: ZONES.VOUS_AVEZ_FAIT, pause: "0.8s" },
-    { zone: ZONES.JE_FAIS, pause: "0.6s" },
-    { zone: ZONES.ENTREPRISE_FAIT, pause: "0.6s" },
-    { zone: ZONES.VOUS_FEREZ, pause: "0.8s" },
-  ];
-
-  const zoneSections: string[] = [];
-
-  orderedZones.forEach(({ zone, pause }) => {
-    const zonePostits = improvedPostits.filter((p) => p.zone === zone);
-
-    if (zonePostits.length > 0) {
-      const elements = zonePostits
-        .map((p) => p.content.trim())
-        .filter((content) => content.length > 0);
-
-      if (elements.length > 0) {
-        const zoneText = elements.join(`<break time="0.3s"/> `);
-        zoneSections.push(zoneText + `<break time="${pause}"/>`);
-      }
-    }
-  });
-
-  if (zoneSections.length === 0) {
-    return "";
-  }
-
-  return `<speak>${zoneSections.join(" ")}</speak>`;
-};
-
-/**
- * Génère le texte avec des marqueurs de pauses personnalisés
- * Utile pour les systèmes TTS qui acceptent des marqueurs spéciaux
- */
-export const generateFinalConseillerTextWithPauses = (
-  postits: PostitType[]
-): string => {
-  const improvedPostits = postits.filter((postit) => !postit.isOriginal);
-
-  const orderedZones = [
-    { zone: ZONES.VOUS_AVEZ_FAIT, pauseMarker: "[PAUSE_LONG]" },
-    { zone: ZONES.JE_FAIS, pauseMarker: "[PAUSE_MOYEN]" },
-    { zone: ZONES.ENTREPRISE_FAIT, pauseMarker: "[PAUSE_MOYEN]" },
-    { zone: ZONES.VOUS_FEREZ, pauseMarker: "[PAUSE_LONG]" },
-  ];
-
-  const zoneSections: string[] = [];
-
-  orderedZones.forEach(({ zone, pauseMarker }) => {
-    const zonePostits = improvedPostits.filter((p) => p.zone === zone);
-
-    if (zonePostits.length > 0) {
-      const elements = zonePostits
-        .map((p) => formatContentForTTS(p.content.trim()))
-        .filter((content) => content.length > 0);
-
-      if (elements.length > 0) {
-        const zoneText = elements.join("[PAUSE_COURT] ");
-        zoneSections.push(zoneText + " " + pauseMarker);
-      }
-    }
-  });
-
-  if (zoneSections.length === 0) {
-    return "";
-  }
-
-  return zoneSections.join(" ").replace(/\s+/g, " ").trim() + ".";
-};
-
-/**
- * VERSION ALTERNATIVE : Génère le texte final avec séparation par zones
- * Utile si on veut maintenir une structure visible par zone
- */
-export const generateFinalConseillerTextByZones = (
-  postits: PostitType[]
-): string => {
-  const postitsParZone = {
-    [ZONES.VOUS_AVEZ_FAIT]: postits.filter(
-      (p) => p.zone === ZONES.VOUS_AVEZ_FAIT
-    ),
-    [ZONES.JE_FAIS]: postits.filter((p) => p.zone === ZONES.JE_FAIS),
-    [ZONES.ENTREPRISE_FAIT]: postits.filter(
-      (p) => p.zone === ZONES.ENTREPRISE_FAIT
-    ),
-    [ZONES.VOUS_FEREZ]: postits.filter((p) => p.zone === ZONES.VOUS_FEREZ),
-  };
-
-  const sections: string[] = [];
-
-  // Chaque zone devient un paragraphe séparé
-  Object.values(postitsParZone).forEach((zonePostits) => {
-    if (zonePostits.length > 0) {
-      const elements = zonePostits
-        .map((p) => p.content.trim())
-        .filter((content) => content.length > 0);
-
-      if (elements.length > 0) {
-        // Joindre les éléments de la même zone avec des espaces
-        sections.push(elements.join(" "));
-      }
-    }
-  });
-
-  // Joindre les sections avec des retours à la ligne pour séparer les zones
-  return sections.join("\n\n");
-};
-
-/**
- * Génère un résumé structuré des éléments par zone (pour affichage avec formatting)
- */
-export const generateStructuredSummary = (postits: PostitType[]): string => {
-  const postitsParZone = {
-    [ZONES.VOUS_AVEZ_FAIT]: postits.filter(
-      (p) => p.zone === ZONES.VOUS_AVEZ_FAIT
-    ),
-    [ZONES.JE_FAIS]: postits.filter((p) => p.zone === ZONES.JE_FAIS),
-    [ZONES.ENTREPRISE_FAIT]: postits.filter(
-      (p) => p.zone === ZONES.ENTREPRISE_FAIT
-    ),
-    [ZONES.VOUS_FEREZ]: postits.filter((p) => p.zone === ZONES.VOUS_FEREZ),
-  };
-
-  const sections: string[] = [];
-  const zoneLabels = {
-    [ZONES.VOUS_AVEZ_FAIT]: "Ce que vous avez fait",
-    [ZONES.JE_FAIS]: "Ce que je fais pour vous",
-    [ZONES.ENTREPRISE_FAIT]: "Notre organisation",
-    [ZONES.VOUS_FEREZ]: "Vos prochaines étapes",
-  };
-
-  // Structure avec titres pour un rendu plus clair
-  Object.entries(postitsParZone).forEach(([zone, zonePostits]) => {
-    if (zonePostits.length > 0) {
-      sections.push(`**${zoneLabels[zone]}:**`);
-      zonePostits.forEach((p) => {
-        sections.push(`• ${p.content.trim()}`);
-      });
-      sections.push(""); // Ligne vide entre les sections
-    }
-  });
-
-  return sections.join("\n");
-};
-
-/**
- * Génère le texte final en préservant UNIQUEMENT les post-its retravaillés (non-originaux)
- * Utile pour avoir la version "améliorée" pure
- */
-export const generateImprovedConseillerText = (
-  postits: PostitType[]
-): string => {
-  // Filtrer uniquement les post-its retravaillés
-  const improvedPostits = postits.filter((postit) => !postit.isOriginal);
-
-  const postitsParZone = {
-    [ZONES.VOUS_AVEZ_FAIT]: improvedPostits.filter(
-      (p) => p.zone === ZONES.VOUS_AVEZ_FAIT
-    ),
-    [ZONES.JE_FAIS]: improvedPostits.filter((p) => p.zone === ZONES.JE_FAIS),
-    [ZONES.ENTREPRISE_FAIT]: improvedPostits.filter(
-      (p) => p.zone === ZONES.ENTREPRISE_FAIT
-    ),
-    [ZONES.VOUS_FEREZ]: improvedPostits.filter(
-      (p) => p.zone === ZONES.VOUS_FEREZ
-    ),
-  };
-
-  const sections: string[] = [];
-
-  // Assembler tous les textes retravaillés sans mots de liaison
-  Object.values(postitsParZone).forEach((zonePostits) => {
-    if (zonePostits.length > 0) {
-      const elements = zonePostits
-        .map((p) => p.content.trim())
-        .filter((content) => content.length > 0);
-
-      if (elements.length > 0) {
-        sections.push(...elements);
-      }
-    }
-  });
-
-  return sections.join(" ").trim();
-};
-
-/**
  * Vérifie si les post-its contiennent du contenu retravaillé (non-original)
  */
 export const hasImprovedContent = (postits: PostitType[]): boolean => {
@@ -318,45 +339,66 @@ export const hasReworkedContent = (postits: PostitType[]): boolean => {
   );
 };
 
-export const createDefaultReadingOrder = (
-  postits: PostitType[]
-): PostitType[] => {
-  const improvedPostits = postits.filter((postit) => !postit.isOriginal);
+// ✅ NOUVELLES FONCTIONS UTILITAIRES
 
-  const zoneOrder = [
-    ZONES.VOUS_AVEZ_FAIT,
-    ZONES.JE_FAIS,
-    ZONES.ENTREPRISE_FAIT,
-    ZONES.VOUS_FEREZ,
-  ];
+/**
+ * Génère les statistiques de comparaison entre texte original et retravaillé
+ */
+export const generateComparisonStats = (
+  originalText: string,
+  finalText: string,
+  segments: ZoneAwareTextSegment[]
+): {
+  lengthDifference: number;
+  percentageChange: number;
+  zonesUsed: string[];
+  reworkedSegments: number;
+} => {
+  const lengthDifference = finalText.length - originalText.length;
+  const percentageChange =
+    originalText.length > 0
+      ? Math.round((lengthDifference / originalText.length) * 100)
+      : 0;
 
-  const orderedPostits: PostitType[] = [];
+  const zonesUsed = [
+    ...new Set(
+      segments
+        .filter((s) => s.isFromRework)
+        .map((s) => s.zoneName)
+        .filter(Boolean)
+    ),
+  ] as string[];
 
-  zoneOrder.forEach((zone) => {
-    const zonePostits = improvedPostits.filter((p) => p.zone === zone);
-    orderedPostits.push(...zonePostits);
-  });
+  const reworkedSegments = segments.filter((s) => s.isFromRework).length;
 
-  return orderedPostits;
+  return {
+    lengthDifference,
+    percentageChange,
+    zonesUsed,
+    reworkedSegments,
+  };
 };
 
-export const generateFinalConseillerTextWithCustomOrder = (
-  postits: PostitType[],
-  customOrder?: PostitType[]
-): string => {
-  if (customOrder && customOrder.length > 0) {
-    // Utiliser l'ordre personnalisé
-    const elements = customOrder
-      .map((p) => formatContentForTTS(p.content.trim()))
-      .filter((content) => content.length > 0);
-
-    if (elements.length === 0) return "";
-
-    const finalText = elements.join(", ");
-    const cleanedText = finalText.replace(/[.]{2,}/g, ".").replace(/[,.]$/, "");
-    return cleanedText + ".";
+/**
+ * Génère un ordre personnalisé des segments pour la lecture
+ */
+export const createCustomReadingOrder = (
+  segments: ZoneAwareTextSegment[],
+  customOrder?: number[]
+): ZoneAwareTextSegment[] => {
+  if (!customOrder || customOrder.length === 0) {
+    // Ordre par défaut : par zoneOrder
+    return segments.sort((a, b) => (a.zoneOrder || 0) - (b.zoneOrder || 0));
   }
 
-  // Sinon, utiliser la fonction existante avec ordre par défaut
-  return generateFinalConseillerText(postits);
+  // Ordre personnalisé
+  const orderedSegments: ZoneAwareTextSegment[] = [];
+  customOrder.forEach((order) => {
+    const segment = segments.find((s) => s.zoneOrder === order);
+    if (segment) {
+      orderedSegments.push(segment);
+    }
+  });
+
+  return orderedSegments;
 };
