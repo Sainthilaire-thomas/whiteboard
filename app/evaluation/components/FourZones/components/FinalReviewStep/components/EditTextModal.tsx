@@ -16,19 +16,19 @@ import {
 import { Close, Save, Preview } from "@mui/icons-material";
 import { EditableTextComposer } from "./EditableTextComposer";
 import EnrichedTextDisplay from "./EnrichedTextDisplay";
+
 import {
-  convertToZoneComposition,
-  convertToEditableComposition,
-  generateCustomOrderComposition,
   EditableSubSegment,
-} from "../types/editableText";
-import { ZoneComposition } from "../../../utils/generateFinalText";
-import { PostitType } from "../../../types/types"; // Ajustez le chemin
+  ZoneComposition,
+  ZoneAwareTextSegment,
+} from "../../../utils/generateFinalText";
+import { PostitType } from "../../../types/types";
 
 interface EditTextModalProps {
   open: boolean;
   composition: ZoneComposition | null;
-  originalPostits: PostitType[]; // ✅ NOUVEAU: Post-its originaux
+  originalPostits: PostitType[];
+  zoneColors: Record<string, string>; // ✅ NOUVEAU : Ajout de zoneColors
   onClose: () => void;
   onSave: (newComposition: ZoneComposition) => void;
 }
@@ -36,11 +36,11 @@ interface EditTextModalProps {
 export const EditTextModal: React.FC<EditTextModalProps> = ({
   open,
   composition,
-  originalPostits, // ✅ NOUVEAU
+  originalPostits,
+  zoneColors, // ✅ NOUVEAU
   onClose,
   onSave,
 }) => {
-  // ✅ NOUVEAU: Hook pour le thème
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === "dark";
 
@@ -52,7 +52,6 @@ export const EditTextModal: React.FC<EditTextModalProps> = ({
   const [showFinalPreview, setShowFinalPreview] = useState(false);
   const [previewText, setPreviewText] = useState("");
 
-  // Initialiser la composition de travail à l'ouverture
   useEffect(() => {
     if (open && composition) {
       const deepCopy = JSON.parse(JSON.stringify(composition));
@@ -64,47 +63,61 @@ export const EditTextModal: React.FC<EditTextModalProps> = ({
     }
   }, [open, composition]);
 
-  // ✅ CORRIGÉ: Gérer la réorganisation des segments de post-its
+  // ✅ FONCTION MISE À JOUR : Utiliser la nouvelle logique d'ordre personnalisé
   const handleSegmentReorder = (reorderedSegments: EditableSubSegment[]) => {
-    if (!workingComposition || !originalPostits) return;
+    if (!workingComposition) return;
 
     try {
-      // ✅ NOUVEAU : Créer l'ordre personnalisé pour la nouvelle fonction
-      const customOrder = reorderedSegments.map((segment) => ({
-        id: segment.originalPostitId,
-        content: segment.content,
-        zone: segment.sourceZone,
-      }));
-
-      console.log("🔄 Nouvel ordre des post-its:", customOrder);
-
-      // ✅ NOUVEAU : Utiliser la nouvelle fonction qui respecte l'ordre personnalisé
-      const newComposition = generateCustomOrderComposition(
-        originalPostits,
-        customOrder,
-        zoneColors, // Il faut récupérer zoneColors du parent
-        workingComposition.originalText
+      console.log(
+        "🔄 Réorganisation des segments:",
+        reorderedSegments.map((s) => s.content.substring(0, 30))
       );
+
+      // ✅ LOGIQUE SIMPLE : Créer directement une nouvelle composition
+      const newSegments: ZoneAwareTextSegment[] = reorderedSegments.map(
+        (segment, index) => ({
+          id: `reordered-${segment.id}-${index}`,
+          content: segment.content,
+          type: "zone" as const,
+          sourceZone: segment.sourceZone,
+          zoneName: segment.zoneName,
+          zoneOrder: index + 1, // ✅ Nouvel ordre
+          zoneColor: segment.zoneColor,
+          isFromRework: true,
+          postitIds: [segment.originalPostitId],
+        })
+      );
+
+      const newFullText =
+        reorderedSegments.map((seg) => seg.content).join(". ") + ".";
+
+      const newComposition: ZoneComposition = {
+        ...workingComposition,
+        segments: newSegments,
+        fullText: newFullText,
+        stats: {
+          ...workingComposition.stats,
+          finalLength: newFullText.length,
+          totalSegments: newSegments.length,
+        },
+      };
+
+      console.log("✅ Nouvelle composition créée:", {
+        segmentsCount: newSegments.length,
+        newText: newFullText.substring(0, 100) + "...",
+      });
 
       setPreviewComposition(newComposition);
       setHasChanges(true);
-
-      console.log("💾 Nouvelle composition avec ordre personnalisé:", {
-        originalSegments: workingComposition.segments.length,
-        newSegments: newComposition.segments.length,
-        newOrder: newComposition.segments.map((s) => s.zoneName),
-      });
     } catch (error) {
       console.error("❌ Erreur lors de la réorganisation:", error);
     }
   };
 
-  // Gérer le changement de prévisualisation
   const handlePreviewChange = (newPreviewText: string) => {
     setPreviewText(newPreviewText);
   };
 
-  // Sauvegarder les modifications
   const handleSave = () => {
     if (previewComposition && hasChanges) {
       console.log("💾 Sauvegarde de la composition modifiée");
@@ -115,7 +128,6 @@ export const EditTextModal: React.FC<EditTextModalProps> = ({
     }
   };
 
-  // Gérer l'annulation avec confirmation si nécessaire
   const handleCancel = () => {
     if (hasChanges) {
       const confirmClose = window.confirm(
@@ -129,7 +141,6 @@ export const EditTextModal: React.FC<EditTextModalProps> = ({
     }
   };
 
-  // Réinitialiser à l'original
   const handleReset = () => {
     if (composition) {
       const resetConfirm = window.confirm(
@@ -155,7 +166,6 @@ export const EditTextModal: React.FC<EditTextModalProps> = ({
         sx: {
           height: "90vh",
           maxHeight: "800px",
-          // ✅ NOUVEAU: Style adaptatif au thème
           bgcolor: isDarkMode ? "grey.900" : "background.paper",
         },
       }}
@@ -204,7 +214,6 @@ export const EditTextModal: React.FC<EditTextModalProps> = ({
       <DialogContent
         sx={{ overflow: "hidden", display: "flex", flexDirection: "column" }}
       >
-        {/* Instructions avec style adaptatif */}
         <Alert
           severity="info"
           sx={{
@@ -221,7 +230,6 @@ export const EditTextModal: React.FC<EditTextModalProps> = ({
           </Typography>
         </Alert>
 
-        {/* Boutons de vue avec style adaptatif */}
         <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
           <Button
             variant={!showFinalPreview ? "contained" : "outlined"}
@@ -240,23 +248,20 @@ export const EditTextModal: React.FC<EditTextModalProps> = ({
           </Button>
         </Box>
 
-        {/* Contenu principal */}
         <Box sx={{ flex: 1, overflow: "hidden" }}>
           {!showFinalPreview ? (
-            // Mode édition
             workingComposition &&
             originalPostits && (
               <Box sx={{ height: "100%", overflow: "auto" }}>
                 <EditableTextComposer
                   composition={workingComposition}
-                  originalPostits={originalPostits} // ✅ NOUVEAU: Passer les post-its
+                  originalPostits={originalPostits}
                   onSegmentReorder={handleSegmentReorder}
                   onPreviewChange={handlePreviewChange}
                 />
               </Box>
             )
           ) : (
-            // Mode aperçu final
             <Box sx={{ height: "100%", overflow: "auto" }}>
               {previewComposition ? (
                 <Box>
@@ -285,11 +290,10 @@ export const EditTextModal: React.FC<EditTextModalProps> = ({
                       composition={previewComposition}
                       showZoneIndicators={true}
                       fontSize={16}
-                      mode={isDarkMode ? "dark" : "light"} // ✅ NOUVEAU: Passer le mode
+                      mode={isDarkMode ? "dark" : "light"}
                     />
                   </Box>
 
-                  {/* Statistiques de comparaison avec style adaptatif */}
                   {composition && (
                     <Box sx={{ mt: 2 }}>
                       <Divider sx={{ mb: 2 }} />

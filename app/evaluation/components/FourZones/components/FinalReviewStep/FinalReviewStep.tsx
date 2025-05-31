@@ -41,6 +41,8 @@ import {
   generateZoneAwareComposition,
   createOriginalComposition,
   hasImprovedContent,
+  generateIndividualPostitsComposition, // ✅ NOUVEAU
+  generateCustomOrderPostitsComposition, // ✅ NOUVEAU
   ZoneComposition,
   ZoneAwareTextSegment,
 } from "../../utils/generateFinalText";
@@ -95,7 +97,8 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
   // Génération de la composition enrichie
   const originalZoneComposition = useMemo((): ZoneComposition => {
     if (hasImprovedContent(postits)) {
-      const result = generateZoneAwareComposition(
+      // ✅ UTILISER la nouvelle fonction pour post-its individuels
+      const result = generateIndividualPostitsComposition(
         postits,
         zoneColors,
         selectedConseillerText
@@ -720,7 +723,8 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
       <EditTextModal
         open={isEditModalOpen}
         composition={zoneComposition}
-        originalPostits={postits} // ✅ NOUVEAU: Passer les post-its originaux
+        originalPostits={postits}
+        zoneColors={zoneColors} // ✅ AJOUTER cette ligne
         onClose={handleCloseEditor}
         onSave={handleSaveComposition}
       />

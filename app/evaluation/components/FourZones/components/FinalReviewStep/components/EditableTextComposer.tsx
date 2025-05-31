@@ -1,4 +1,6 @@
-// components/FinalReviewStep/components/EditableTextComposer.tsx - CLÉS CORRIGÉES
+// components/FinalReviewStep/components/EditableTextComposer.tsx
+// ✅ CORRIGER tous les imports au début du fichier
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
@@ -30,12 +32,15 @@ import {
 } from "@dnd-kit/modifiers";
 
 import { DraggableSegment } from "./DraggableSegment";
+
+// ✅ NOUVEAUX IMPORTS - Tout depuis generateFinalText
 import {
   EditableComposition,
   EditableSubSegment,
-  convertToEditableComposition,
-} from "../types/editableText";
-import { ZoneComposition } from "../../../utils/generateFinalText";
+  convertFromZoneComposition, // ✅ Nouvelle fonction
+  ZoneComposition,
+} from "../../../utils/generateFinalText";
+
 import { PostitType } from "../../../types/types";
 
 interface EditableTextComposerProps {
@@ -71,26 +76,25 @@ export const EditableTextComposer: React.FC<EditableTextComposerProps> = ({
     })
   );
 
+  // ✅ CORRIGÉ: useEffect avec la nouvelle fonction
   useEffect(() => {
-    if (composition && originalPostits) {
-      const editable = convertToEditableComposition(
-        composition,
-        originalPostits
-      );
+    if (composition) {
+      console.log("🔍 Conversion de la composition:", composition);
+      const editable = convertFromZoneComposition(composition);
       setEditableComp(editable);
       updatePreview(editable.flatSegments);
 
       console.log(
-        "🔍 Segments créés:",
+        "🔍 Segments créés depuis ZoneComposition:",
         editable.flatSegments.map((s) => ({
           id: s.id,
           content: s.content.substring(0, 50) + "...",
           zone: s.zoneName,
-          postitId: s.originalPostitId,
+          originalId: s.originalPostitId,
         }))
       );
     }
-  }, [composition, originalPostits]);
+  }, [composition]); // ✅ Plus besoin de originalPostits
 
   const updatePreview = useCallback(
     (segments: EditableSubSegment[]) => {
@@ -170,17 +174,15 @@ export const EditableTextComposer: React.FC<EditableTextComposerProps> = ({
     [editableComp, onSegmentReorder, updatePreview]
   );
 
+  // ✅ CORRIGÉ: resetOrder sans originalPostits
   const resetOrder = useCallback(() => {
-    if (composition && originalPostits) {
-      const originalEditable = convertToEditableComposition(
-        composition,
-        originalPostits
-      );
+    if (composition) {
+      const originalEditable = convertFromZoneComposition(composition);
       setEditableComp({ ...originalEditable, hasChanges: false });
       updatePreview(originalEditable.flatSegments);
       onSegmentReorder(originalEditable.flatSegments);
     }
-  }, [composition, originalPostits, onSegmentReorder, updatePreview]);
+  }, [composition, onSegmentReorder, updatePreview]);
 
   if (!editableComp) {
     return <Alert severity="info">Chargement de l'éditeur...</Alert>;
@@ -270,10 +272,9 @@ export const EditableTextComposer: React.FC<EditableTextComposerProps> = ({
                 items={editableComp.flatSegments.map((seg) => seg.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {/* ✅ CORRIGÉ: Utiliser les IDs uniques pour les clés React */}
                 {editableComp.flatSegments.map((segment) => (
                   <DraggableSegment
-                    key={segment.id} // ✅ CLEF: Utilise l'ID unique généré
+                    key={segment.id}
                     segment={segment}
                     onRemove={removeSegment}
                   />
@@ -365,7 +366,6 @@ export const EditableTextComposer: React.FC<EditableTextComposerProps> = ({
           Légende des zones :
         </Typography>
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-          {/* ✅ CORRIGÉ: Clés uniques pour la légende aussi */}
           {Array.from(
             new Set(editableComp.flatSegments.map((s) => s.sourceZone))
           ).map((sourceZone, index) => {
@@ -376,7 +376,7 @@ export const EditableTextComposer: React.FC<EditableTextComposerProps> = ({
 
             return (
               <Box
-                key={`legend-${sourceZone}-${index}`} // ✅ CLEF: Clé unique
+                key={`legend-${sourceZone}-${index}`}
                 sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
               >
                 <Box

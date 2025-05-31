@@ -217,6 +217,314 @@ export const generateZoneAwareComposition = (
   return result;
 };
 
+// ✅ FONCTION POUR ORDRE PERSONNALISÉ
+export const generateCustomOrderComposition = (
+  postits: PostitType[],
+  customPostitsOrder: { id: string; content: string; zone: string }[], // Ordre depuis la modal
+  zoneColors: Record<string, string>,
+  originalText?: string
+): ZoneComposition => {
+  console.log("🔄 Génération composition avec ordre personnalisé");
+
+  // Filtrer uniquement les post-its retravaillés (garde la logique existante)
+  const improvedPostits = postits.filter((postit) => !postit.isOriginal);
+
+  if (improvedPostits.length === 0) {
+    console.warn("⚠️ Aucun post-it retravaillé pour ordre personnalisé");
+    return createOriginalComposition(originalText || "", zoneColors);
+  }
+
+  // Créer un map des post-its retravaillés pour retrouver les infos complètes
+  const postitMap = new Map();
+  improvedPostits.forEach((postit) => {
+    postitMap.set(postit.id?.toString(), postit);
+  });
+
+  // Configuration des zones (même logique qu'avant)
+  const zoneConfig = {
+    [ZONES.VOUS_AVEZ_FAIT]: { name: "Reconnaissance", order: 1 },
+    [ZONES.JE_FAIS]: { name: "Actions conseiller", order: 2 },
+    [ZONES.ENTREPRISE_FAIT]: { name: "Contexte entreprise", order: 3 },
+    [ZONES.VOUS_FEREZ]: { name: "Prochaines étapes", order: 4 },
+  };
+
+  const segments: ZoneAwareTextSegment[] = [];
+  const textParts: string[] = [];
+
+  // ✅ NOUVELLE LOGIQUE : Suivre l'ordre personnalisé de la modal
+  customPostitsOrder.forEach((customPostit, index) => {
+    const originalPostit = postitMap.get(customPostit.id);
+
+    if (originalPostit && originalPostit.zone) {
+      const zoneInfo = zoneConfig[originalPostit.zone];
+
+      if (zoneInfo) {
+        const formattedContent = formatContentForTTS(
+          customPostit.content.trim()
+        );
+
+        if (formattedContent.length > 0) {
+          // Créer un segment pour chaque post-it individuel (dans l'ordre personnalisé)
+          const segment: ZoneAwareTextSegment = {
+            id: `custom-postit-${customPostit.id}-${index}`,
+            content: formattedContent,
+            type: "zone",
+            sourceZone: originalPostit.zone,
+            zoneName: zoneInfo.name,
+            zoneOrder: index + 1, // ✅ NOUVEAU : Ordre séquentiel basé sur la modal
+            zoneColor: zoneColors[originalPostit.zone],
+            isFromRework: true,
+            postitIds: [customPostit.id],
+          };
+
+          segments.push(segment);
+          textParts.push(formattedContent);
+        }
+      }
+    }
+  });
+
+  // Texte final assemblé dans le nouvel ordre
+  const fullText = textParts.length > 0 ? textParts.join(". ") + "." : "";
+
+  // Calcul du pourcentage de proactivité
+  let proactivityPercentage = 0;
+  try {
+    proactivityPercentage = calculateProactivityPercentage(segments);
+  } catch (error) {
+    console.error("❌ Erreur dans calculateProactivityPercentage:", error);
+    proactivityPercentage = 0;
+  }
+
+  // Statistiques
+  const stats = {
+    totalSegments: segments.length,
+    reworkedSegments: segments.filter((s) => s.isFromRework).length,
+    originalLength: originalText?.length || 0,
+    finalLength: fullText.length,
+    proactivityPercentage,
+  };
+
+  const result = {
+    segments,
+    fullText,
+    hasReworkedContent: segments.length > 0,
+    originalText,
+    stats,
+  };
+
+  console.log("✅ Composition personnalisée créée:", {
+    segmentsCount: segments.length,
+    textLength: fullText.length,
+    customOrder: customPostitsOrder.map((p) => ({ id: p.id, zone: p.zone })),
+  });
+
+  return result;
+};
+
+export const generateIndividualPostitsComposition = (
+  postits: PostitType[],
+  zoneColors: Record<string, string>,
+  originalText?: string
+): ZoneComposition => {
+  console.log("🎯 Génération composition avec post-its individuels");
+
+  // Filtrer uniquement les post-its retravaillés (garde la logique existante)
+  const improvedPostits = postits.filter((postit) => !postit.isOriginal);
+
+  if (improvedPostits.length === 0) {
+    return createOriginalComposition(originalText || "", zoneColors);
+  }
+
+  // Configuration des zones (même logique qu'avant)
+  const zoneConfig = {
+    [ZONES.VOUS_AVEZ_FAIT]: { name: "Reconnaissance", order: 1 },
+    [ZONES.JE_FAIS]: { name: "Actions conseiller", order: 2 },
+    [ZONES.ENTREPRISE_FAIT]: { name: "Contexte entreprise", order: 3 },
+    [ZONES.VOUS_FEREZ]: { name: "Prochaines étapes", order: 4 },
+  };
+
+  const segments: ZoneAwareTextSegment[] = [];
+  const textParts: string[] = [];
+
+  // ✅ NOUVEAUTÉ : Trier les post-its par ordre de zone, MAIS garder chaque post-it séparé
+  const orderedZones = [
+    ZONES.VOUS_AVEZ_FAIT,
+    ZONES.JE_FAIS,
+    ZONES.ENTREPRISE_FAIT,
+    ZONES.VOUS_FEREZ,
+  ];
+
+  orderedZones.forEach((zoneKey) => {
+    const zonePostits = improvedPostits.filter((p) => p.zone === zoneKey);
+
+    // ✅ CLEF : Créer UN SEGMENT par POST-IT (pas par zone)
+    zonePostits.forEach((postit, index) => {
+      const zoneInfo = zoneConfig[zoneKey];
+
+      if (zoneInfo && postit.content?.trim()) {
+        const formattedContent = formatContentForTTS(postit.content.trim());
+
+        if (formattedContent.length > 0) {
+          // Créer un segment pour chaque post-it individuel
+          const segment: ZoneAwareTextSegment = {
+            id: `postit-${postit.id}-${zoneKey}-${index}`,
+            content: formattedContent,
+            type: "zone",
+            sourceZone: zoneKey,
+            zoneName: zoneInfo.name,
+            zoneOrder: zoneInfo.order,
+            zoneColor: zoneColors[zoneKey],
+            isFromRework: true,
+            postitIds: [postit.id?.toString() || `postit-${Date.now()}`],
+          };
+
+          segments.push(segment);
+          textParts.push(formattedContent);
+        }
+      }
+    });
+  });
+
+  // Texte final assemblé (chaque post-it séparé par un point)
+  const fullText = textParts.length > 0 ? textParts.join(". ") + "." : "";
+
+  // Calcul du pourcentage de proactivité
+  let proactivityPercentage = 0;
+  try {
+    proactivityPercentage = calculateProactivityPercentage(segments);
+  } catch (error) {
+    console.error("❌ Erreur dans calculateProactivityPercentage:", error);
+    proactivityPercentage = 0;
+  }
+
+  // Statistiques
+  const stats = {
+    totalSegments: segments.length,
+    reworkedSegments: segments.filter((s) => s.isFromRework).length,
+    originalLength: originalText?.length || 0,
+    finalLength: fullText.length,
+    proactivityPercentage,
+  };
+
+  const result = {
+    segments,
+    fullText,
+    hasReworkedContent: segments.length > 0,
+    originalText,
+    stats,
+  };
+
+  console.log("✅ Composition avec post-its individuels créée:", {
+    totalPostits: improvedPostits.length,
+    segmentsCreated: segments.length,
+    textParts: textParts,
+  });
+
+  return result;
+};
+
+// ✅ FONCTION pour réorganiser l'ordre des post-its
+export const generateCustomOrderPostitsComposition = (
+  postits: PostitType[],
+  customOrder: string[], // IDs des post-its dans l'ordre souhaité
+  zoneColors: Record<string, string>,
+  originalText?: string
+): ZoneComposition => {
+  console.log(
+    "🔄 Génération avec ordre personnalisé des post-its:",
+    customOrder
+  );
+
+  // Filtrer uniquement les post-its retravaillés
+  const improvedPostits = postits.filter((postit) => !postit.isOriginal);
+
+  if (improvedPostits.length === 0) {
+    return createOriginalComposition(originalText || "", zoneColors);
+  }
+
+  // Créer un map pour retrouver les post-its par ID
+  const postitMap = new Map();
+  improvedPostits.forEach((postit) => {
+    postitMap.set(postit.id?.toString(), postit);
+  });
+
+  // Configuration des zones
+  const zoneConfig = {
+    [ZONES.VOUS_AVEZ_FAIT]: { name: "Reconnaissance", order: 1 },
+    [ZONES.JE_FAIS]: { name: "Actions conseiller", order: 2 },
+    [ZONES.ENTREPRISE_FAIT]: { name: "Contexte entreprise", order: 3 },
+    [ZONES.VOUS_FEREZ]: { name: "Prochaines étapes", order: 4 },
+  };
+
+  const segments: ZoneAwareTextSegment[] = [];
+  const textParts: string[] = [];
+
+  // ✅ NOUVEAUTÉ : Suivre l'ordre personnalisé
+  customOrder.forEach((postitId, index) => {
+    const postit = postitMap.get(postitId);
+
+    if (postit && postit.zone) {
+      const zoneInfo = zoneConfig[postit.zone];
+
+      if (zoneInfo && postit.content?.trim()) {
+        const formattedContent = formatContentForTTS(postit.content.trim());
+
+        if (formattedContent.length > 0) {
+          const segment: ZoneAwareTextSegment = {
+            id: `custom-postit-${postit.id}-${index}`,
+            content: formattedContent,
+            type: "zone",
+            sourceZone: postit.zone,
+            zoneName: zoneInfo.name,
+            zoneOrder: index + 1, // ✅ Nouvel ordre basé sur la réorganisation
+            zoneColor: zoneColors[postit.zone],
+            isFromRework: true,
+            postitIds: [postit.id?.toString() || `postit-${Date.now()}`],
+          };
+
+          segments.push(segment);
+          textParts.push(formattedContent);
+        }
+      }
+    }
+  });
+
+  // Texte final dans le nouvel ordre
+  const fullText = textParts.length > 0 ? textParts.join(". ") + "." : "";
+
+  // Calcul du pourcentage de proactivité
+  let proactivityPercentage = 0;
+  try {
+    proactivityPercentage = calculateProactivityPercentage(segments);
+  } catch (error) {
+    console.error("❌ Erreur dans calculateProactivityPercentage:", error);
+    proactivityPercentage = 0;
+  }
+
+  const stats = {
+    totalSegments: segments.length,
+    reworkedSegments: segments.filter((s) => s.isFromRework).length,
+    originalLength: originalText?.length || 0,
+    finalLength: fullText.length,
+    proactivityPercentage,
+  };
+
+  console.log("✅ Composition réorganisée créée:", {
+    newOrder: customOrder,
+    segmentsCount: segments.length,
+    finalText: fullText,
+  });
+
+  return {
+    segments,
+    fullText,
+    hasReworkedContent: segments.length > 0,
+    originalText,
+    stats,
+  };
+};
+
 // ✅ FONCTION pour créer une composition à partir du texte original (fallback)
 export const createOriginalComposition = (
   originalText: string,
@@ -401,4 +709,53 @@ export const createCustomReadingOrder = (
   });
 
   return orderedSegments;
+};
+
+export interface EditableSubSegment {
+  id: string;
+  content: string;
+  originalPostitId: string;
+  sourceZone: string;
+  zoneName: string;
+  zoneColor: string;
+  isMovable: boolean;
+  order: number;
+}
+
+export interface EditableComposition {
+  segments: never[]; // Pas utilisé dans le modal
+  flatSegments: EditableSubSegment[];
+  fullText: string;
+  hasChanges: boolean;
+}
+
+/**
+ * ✅ NOUVELLE FONCTION : Convertir ZoneComposition vers EditableComposition pour le modal
+ */
+export const convertFromZoneComposition = (
+  composition: ZoneComposition
+): EditableComposition => {
+  console.log("🔄 Conversion ZoneComposition vers EditableComposition");
+
+  const flatSegments: EditableSubSegment[] = composition.segments.map(
+    (segment, index) => ({
+      id: segment.id,
+      content: segment.content,
+      originalPostitId: segment.postitIds?.[0] || `segment-${index}`,
+      sourceZone: segment.sourceZone || "UNKNOWN",
+      zoneName: segment.zoneName || "Zone inconnue",
+      zoneColor: segment.zoneColor || "#666666",
+      isMovable: true,
+      order: index,
+    })
+  );
+
+  console.log("✅ Conversion terminée:", flatSegments.length, "segments créés");
+
+  return {
+    segments: [],
+    flatSegments: flatSegments,
+    fullText: composition.fullText,
+    hasChanges: false,
+  };
 };

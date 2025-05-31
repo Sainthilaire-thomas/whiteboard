@@ -4,7 +4,7 @@ import { Box, Typography, Chip, IconButton, useTheme } from "@mui/material";
 import { DragIndicator, Close } from "@mui/icons-material";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { EditableSubSegment } from "../types/editableText";
+import { EditableSubSegment } from "../../../utils/generateFinalText";
 
 interface DraggableSegmentProps {
   segment: EditableSubSegment;
