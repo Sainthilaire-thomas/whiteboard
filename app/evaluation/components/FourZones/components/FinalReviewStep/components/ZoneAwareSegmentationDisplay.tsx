@@ -28,7 +28,7 @@ import {
 import {
   ZoneAwareTextSegment,
   ZoneComposition,
-} from "../../utils/generateFinalText";
+} from "../../../utils/generateFinalText";
 
 interface ZoneAwareSegmentationDisplayProps {
   composition: ZoneComposition;

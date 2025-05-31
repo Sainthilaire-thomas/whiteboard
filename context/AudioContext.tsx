@@ -25,8 +25,7 @@ export interface AudioContextType {
   setVolume: (volume: number) => void;
   playAudioAtTimestamp: (timestamp: number) => void;
   updateCurrentWordIndex: (words: Word[], time: number) => void;
-
-  // 🔄 AJOUT : executeWithLock manquait dans le type
+  playSegment: (startTime: number, endTime: number) => void;
   executeWithLock: (operation: () => Promise<void> | void) => Promise<void>;
 
   // Référence à l'élément audio
@@ -62,6 +61,15 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   const [currentWordIndex, setCurrentWordIndex] = useState<number>(-1);
   const isAudioOperationInProgress = useRef(false);
 
+  // ✅ AJOUT : État pour gérer les segments en cours
+  const [currentSegment, setCurrentSegment] = useState<{
+    startTime: number;
+    endTime: number;
+  } | null>(null);
+
+  // ✅ AJOUT : Référence pour le timer de segment
+  const segmentTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const executeWithLock = useCallback(
     async (operation: () => Promise<void> | void) => {
       if (isAudioOperationInProgress.current) {
@@ -91,10 +99,74 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   // Référence à l'élément audio
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // ✅ NOUVELLE VERSION : Méthode pour jouer un segment avec gestion améliorée
+  const playSegment = useCallback((startTime: number, endTime: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    console.log(
+      `🎵 Lecture segment: ${startTime.toFixed(1)}s → ${endTime.toFixed(1)}s`
+    );
+
+    // ✅ Nettoyer le timer précédent s'il existe
+    if (segmentTimerRef.current) {
+      clearTimeout(segmentTimerRef.current);
+      segmentTimerRef.current = null;
+    }
+
+    // ✅ Définir le segment actuel
+    setCurrentSegment({ startTime, endTime });
+
+    // Aller au début du segment
+    audio.currentTime = startTime;
+
+    // Démarrer la lecture
+    audio
+      .play()
+      .then(() => {
+        // ✅ Calculer la durée du segment et programmer l'arrêt
+        const segmentDuration = (endTime - startTime) * 1000; // en millisecondes
+
+        segmentTimerRef.current = setTimeout(() => {
+          console.log(
+            `⏹️ Fin du segment programmée atteinte, arrêt automatique`
+          );
+          audio.pause();
+          setCurrentSegment(null);
+          segmentTimerRef.current = null;
+        }, segmentDuration);
+      })
+      .catch((error) => {
+        console.error("Erreur lors de la lecture du segment:", error);
+        setCurrentSegment(null);
+      });
+  }, []);
+
+  // ✅ AJOUT : Fonction pour arrêter la lecture de segment
+  const stopSegment = useCallback(() => {
+    if (segmentTimerRef.current) {
+      clearTimeout(segmentTimerRef.current);
+      segmentTimerRef.current = null;
+    }
+    setCurrentSegment(null);
+
+    const audio = audioRef.current;
+    if (audio && !audio.paused) {
+      audio.pause();
+    }
+  }, []);
+
   // Configuration de l'audio lors du changement de source
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    // ✅ Nettoyer les segments en cours lors du changement de source
+    if (segmentTimerRef.current) {
+      clearTimeout(segmentTimerRef.current);
+      segmentTimerRef.current = null;
+    }
+    setCurrentSegment(null);
 
     // Réinitialisation des états
     setCurrentTime(0);
@@ -111,13 +183,29 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
     }
   }, [audioSrc]);
 
-  // Gestion des événements audio
+  // ✅ MODIFICATION : Gestion des événements audio avec contrôle de segment
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
+      const time = audio.currentTime;
+      setCurrentTime(time);
+
+      // ✅ Vérifier si on dépasse la fin du segment (sécurité supplémentaire)
+      if (currentSegment && time >= currentSegment.endTime) {
+        console.log(
+          `⏹️ Fin du segment détectée via timeupdate (${time.toFixed(
+            1
+          )}s >= ${currentSegment.endTime.toFixed(1)}s)`
+        );
+        audio.pause();
+        setCurrentSegment(null);
+        if (segmentTimerRef.current) {
+          clearTimeout(segmentTimerRef.current);
+          segmentTimerRef.current = null;
+        }
+      }
     };
 
     const handleDurationChange = () => {
@@ -130,10 +218,26 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
 
     const handlePause = () => {
       setIsPlaying(false);
+      // ✅ Si on met en pause manuellement, nettoyer le segment
+      if (currentSegment) {
+        setCurrentSegment(null);
+        if (segmentTimerRef.current) {
+          clearTimeout(segmentTimerRef.current);
+          segmentTimerRef.current = null;
+        }
+      }
     };
 
     const handleEnded = () => {
       setIsPlaying(false);
+      // ✅ Nettoyer le segment à la fin
+      if (currentSegment) {
+        setCurrentSegment(null);
+        if (segmentTimerRef.current) {
+          clearTimeout(segmentTimerRef.current);
+          segmentTimerRef.current = null;
+        }
+      }
     };
 
     // Ajout des écouteurs d'événements
@@ -161,6 +265,15 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       audio.removeEventListener("ended", handleEnded);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
+  }, [currentSegment]); // ✅ Dépendance sur currentSegment
+
+  // ✅ Nettoyage au démontage du composant
+  useEffect(() => {
+    return () => {
+      if (segmentTimerRef.current) {
+        clearTimeout(segmentTimerRef.current);
+      }
+    };
   }, []);
 
   // Méthodes de contrôle audio
@@ -175,50 +288,54 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
     }
 
     try {
-      // Lecture sécurisée avec await pour attendre que la promesse soit résolue
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         await playPromise;
-        // setIsPlaying est maintenant appelé après la résolution de la promesse
-        // mais ce n'est pas nécessaire car l'événement 'play' le fera
       }
     } catch (error) {
       console.error("Erreur lors de la lecture :", error);
-      // En cas d'erreur, s'assurer que l'état est cohérent
       setIsPlaying(false);
     }
   }, []);
 
-  // Correction de la méthode pause dans AudioContext.tsx
   const pause = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     try {
-      // S'assurer qu'on met en pause seulement si l'audio est en lecture
       if (!audio.paused) {
         audio.pause();
-        // setIsPlaying est géré par l'événement 'pause'
+        // Le handlePause s'occupera de nettoyer currentSegment
       }
     } catch (error) {
       console.error("Erreur lors de la mise en pause :", error);
     }
   }, []);
 
-  const seekTo = useCallback((time: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
+  const seekTo = useCallback(
+    (time: number) => {
+      const audio = audioRef.current;
+      if (!audio) return;
 
-    // Validation du temps
-    const validTime = Math.max(0, Math.min(time, audio.duration || 0));
-    audio.currentTime = validTime;
-  }, []);
+      // ✅ Si on cherche pendant un segment, l'annuler
+      if (currentSegment) {
+        setCurrentSegment(null);
+        if (segmentTimerRef.current) {
+          clearTimeout(segmentTimerRef.current);
+          segmentTimerRef.current = null;
+        }
+      }
+
+      const validTime = Math.max(0, Math.min(time, audio.duration || 0));
+      audio.currentTime = validTime;
+    },
+    [currentSegment]
+  );
 
   const setVolume = useCallback((volume: number) => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Validation du volume
     const validVolume = Math.max(0, Math.min(volume, 1));
     audio.volume = validVolume;
   }, []);
@@ -265,6 +382,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
     updateCurrentWordIndex,
     audioRef,
     executeWithLock,
+    playSegment,
   };
 
   return (

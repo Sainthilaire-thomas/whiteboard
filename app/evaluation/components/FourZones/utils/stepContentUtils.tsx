@@ -38,6 +38,7 @@ interface RenderStepContentParams {
   audioSrc: string | null;
   seekTo: (time: number) => void;
   play: () => void;
+  pause?: () => void; // ✅ NOUVELLE PROP optionnelle
   speechToTextVisible: boolean;
   toggleSpeechToText: () => void;
   addPostitsFromSpeech: (postits: PostitType[]) => void;
@@ -80,6 +81,7 @@ export const renderStepContent = ({
   audioSrc,
   seekTo,
   play,
+  pause, // ✅ NOUVELLE PROP
   speechToTextVisible,
   toggleSpeechToText,
   addPostitsFromSpeech,
@@ -316,6 +318,12 @@ export const renderStepContent = ({
         // ✅ NOUVELLES PROPS nécessaires pour les zones
         postits={postits}
         zoneColors={zoneColors}
+        // ✅ NOUVELLES PROPS pour l'audio original
+        audioSrc={audioSrc}
+        clientSelection={clientSelection}
+        play={play}
+        pause={pause} // ✅ NOUVELLE PROP
+        seekTo={seekTo}
       />
     );
   };

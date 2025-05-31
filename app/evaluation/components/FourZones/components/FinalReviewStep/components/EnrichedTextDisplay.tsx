@@ -4,7 +4,7 @@ import { Box, Typography, Tooltip, Chip } from "@mui/material";
 import {
   ZoneComposition,
   ZoneAwareTextSegment,
-} from "../../utils/generateFinalText";
+} from "../../../utils/generateFinalText";
 
 interface EnrichedTextDisplayProps {
   composition: ZoneComposition;

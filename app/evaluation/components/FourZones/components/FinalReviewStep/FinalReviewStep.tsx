@@ -1,5 +1,5 @@
-// FinalReviewStep.tsx - Version épurée avec affichage discret des zones
-import React, { useState, useMemo } from "react";
+// FinalReviewStep.tsx - Version mise à jour avec système de drag & drop
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -17,12 +17,19 @@ import {
   Download,
   Psychology,
   Speed,
+  Edit, // ✅ AJOUT pour le bouton d'édition
 } from "@mui/icons-material";
 
-// Hooks et composants
+// Hooks et composants existants
 import { useTTS, type TTSSettings } from "./hooks/useTTS";
 import { TextSegment } from "./components/TextSegment";
 import { TTSStudioPanel } from "./TTSStudioPanel";
+
+// ✅ NOUVEAU : Import du modal d'édition
+import { EditTextModal } from "./components/EditTextModal";
+
+// Import du contexte audio
+import { useAudio } from "@/context/AudioContext";
 
 // Types pour les extensions
 import type { RoleVoiceSettings } from "./extensions/VoiceByRole";
@@ -37,9 +44,9 @@ import {
   ZoneComposition,
   ZoneAwareTextSegment,
 } from "../../utils/generateFinalText";
-import { PostitType } from "../../types/types";
 
-// ✅ NOUVEAU : Import du composant d'affichage enrichi
+// Import des composants existants
+import EnhancedClientSection from "./components/EnhancedClientSection";
 import EnrichedTextDisplay from "./components/EnrichedTextDisplay";
 
 interface FinalReviewStepProps {
@@ -49,11 +56,20 @@ interface FinalReviewStepProps {
   improvedConseillerText?: string;
   postits: PostitType[];
   zoneColors: Record<string, string>;
+  // Props pour l'audio original
+  audioSrc?: string | null;
+  clientSelection?: {
+    startTime?: number;
+    endTime?: number;
+  };
+  play?: () => void;
+  pause?: () => void;
+  seekTo?: (time: number) => void;
 }
 
 /**
  * Composant principal pour l'étape finale avec studio TTS complet
- * ✅ Version épurée avec affichage discret des zones d'origine
+ * ✅ Version mise à jour avec éditeur drag & drop
  */
 export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
   mode,
@@ -62,29 +78,47 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
   improvedConseillerText,
   postits,
   zoneColors,
+  audioSrc,
+  clientSelection,
+  play,
+  pause,
+  seekTo,
 }) => {
   // Hook TTS principal
   const tts = useTTS();
 
+  // ✅ NOUVEAU : État pour le modal d'édition et la composition
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [currentComposition, setCurrentComposition] =
+    useState<ZoneComposition | null>(null);
+
   // Génération de la composition enrichie
-  const zoneComposition = useMemo((): ZoneComposition => {
+  const originalZoneComposition = useMemo((): ZoneComposition => {
     if (hasImprovedContent(postits)) {
       const result = generateZoneAwareComposition(
         postits,
         zoneColors,
         selectedConseillerText
       );
-
       return result;
     }
-
     return createOriginalComposition(selectedConseillerText, zoneColors);
   }, [postits, zoneColors, selectedConseillerText]);
+
+  // ✅ NOUVEAU : Utiliser la composition courante (modifiée ou originale)
+  const zoneComposition = currentComposition || originalZoneComposition;
+
+  // ✅ NOUVEAU : Synchroniser la composition courante avec l'originale
+  useEffect(() => {
+    if (!currentComposition) {
+      setCurrentComposition(originalZoneComposition);
+    }
+  }, [originalZoneComposition, currentComposition]);
 
   // Utiliser le texte de la composition
   const finalConseillerText = zoneComposition.fullText;
 
-  // État des paramètres TTS
+  // État des paramètres TTS (existant)
   const [basicSettings, setBasicSettings] = useState<TTSSettings>({
     voice: "alloy",
     speed: 1.0,
@@ -109,11 +143,51 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
       emotionalIntelligence: false,
     });
 
-  // État des segments et lecture
+  // État des segments et lecture (existant)
   const [activeSegment, setActiveSegment] = useState<string | null>(null);
   const [textSegments, setTextSegments] = useState<TextSegmentType[]>([]);
+  const [audioTimer, setAudioTimer] = useState<NodeJS.Timeout | null>(null);
+  const { playSegment } = useAudio();
 
-  // Gestion de la lecture des segments de zone
+  // ✅ NOUVEAUX : Handlers pour l'édition
+  const handleOpenEditor = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditor = () => {
+    setIsEditModalOpen(false);
+  };
+
+  const handleSaveComposition = (newComposition: ZoneComposition) => {
+    console.log("💾 Sauvegarde de la nouvelle composition:", {
+      originalSegments: currentComposition?.segments.length || 0,
+      newSegments: newComposition.segments.length,
+      originalLength: currentComposition?.fullText.length || 0,
+      newLength: newComposition.fullText.length,
+    });
+    setCurrentComposition(newComposition);
+    setIsEditModalOpen(false);
+  };
+
+  const handleResetToOriginal = () => {
+    const confirmReset = window.confirm(
+      "Voulez-vous vraiment revenir au texte original et annuler toutes les modifications ?"
+    );
+    if (confirmReset) {
+      setCurrentComposition(originalZoneComposition);
+    }
+  };
+
+  // Nettoyage du timer au démontage du composant
+  useEffect(() => {
+    return () => {
+      if (audioTimer) {
+        clearTimeout(audioTimer);
+      }
+    };
+  }, [audioTimer]);
+
+  // Gestion de la lecture des segments de zone (existant)
   const handlePlayZoneSegment = async (segment: ZoneAwareTextSegment) => {
     if (activeSegment === segment.id && tts.isPlaying) {
       tts.stopAudio();
@@ -139,7 +213,30 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
     }
   };
 
-  // Téléchargement d'un segment de zone
+  // Lecture de l'audio original du client (existant)
+  const handlePlayOriginalClient = () => {
+    if (
+      audioSrc &&
+      clientSelection?.startTime !== undefined &&
+      clientSelection?.endTime !== undefined
+    ) {
+      console.log(
+        `🎵 Lecture segment client: ${clientSelection.startTime}s → ${clientSelection.endTime}s`
+      );
+      playSegment(clientSelection.startTime, clientSelection.endTime);
+    } else {
+      console.warn(
+        "⚠️ Audio original non disponible ou temps de fin manquant",
+        {
+          audioSrc: !!audioSrc,
+          startTime: clientSelection?.startTime,
+          endTime: clientSelection?.endTime,
+        }
+      );
+    }
+  };
+
+  // Téléchargement d'un segment de zone (existant)
   const handleDownloadZoneSegment = async (segment: ZoneAwareTextSegment) => {
     if (!segment.content.trim()) return;
 
@@ -166,7 +263,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
     }
   };
 
-  // Gestion de la lecture simple (par rôle)
+  // Gestion de la lecture simple (par rôle) (existant)
   const handlePlayRole = async (role: "client" | "conseiller") => {
     const text = role === "client" ? selectedClientText : finalConseillerText;
 
@@ -194,7 +291,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
     }
   };
 
-  // Lecture de l'échange complet
+  // Lecture de l'échange complet (existant)
   const handlePlayComplete = async () => {
     if (tts.isPlaying) {
       tts.stopAudio();
@@ -222,7 +319,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
     }
   };
 
-  // Lecture des segments standards
+  // Lecture des segments standards (existant)
   const handlePlaySegment = async (segment: TextSegmentType) => {
     setActiveSegment(segment.id);
     await tts.speak(segment.content, basicSettings);
@@ -239,7 +336,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
     }
   };
 
-  // Téléchargement d'audio
+  // Téléchargement d'audio (existant)
   const handleDownloadAudio = async (role: "client" | "conseiller") => {
     const text = role === "client" ? selectedClientText : finalConseillerText;
     if (!text.trim()) return;
@@ -264,13 +361,19 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
     }
   };
 
-  // Vérifications
+  // Vérifications (existant)
   const canPlay = selectedClientText.trim() || finalConseillerText.trim();
   const hasAdvancedFeatures =
     roleVoiceSettings.enabled ||
     conversationalSettings.enabled ||
     textSegments.length > 1 ||
     zoneComposition.hasReworkedContent;
+
+  // ✅ NOUVEAU : Vérifier si la composition a été modifiée
+  const hasModifications =
+    currentComposition &&
+    currentComposition !== originalZoneComposition &&
+    currentComposition.fullText !== originalZoneComposition.fullText;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -303,6 +406,15 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
                 color="success"
               />
             )}
+            {/* ✅ NOUVEAU : Indicateur de modifications */}
+            {hasModifications && (
+              <Chip
+                label="Texte modifié"
+                size="small"
+                color="warning"
+                variant="outlined"
+              />
+            )}
           </Box>
         )}
       </Box>
@@ -311,6 +423,25 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
       {tts.error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={tts.clearError}>
           {tts.error}
+        </Alert>
+      )}
+
+      {/* ✅ NOUVEAU : Alerte de modifications */}
+      {hasModifications && (
+        <Alert
+          severity="info"
+          sx={{ mb: 3 }}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={handleResetToOriginal}
+            >
+              Restaurer l'original
+            </Button>
+          }
+        >
+          Vous avez modifié l'ordre des segments du texte conseiller.
         </Alert>
       )}
 
@@ -326,23 +457,22 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
                 mode === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)",
             }}
           >
-            {/* Section client standard */}
-            <TextSegment
-              id="client"
+            {/* Section client enrichie avec TTS + audio original */}
+            <EnhancedClientSection
               text={selectedClientText}
-              title="Message client"
-              role="client"
               isPlaying={activeSegment === "client"}
               isLoading={tts.isLoading && activeSegment === "client"}
               progress={activeSegment === "client" ? tts.progress : 0}
-              onPlay={() => handlePlayRole("client")}
+              onPlayTTS={() => handlePlayRole("client")}
               onStop={() => tts.stopAudio()}
               onDownload={() => handleDownloadAudio("client")}
+              audioSrc={audioSrc}
+              clientSelection={clientSelection}
+              onPlayOriginal={handlePlayOriginalClient}
               mode={mode}
-              editable={false}
             />
 
-            {/* ✅ Section conseiller avec affichage enrichi discret */}
+            {/* ✅ Section conseiller MISE À JOUR avec bouton d'édition */}
             <Paper
               elevation={1}
               sx={{
@@ -361,8 +491,21 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
                   Réponse conseiller
                 </Typography>
 
-                {/* Contrôles compacts */}
+                {/* ✅ NOUVEAUX : Contrôles avec bouton d'édition */}
                 <Box sx={{ display: "flex", gap: 1 }}>
+                  {/* Bouton d'édition - uniquement si du contenu retravaillé */}
+                  {zoneComposition.hasReworkedContent && (
+                    <Button
+                      size="small"
+                      startIcon={<Edit />}
+                      onClick={handleOpenEditor}
+                      variant="outlined"
+                      color="secondary"
+                    >
+                      Réorganiser
+                    </Button>
+                  )}
+
                   <Button
                     size="small"
                     startIcon={
@@ -416,7 +559,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
                   </Box>
                 )}
 
-              {/* ✅ AFFICHAGE ENRICHI DISCRET du texte conseiller */}
+              {/* Affichage enrichi discret du texte conseiller */}
               <EnrichedTextDisplay
                 composition={zoneComposition}
                 fontSize={16}
@@ -424,12 +567,22 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
                 showZoneIndicators={zoneComposition.hasReworkedContent}
               />
 
-              {/* ✅ DEBUG: Affichage temporaire des stats de composition */}
+              {/* ✅ NOUVEAU : Message d'aide pour l'édition */}
+              {zoneComposition.hasReworkedContent && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mt: 1, display: "block", fontStyle: "italic" }}
+                >
+                  💡 Cliquez sur "Réorganiser" pour modifier l'ordre des
+                  segments par glisser-déposer
+                </Typography>
+              )}
             </Paper>
 
             <Divider sx={{ my: 3 }} />
 
-            {/* Actions de lecture globale */}
+            {/* Actions de lecture globale (inchangé) */}
             <Box sx={{ textAlign: "center" }}>
               <Typography variant="h6" gutterBottom>
                 Évaluation globale
@@ -517,7 +670,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
           </Paper>
         </Grid>
 
-        {/* Studio de contrôle */}
+        {/* Studio de contrôle (inchangé) */}
         <Grid item xs={12} lg={4}>
           <TTSStudioPanel
             basicSettings={basicSettings}
@@ -541,7 +694,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
             mode={mode}
           />
 
-          {/* Statistiques épurées */}
+          {/* Statistiques épurées (inchangé) */}
           <Paper sx={{ mt: 2, p: 2, bgcolor: "action.hover" }}>
             <Typography variant="subtitle2" gutterBottom>
               📊 Statistiques
@@ -562,6 +715,15 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
           </Paper>
         </Grid>
       </Grid>
+
+      {/* ✅ NOUVEAU : Modal d'édition */}
+      <EditTextModal
+        open={isEditModalOpen}
+        composition={zoneComposition}
+        originalPostits={postits} // ✅ NOUVEAU: Passer les post-its originaux
+        onClose={handleCloseEditor}
+        onSave={handleSaveComposition}
+      />
     </Box>
   );
 };
