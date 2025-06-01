@@ -10,8 +10,17 @@ export type PhaseKey =
   | "evaluation"
   | "coaching"
   | "suivi"
+  | "entrainement" // NOUVEAU
   | "feedback"
   | "admin";
+
+// Vues disponibles - MISE À JOUR
+export type ViewType =
+  | "selection"
+  | "synthese"
+  | "postit"
+  | "roleplay"
+  | "entrainement";
 
 // Interface pour les sous-étapes
 export interface SubStep {
@@ -25,13 +34,17 @@ export interface SubStep {
 }
 
 // Interface pour les phases
+
 export interface Phase {
-  label: string;
   key: PhaseKey;
-  icon: ReactElement;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  route: string;
   subSteps?: SubStep[];
-  isAdmin?: boolean;
-  description?: string;
+  requiresCondition?: boolean;
+  conditionKey?: string;
+  adminOnly?: boolean;
 }
 
 // Interface pour les statistiques d'activité

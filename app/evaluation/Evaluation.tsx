@@ -17,6 +17,7 @@ import ActivitySidebar from "../components/navigation/ActivitySidebar";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { getPostitStatistics } from "./components/SyntheseEvaluation/utils/filters";
+import EntrainementSuivi from "./components/EntrainementSuivi";
 
 // IMPORT DU NOUVEAU COMPOSANT
 import UnifiedHeader from "./components/UnifiedHeader";
@@ -140,6 +141,10 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
         />
       ),
       width: "55%",
+    },
+    entrainement: {
+      component: <EntrainementSuivi hideHeader={true} />,
+      width: "60%",
     },
   };
 

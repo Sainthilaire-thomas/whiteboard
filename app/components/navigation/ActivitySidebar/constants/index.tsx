@@ -80,6 +80,7 @@ export const ROUTES = {
     SYNTHESE: "/evaluation?view=synthese",
     POSTIT: "/evaluation?view=postit",
     ROLEPLAY: "/evaluation?view=roleplay",
+    ENTRAINEMENT: "/evaluation?view=entrainement", // NOUVEAU
   },
 
   ADMIN: {
@@ -92,6 +93,7 @@ export const VIEWS = {
   SYNTHESE: "synthese",
   POSTIT: "postit",
   ROLEPLAY: "roleplay",
+  ENTRAINEMENT: "entrainement", // NOUVEAU
 } as const;
 
 // Messages et labels
@@ -114,6 +116,10 @@ export const LABELS = {
       LABEL: "Coaching",
       DESCRIPTION: "Jeu de rôle & simulation",
     },
+    ENTRAINEMENT: {
+      LABEL: "Entraînement",
+      DESCRIPTION: "Suivi post-coaching",
+    },
     SUIVI: {
       LABEL: "Suivi",
       DESCRIPTION: "Progression & amélioration",
@@ -135,6 +141,9 @@ export const LABELS = {
     RETOUR_SYNTHESE: "← Retour à la synthèse",
     PASSAGES_TRAVAILLER: "Passages à travailler",
     JEU_DE_ROLE: "Jeu de rôle",
+    BILAN_COACHING: "Bilan du coaching",
+    DEROULEMENT_ENTRAINEMENT: "Déroulé de l'entraînement",
+    SUIVI_PROGRESSION: "Suivi de progression",
     PONDERATION_CRITERES: "Pondération des critères",
   },
 

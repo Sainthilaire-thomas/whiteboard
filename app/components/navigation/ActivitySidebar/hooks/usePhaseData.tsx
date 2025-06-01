@@ -1,10 +1,12 @@
-// hooks/usePhaseData.ts
+// hooks/usePhaseData.ts - Ajout de l'étape entraînement
+
 import { useMemo } from "react";
 import {
   Business,
   Assessment,
   Psychology,
   Timeline,
+  TrendingUp, // NOUVEAU : Icône pour entraînement
   Feedback,
   AdminPanelSettings,
 } from "@mui/icons-material";
@@ -103,6 +105,37 @@ export const usePhaseData = (currentView: string | null) => {
                 },
               ]
             : []),
+        ],
+      },
+      // NOUVEAU : Étape Entraînement
+      {
+        label: LABELS.PHASES.ENTRAINEMENT.LABEL,
+        key: "entrainement",
+        icon: <TrendingUp />,
+        description: LABELS.PHASES.ENTRAINEMENT.DESCRIPTION,
+        subSteps: [
+          // Action de retour si on est dans l'entraînement
+          ...(currentView === VIEWS.ENTRAINEMENT
+            ? [
+                {
+                  label: LABELS.SUB_STEPS.RETOUR_SYNTHESE,
+                  route: ROUTES.EVALUATION.SYNTHESE,
+                  isBackAction: true,
+                },
+              ]
+            : []),
+          {
+            label: LABELS.SUB_STEPS.BILAN_COACHING,
+            route: ROUTES.EVALUATION.ENTRAINEMENT,
+          },
+          {
+            label: LABELS.SUB_STEPS.DEROULEMENT_ENTRAINEMENT,
+            route: ROUTES.EVALUATION.ENTRAINEMENT,
+          },
+          {
+            label: LABELS.SUB_STEPS.SUIVI_PROGRESSION,
+            route: ROUTES.EVALUATION.ENTRAINEMENT,
+          },
         ],
       },
       {

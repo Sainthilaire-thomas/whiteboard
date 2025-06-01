@@ -31,6 +31,7 @@ export const usePhaseNavigation = () => {
     suivi: "à faire",
     feedback: "à faire",
     admin: "à faire",
+    entrainement: "à faire",
   });
 
   // Hook de persistance (utilisé en arrière-plan seulement)
@@ -73,6 +74,16 @@ export const usePhaseNavigation = () => {
         completed: false,
         requirements: "Évaluation + post-it sélectionné",
       },
+      entrainement: {
+        available: !!(
+          selectedEntreprise &&
+          selectedConseiller &&
+          selectedCall &&
+          idCallActivite
+        ),
+        completed: false,
+        requirements: "Entreprise, conseiller et appel sélectionnés",
+      },
       suivi: {
         available: false, // À implémenter
         completed: false,
@@ -114,6 +125,7 @@ export const usePhaseNavigation = () => {
         (phaseKey === "evaluation" &&
           (currentView === "synthese" || currentView === "postit")) ||
         (phaseKey === "coaching" && currentView === "roleplay");
+      phaseKey === "entrainement" && currentView === "entrainement";
 
       if (isActiveView) {
         return "en cours";
@@ -246,6 +258,23 @@ export const usePhaseNavigation = () => {
       });
     }
 
+    // Auto-démarrage de l'entraînement - BLOC AJOUTÉ
+    if (
+      currentView === VIEWS.ENTRAINEMENT &&
+      availability.entrainement.available &&
+      realtimeStatus.entrainement === "à faire"
+    ) {
+      console.log(
+        "🚀 Auto-démarrage: Entraînement → en cours (prérequis validés)"
+      );
+      newStatus.entrainement = "en cours";
+      hasChanges = true;
+
+      saveInBackground("entrainement", "en cours", {
+        objectifs: "Suivi post-coaching et amélioration continue",
+      });
+    }
+
     // Pause automatique si les prérequis ne sont plus remplis
     if (
       (currentView === VIEWS.SYNTHESE || currentView === VIEWS.POSTIT) &&
@@ -268,6 +297,18 @@ export const usePhaseNavigation = () => {
         `⏸️ Pause coaching: prérequis manquants (${availability.coaching.requirements})`
       );
       newStatus.coaching = "à faire";
+      hasChanges = true;
+    }
+
+    if (
+      currentView === VIEWS.ENTRAINEMENT &&
+      !availability.entrainement.available &&
+      realtimeStatus.entrainement === "en cours"
+    ) {
+      console.log(
+        `⏸️ Pause entraînement: prérequis manquants (${availability.entrainement.requirements})`
+      );
+      newStatus.entrainement = "à faire";
       hasChanges = true;
     }
 
@@ -301,6 +342,9 @@ export const usePhaseNavigation = () => {
           break;
         case VIEWS.SELECTION:
           targetPhase = "selection";
+          break;
+        case VIEWS.ENTRAINEMENT: // ← LIGNE AJOUTÉE
+          targetPhase = "entrainement"; // ← LIGNE AJOUTÉE
           break;
         default:
           break;
@@ -388,6 +432,13 @@ export const usePhaseNavigation = () => {
     [completePhase]
   );
 
+  const completeEntrainement = useCallback(
+    (commentaires?: string) => {
+      completePhase("entrainement", commentaires);
+    },
+    [completePhase]
+  );
+
   // 🧭 Gestion des sous-étapes
   const handleSubStepClick = useCallback(
     (subStep: SubStep) => {
@@ -422,6 +473,8 @@ export const usePhaseNavigation = () => {
           return currentView === "synthese" || currentView === "postit";
         case "coaching":
           return currentView === "roleplay";
+        case "entrainement": // ← LIGNE AJOUTÉE
+          return currentView === "entrainement";
         default:
           return false;
       }
@@ -438,6 +491,24 @@ export const usePhaseNavigation = () => {
           route: ROUTES.EVALUATION.SYNTHESE,
           color: COLORS.BACK_ACTION,
         },
+      ];
+    }
+    if (currentView === VIEWS.ENTRAINEMENT) {
+      return [
+        {
+          label: "Synthèse",
+          route: ROUTES.EVALUATION.SYNTHESE,
+          color: COLORS.BACK_ACTION,
+        },
+        ...(selectedPostitForRolePlay
+          ? [
+              {
+                label: "Coaching",
+                route: ROUTES.EVALUATION.ROLEPLAY,
+                color: COLORS.BACK_ACTION,
+              },
+            ]
+          : []),
       ];
     }
     return [];
@@ -470,5 +541,7 @@ export const usePhaseNavigation = () => {
     completePhase,
     // 🆕 Nouvelles informations sur les prérequis
     getPhaseAvailability,
+    //info sur l'entrainement
+    completeEntrainement,
   };
 };
