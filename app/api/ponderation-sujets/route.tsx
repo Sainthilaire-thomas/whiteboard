@@ -13,9 +13,49 @@ export interface PonderationSujet {
   permet_partiellement_conforme: boolean;
 }
 
-// GET - Récupérer toutes les pondérations
+// GET - Récupérer toutes les pondérations OU une pondération spécifique
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const idsujet = searchParams.get("idsujet");
+
+    // Si idsujet est fourni, récupérer une pondération spécifique
+    if (idsujet) {
+      const { data: ponderation, error } = await supabaseServer
+        .from("ponderation_sujets")
+        .select(
+          `
+          id_ponderation,
+          idsujet,
+          conforme,
+          partiellement_conforme,
+          non_conforme,
+          permet_partiellement_conforme
+        `
+        )
+        .eq("idsujet", parseInt(idsujet))
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          // Aucun résultat trouvé
+          return NextResponse.json(
+            { error: "Aucune pondération trouvée pour ce sujet" },
+            { status: 404 }
+          );
+        }
+
+        console.error("Erreur Supabase:", error);
+        return NextResponse.json(
+          { error: "Erreur lors de la récupération de la pondération" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(ponderation);
+    }
+
+    // Sinon, récupérer toutes les pondérations
     const { data: ponderations, error } = await supabaseServer
       .from("ponderation_sujets")
       .select(
@@ -134,56 +174,5 @@ export async function POST(request: NextRequest) {
       { error: "Erreur serveur lors de la sauvegarde" },
       { status: 500 }
     );
-  }
-}
-
-// GET avec paramètre - Récupérer la pondération d'un sujet spécifique
-export async function GET_BY_SUJET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const idsujet = searchParams.get("idsujet");
-
-    if (!idsujet) {
-      return NextResponse.json(
-        { error: "Paramètre idsujet manquant" },
-        { status: 400 }
-      );
-    }
-
-    const { data: ponderation, error } = await supabaseServer
-      .from("ponderation_sujets")
-      .select(
-        `
-        id_ponderation,
-        idsujet,
-        conforme,
-        partiellement_conforme,
-        non_conforme,
-        permet_partiellement_conforme
-      `
-      )
-      .eq("idsujet", parseInt(idsujet))
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") {
-        // Aucun résultat trouvé
-        return NextResponse.json(
-          { error: "Aucune pondération trouvée pour ce sujet" },
-          { status: 404 }
-        );
-      }
-
-      console.error("Erreur Supabase:", error);
-      return NextResponse.json(
-        { error: "Erreur lors de la récupération de la pondération" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(ponderation);
-  } catch (error) {
-    console.error("Erreur lors de la récupération de la pondération:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }
