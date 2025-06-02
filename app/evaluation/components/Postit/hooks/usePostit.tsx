@@ -4,6 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useCallData } from "@/context/CallDataContext";
 import { useAppContext } from "@/context/AppContext";
 
+// ✅ Import des types autonomes
+import { PostitExtended, NavigationStep } from "../types";
+
 /**
  * Hook principal pour gérer l'état et la logique du composant Postit
  * @returns Objet contenant l'état et les fonctions pour gérer le composant Postit
@@ -12,9 +15,12 @@ export function usePostit() {
   // Hooks de contexte
   const {
     idCallActivite,
-    selectedPostit, // ← CHANGÉ de contexte
-    setSelectedPostit, // ← CHANGÉ de contexte
+    selectedPostit, // ← Sera casté vers PostitExtended
+    setSelectedPostit,
   } = useCallData();
+
+  // ✅ Cast vers PostitExtended (type autonome)
+  const extendedPostit = selectedPostit as PostitExtended;
 
   // États locaux
   const [showTabs, setShowTabs] = useState(false);
@@ -29,7 +35,7 @@ export function usePostit() {
     0: false, // Étape contexte
     1: false, // Étape sujet
     2: false, // Étape pratique
-    3: false, // Étape synthèse (nouvelle)
+    3: false, // Étape synthèse
   });
 
   // Initialisation de l'affichage des grilles
@@ -40,16 +46,19 @@ export function usePostit() {
 
   // Gestion de l'état du postit et des étapes
   useEffect(() => {
-    if (selectedPostit) {
+    if (extendedPostit) {
       // Déterminer si le postit a un sujet réel
       const hasRealSubject =
-        selectedPostit.idsujet !== null && selectedPostit.idsujet !== undefined;
+        extendedPostit.idsujet !== null && extendedPostit.idsujet !== undefined;
 
-      // Déterminer si le postit a une pratique réelle (utiliser idpratique comme référence principale)
-      const hasRealPractice =
-        selectedPostit.idpratique !== null &&
-        selectedPostit.idpratique !== undefined &&
-        selectedPostit.idpratique > 0; // Supposant que les IDs valides sont > 0
+      // ✅ Vérification de pratique via idpratique (si disponible) ou pratique
+      const hasRealPractice = extendedPostit.idpratique
+        ? extendedPostit.idpratique !== null &&
+          extendedPostit.idpratique !== undefined &&
+          extendedPostit.idpratique > 0
+        : extendedPostit.pratique !== null &&
+          extendedPostit.pratique !== undefined &&
+          extendedPostit.pratique.trim() !== "";
 
       // Déterminer si le postit est complet
       const isFullyAssigned = hasRealSubject && hasRealPractice;
@@ -59,16 +68,16 @@ export function usePostit() {
       let initialStep = 0;
 
       if (hasRealPractice && hasRealSubject) {
-        initialStep = 3; // Si complet, afficher la synthèse (étape 3) au lieu de l'étape 2
+        initialStep = 3;
       } else if (hasRealSubject) {
-        initialStep = 2; // Sujet assigné mais pas de pratique -> aller à l'étape pratique
+        initialStep = 2;
       } else {
-        initialStep = 0; // Rien n'est assigné -> démarrer à l'étape contexte
+        initialStep = 0;
       }
 
-      // Vérifier si une étape initiale est spécifiée dans le postit (pour le TimeLineAudio)
-      if (selectedPostit.initialStep !== undefined) {
-        initialStep = selectedPostit.initialStep;
+      // ✅ Utilise initialStep du type autonome
+      if (extendedPostit.initialStep !== undefined) {
+        initialStep = extendedPostit.initialStep;
       }
 
       // Appliquer l'étape initiale
@@ -82,24 +91,22 @@ export function usePostit() {
         3: false,
       });
     }
-  }, [selectedPostit?.id]); // Seulement quand l'ID change = nouveau postit
+  }, [extendedPostit?.id]);
 
   // Navigation entre les étapes
   const handleNext = () => {
-    if (activeStep === 1 && !selectedPostit?.idsujet) {
+    if (activeStep === 1 && !extendedPostit?.idsujet) {
       alert("Veuillez sélectionner un sujet avant de continuer.");
       return;
     }
 
-    // Marquer cette étape comme ayant été visitée/modifiée
     setStepChanges((prev) => ({
       ...prev,
       [activeStep]: true,
     }));
 
-    // Si nous sommes à l'étape 2 et que le postit est complété, passer à l'étape synthèse
     if (activeStep === 2 && isCompleted) {
-      setActiveStep(3); // Aller directement à la synthèse
+      setActiveStep(3);
     } else {
       setActiveStep((prevStep) => prevStep + 1);
     }
@@ -109,42 +116,28 @@ export function usePostit() {
     setActiveStep((prevStep) => prevStep - 1);
   };
 
-  /**
-   * Navigation directe vers une étape spécifique
-   * @param step Numéro de l'étape vers laquelle naviguer
-   * @param skipAccessCheck Option pour ignorer la vérification d'accessibilité (pour les modifications directes)
-   */
-  const navigateToStep = (step, skipAccessCheck = false) => {
+  const navigateToStep = (step: number, skipAccessCheck = false) => {
     if (skipAccessCheck || canAccessStep(step)) {
       setActiveStep(step);
     }
   };
 
-  /**
-   * Vérifie si une étape est accessible en fonction de l'état actuel
-   * @param step Numéro de l'étape à vérifier
-   * @returns Booléen indiquant si l'étape est accessible
-   */
-  const canAccessStep = (step) => {
-    // Étape 0 (contexte) : toujours accessible
+  const canAccessStep = (step: number): boolean => {
     if (step === 0) return true;
 
-    // Étape 1 (sujet) : accessible après avoir vu l'étape 0
     if (step === 1)
       return (
         stepChanges[0] ||
-        (selectedPostit?.idsujet !== null &&
-          selectedPostit?.idsujet !== undefined)
+        (extendedPostit?.idsujet !== null &&
+          extendedPostit?.idsujet !== undefined)
       );
 
-    // Étape 2 (pratique) : accessible uniquement si un sujet est sélectionné
     if (step === 2)
       return (
-        selectedPostit?.idsujet !== null &&
-        selectedPostit?.idsujet !== undefined
+        extendedPostit?.idsujet !== null &&
+        extendedPostit?.idsujet !== undefined
       );
 
-    // Étape 3 (synthèse) : accessible uniquement si le postit est complété
     if (step === 3) return isCompleted;
 
     return false;
@@ -152,51 +145,59 @@ export function usePostit() {
 
   // Vérification si le sujet est réel
   const hasRealSubject =
-    selectedPostit &&
-    selectedPostit.idsujet !== null &&
-    selectedPostit.idsujet !== undefined;
+    extendedPostit &&
+    extendedPostit.idsujet !== null &&
+    extendedPostit.idsujet !== undefined;
 
-  // Vérification si la pratique est réelle (utiliser idpratique comme référence principale)
+  // ✅ Vérification flexible de la pratique
   const hasRealPractice =
-    selectedPostit &&
-    selectedPostit.idpratique !== null &&
-    selectedPostit.idpratique !== undefined &&
-    selectedPostit.idpratique > 0; // Supposant que les IDs valides sont > 0
+    extendedPostit &&
+    (extendedPostit.idpratique
+      ? extendedPostit.idpratique !== null &&
+        extendedPostit.idpratique !== undefined &&
+        extendedPostit.idpratique > 0
+      : extendedPostit.pratique !== null &&
+        extendedPostit.pratique !== undefined &&
+        extendedPostit.pratique.trim() !== "");
 
-  // Liste des étapes avec leur état d'accessibilité et de complétion
-  const steps = useMemo(
+  // ✅ Liste des étapes typée avec NavigationStep
+  const steps: NavigationStep[] = useMemo(
     () => [
       {
         id: 0,
         label: "Contexte du passage",
         icon: "🟢",
+        description: "Ajouter du contexte au passage sélectionné",
         isAccessible: canAccessStep(0),
         isCompleted: stepChanges[0] || activeStep > 0,
-        additionalInfo: selectedPostit?.text ? "Commentaire ajouté" : null,
+        isOptional: false,
       },
       {
         id: 1,
         label: "Critère qualité en défaut",
         icon: "🧭",
+        description: "Sélectionner le critère qualité concerné",
         isAccessible: canAccessStep(1),
         isCompleted: hasRealSubject,
-        additionalInfo: selectedPostit?.sujet || null,
+        isOptional: false,
       },
       {
         id: 2,
         label: "Pratique d'amélioration",
         icon: "🛠️",
+        description: "Choisir la pratique recommandée",
         isAccessible: canAccessStep(2),
         isCompleted: hasRealPractice,
-        additionalInfo: hasRealPractice ? selectedPostit?.pratique : null,
+        isOptional: false,
       },
       {
         id: 3,
         label: "Synthèse",
         icon: "✓",
+        description: "Révision et validation des choix",
         isAccessible: canAccessStep(3),
         isCompleted: isCompleted,
-        additionalInfo: null,
+        isOptional: false,
       },
     ],
     [
@@ -205,26 +206,56 @@ export function usePostit() {
       hasRealSubject,
       hasRealPractice,
       isCompleted,
-      selectedPostit,
+      extendedPostit,
     ]
   );
 
+  // ✅ Fonction utilitaire pour mettre à jour le postit avec conversion
+  const updatePostit = (updates: Partial<PostitExtended>) => {
+    if (extendedPostit) {
+      const updatedPostit = { ...extendedPostit, ...updates };
+      // Conversion vers le type attendu par le contexte si nécessaire
+      setSelectedPostit(updatedPostit as any); // Cast temporaire pour compatibilité
+    }
+  };
+
+  // ✅ Fonction pour marquer une étape comme modifiée
+  const markStepAsChanged = (stepIndex: number) => {
+    setStepChanges((prev) => ({
+      ...prev,
+      [stepIndex]: true,
+    }));
+  };
+
   return {
-    selectedPostit,
+    // État du postit
+    selectedPostit: extendedPostit,
+    updatePostit,
+
+    // État de l'activité
     idCallActivite,
+
+    // État de l'UI
     showTabs,
     setShowTabs,
     isCompleted,
     readyToDisplayGrids,
+
+    // Navigation
     activeStep,
     setActiveStep,
     steps,
-    hasRealSubject,
-    hasRealPractice,
     handleNext,
     handleBack,
     navigateToStep,
     canAccessStep,
+
+    // État des étapes
     stepChanges,
+    markStepAsChanged,
+
+    // Validations
+    hasRealSubject,
+    hasRealPractice,
   };
 }

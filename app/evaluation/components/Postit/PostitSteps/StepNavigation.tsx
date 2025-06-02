@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Stepper,
@@ -10,11 +10,16 @@ import {
   Button,
   useMediaQuery,
   Divider,
+  IconButton,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import KeyboardArrowLeft from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import CheckIcon from "@mui/icons-material/Check";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 interface StepNavigationProps {
   steps: Array<{
@@ -31,6 +36,7 @@ interface StepNavigationProps {
   handleNext: () => void;
   handleBack: () => void;
   temporaryEditMode?: boolean;
+  onDelete?: () => void; // ✅ Nouvelle prop
 }
 
 export const StepNavigation: React.FC<StepNavigationProps> = ({
@@ -42,30 +48,63 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
   handleNext,
   handleBack,
   temporaryEditMode,
+  onDelete, // ✅ Nouvelle prop
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const totalSteps = steps.length;
 
+  // ✅ État pour le menu
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(anchorEl);
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleDeleteClick = () => {
+    handleMenuClose();
+    onDelete?.();
+  };
+
   // Navigation mode mobile
   if (isMobile) {
     return (
       <Box sx={{ mt: 1, mb: 2 }}>
-        {/* Titre de l'étape actuelle */}
-        <Box sx={{ textAlign: "center", mb: 1 }}>
+        {/* Titre de l'étape actuelle avec menu */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 1,
+          }}
+        >
           <Typography
             variant="subtitle2"
             color={
               activeStep === 0
                 ? "primary.main"
                 : activeStep === 1
-                ? "success.main"
-                : "secondary.main"
+                  ? "success.main"
+                  : "secondary.main"
             }
             fontWeight={500}
+            sx={{ textAlign: "center", flex: 1 }}
           >
             {steps[activeStep].label}
           </Typography>
+
+          {/* ✅ Menu discret sur mobile */}
+          {onDelete && (
+            <IconButton size="small" onClick={handleMenuClick} sx={{ ml: 1 }}>
+              <MoreVertIcon fontSize="small" />
+            </IconButton>
+          )}
         </Box>
 
         {/* Barre de progression */}
@@ -157,14 +196,14 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
                         step.isCompleted
                           ? theme.palette.success.main
                           : index === activeStep
-                          ? theme.palette.primary.main
-                          : theme.palette.grey[400]
+                            ? theme.palette.primary.main
+                            : theme.palette.grey[400]
                       }`,
                       color: step.isCompleted
                         ? theme.palette.success.main
                         : index === activeStep
-                        ? theme.palette.primary.main
-                        : theme.palette.grey[600],
+                          ? theme.palette.primary.main
+                          : theme.palette.grey[600],
                       backgroundColor: "transparent",
                       transition: "all 0.2s ease",
                     }}
@@ -187,8 +226,8 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
                       color: step.isCompleted
                         ? theme.palette.success.main
                         : index === activeStep
-                        ? theme.palette.primary.main
-                        : "text.secondary",
+                          ? theme.palette.primary.main
+                          : "text.secondary",
                     }}
                   >
                     {step.label}
@@ -214,11 +253,12 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
         ))}
       </Stepper>
 
-      {/* Navigation simplifiée */}
+      {/* Navigation simplifiée avec menu */}
       <Box
         sx={{
           display: "flex",
           justifyContent: "space-between",
+          alignItems: "center",
           px: 2,
           py: 1,
         }}
@@ -258,25 +298,63 @@ export const StepNavigation: React.FC<StepNavigationProps> = ({
           </Box>
         )}
 
-        {/* Bouton suivant */}
-        <Button
-          size="small"
-          onClick={handleNext}
-          disabled={
-            activeStep === totalSteps - 1 ||
-            (activeStep === 1 && !hasRealSubject)
-          }
-          sx={{
-            visibility: activeStep === totalSteps - 1 ? "hidden" : "visible",
-            minWidth: "80px",
-          }}
-          variant="text"
-          color="primary"
-        >
-          Suivant
-          <KeyboardArrowRight />
-        </Button>
+        {/* Container pour bouton suivant + menu */}
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          {/* Bouton suivant */}
+          <Button
+            size="small"
+            onClick={handleNext}
+            disabled={
+              activeStep === totalSteps - 1 ||
+              (activeStep === 1 && !hasRealSubject)
+            }
+            sx={{
+              visibility: activeStep === totalSteps - 1 ? "hidden" : "visible",
+              minWidth: "80px",
+            }}
+            variant="text"
+            color="primary"
+          >
+            Suivant
+            <KeyboardArrowRight />
+          </Button>
+
+          {/* ✅ Menu discret sur desktop */}
+          {onDelete && (
+            <IconButton
+              size="small"
+              onClick={handleMenuClick}
+              sx={{
+                ml: 1,
+                opacity: 0.6,
+                "&:hover": { opacity: 1 },
+              }}
+            >
+              <MoreVertIcon fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
       </Box>
+
+      {/* ✅ Menu contextuel */}
+      <Menu
+        anchorEl={anchorEl}
+        open={menuOpen}
+        onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+      >
+        <MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
+          <DeleteIcon sx={{ mr: 1, fontSize: 18 }} />
+          Supprimer
+        </MenuItem>
+      </Menu>
 
       <Divider />
     </Box>

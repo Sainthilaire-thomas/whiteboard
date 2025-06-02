@@ -6,6 +6,9 @@ import {
   Sujet,
   PonderationSujet,
   CategoriesujetExtended,
+  Pratique,
+  SujetPratique,
+  CategoriePratique,
 } from "../types/admin";
 
 export class AdminDataService {
@@ -153,34 +156,38 @@ export class AdminDataService {
     const categoriesWithDomaines = await Promise.all(
       categories.map(async (categorie) => {
         try {
-          // Requête pour trouver les domaines via les sujets
-          const { data: sujetsData, error: sujetsError } = await this.supabase
-            .from("sujets")
-            .select(
-              `
-              iddomaine,
+          // ✅ Requête simplifiée : on va chercher directement les domaines distincts
+          const { data: domainesData, error: domainesError } =
+            await this.supabase
+              .from("sujets")
+              .select(
+                `
               domaines!inner(iddomaine, nomdomaine)
             `
-            )
-            .eq("idcategoriesujet", categorie.idcategoriesujet);
+              )
+              .eq("idcategoriesujet", categorie.idcategoriesujet);
 
-          if (sujetsError) throw sujetsError;
+          if (domainesError) throw domainesError;
 
-          // Extraire les domaines uniques
-          const domainesUniques = Array.from(
-            new Map(
-              (sujetsData || []).map((sujet) => [
-                sujet.domaines.iddomaine,
-                sujet.domaines,
-              ])
-            ).values()
-          );
+          // ✅ Extraction simple des domaines avec déduplication
+          const domainesSet = new Map();
+          (domainesData || []).forEach((item: any) => {
+            if (item.domaines) {
+              domainesSet.set(item.domaines.iddomaine, {
+                iddomaine: item.domaines.iddomaine,
+                nomdomaine: item.domaines.nomdomaine,
+                description: undefined,
+              });
+            }
+          });
+
+          const domainesUniques = Array.from(domainesSet.values());
 
           return {
             ...categorie,
             domaines: domainesUniques,
             nombreDomaines: domainesUniques.length,
-          };
+          } as CategoriesujetExtended;
         } catch (error) {
           console.error(
             "Erreur pour catégorie",
@@ -191,7 +198,7 @@ export class AdminDataService {
             ...categorie,
             domaines: [],
             nombreDomaines: 0,
-          };
+          } as CategoriesujetExtended;
         }
       })
     );
@@ -356,6 +363,125 @@ export class AdminDataService {
     }
   }
 
+  // ===== PRATIQUES =====
+  async loadPratiques(): Promise<Pratique[]> {
+    const { data, error } = await this.supabase
+      .from("pratiques")
+      .select("*")
+      .order("nompratique");
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async loadCategoriesPratiques(): Promise<CategoriePratique[]> {
+    const { data, error } = await this.supabase
+      .from("categoriespratiques")
+      .select("*")
+      .order("nomcategorie");
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  // ===== SUJETS-PRATIQUES (TRADUCTEUR) =====
+  async loadSujetsPratiques(idsujet: number): Promise<SujetPratique[]> {
+    const { data, error } = await this.supabase
+      .from("sujetspratiques")
+      .select("*")
+      .eq("idsujet", idsujet)
+      .order("importance", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async loadAllSujetsPratiques(): Promise<SujetPratique[]> {
+    const { data, error } = await this.supabase
+      .from("sujetspratiques")
+      .select("*");
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async addSujetPratique(
+    sujetPratique: Omit<SujetPratique, "id">
+  ): Promise<SujetPratique> {
+    const { data, error } = await this.supabase
+      .from("sujetspratiques")
+      .insert([sujetPratique])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async updateSujetPratiqueImportance(
+    idsujet: number,
+    idpratique: number,
+    importance: number
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .from("sujetspratiques")
+      .update({ importance })
+      .eq("idsujet", idsujet)
+      .eq("idpratique", idpratique);
+
+    if (error) throw error;
+  }
+
+  async deleteSujetPratique(
+    idsujet: number,
+    idpratique: number
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .from("sujetspratiques")
+      .delete()
+      .eq("idsujet", idsujet)
+      .eq("idpratique", idpratique);
+
+    if (error) throw error;
+  }
+
+  async saveSujetsPratiques(sujetsPratiques: SujetPratique[]): Promise<void> {
+    // ✅ Correction: onConflict doit être une string, pas un array
+    const { error } = await this.supabase.from("sujetspratiques").upsert(
+      sujetsPratiques.map((sp) => ({
+        idsujet: sp.idsujet,
+        idpratique: sp.idpratique,
+        importance: sp.importance,
+      })),
+      { onConflict: "idsujet,idpratique" } // ✅ String au lieu d'array
+    );
+
+    if (error) throw error;
+  }
+
+  // Charger les pratiques liées à un sujet avec leurs détails
+  async loadPratiquesForSujet(
+    idsujet: number
+  ): Promise<(Pratique & { importance: number })[]> {
+    const { data, error } = await this.supabase
+      .from("sujetspratiques")
+      .select(
+        `
+        importance,
+        pratiques!inner(*)
+      `
+      )
+      .eq("idsujet", idsujet)
+      .order("importance", { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map((item: any) => ({
+      ...item.pratiques,
+      importance: item.importance,
+    }));
+  }
+
   // ===== PONDERATIONS =====
   async loadPonderationsForSujets(
     sujetIds: number[]
@@ -372,6 +498,7 @@ export class AdminDataService {
   }
 
   async savePonderations(ponderations: PonderationSujet[]): Promise<void> {
+    // ✅ Correction: onConflict doit être une string, pas un array
     const { error } = await this.supabase.from("ponderation_sujets").upsert(
       ponderations.map((p) => ({
         idsujet: p.idsujet,
@@ -380,7 +507,7 @@ export class AdminDataService {
         non_conforme: p.non_conforme,
         permet_partiellement_conforme: p.permet_partiellement_conforme,
       })),
-      { onConflict: ["idsujet"] }
+      { onConflict: "idsujet" } // ✅ String au lieu d'array
     );
 
     if (error) throw error;

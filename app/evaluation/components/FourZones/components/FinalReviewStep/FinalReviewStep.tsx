@@ -86,6 +86,23 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
   pause,
   seekTo,
 }) => {
+  useEffect(() => {
+    console.log("🔍 === PROPS FinalReviewStep ===");
+    console.log("selectedClientText:", selectedClientText);
+    console.log("audioSrc:", audioSrc);
+    console.log("clientSelection:", clientSelection);
+    console.log("clientSelection?.startTime:", clientSelection?.startTime);
+    console.log("clientSelection?.endTime:", clientSelection?.endTime);
+    console.log("play function:", typeof play);
+    console.log("pause function:", typeof pause);
+    console.log("seekTo function:", typeof seekTo);
+
+    // Test de condition pour afficher le bouton
+    const hasOriginalAudio =
+      audioSrc && clientSelection?.startTime !== undefined;
+    console.log("hasOriginalAudio (condition bouton):", hasOriginalAudio);
+    console.log("=================================");
+  }, [audioSrc, clientSelection, selectedClientText]);
   // Hook TTS principal
   const tts = useTTS();
 
@@ -218,24 +235,61 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
 
   // Lecture de l'audio original du client (existant)
   const handlePlayOriginalClient = () => {
-    if (
-      audioSrc &&
-      clientSelection?.startTime !== undefined &&
-      clientSelection?.endTime !== undefined
-    ) {
+    console.log("🎵 === DEBUG AUDIO ORIGINAL ===");
+    console.log("audioSrc:", audioSrc);
+    console.log("clientSelection:", clientSelection);
+    console.log("playSegment fonction:", typeof playSegment);
+
+    // Vérification 1: Source audio
+    if (!audioSrc) {
+      console.warn("⚠️ Aucune source audio disponible");
+      alert("Aucune source audio disponible");
+      return;
+    }
+
+    // Vérification 2: Sélection client
+    if (!clientSelection || clientSelection.startTime === undefined) {
+      console.warn("⚠️ Pas de sélection client ou startTime manquant");
+      alert(
+        "Pas de sélection client - veuillez sélectionner un segment dans la transcription"
+      );
+      return;
+    }
+
+    // Vérification 3: Fonction playSegment
+    if (!playSegment || typeof playSegment !== "function") {
+      console.warn("⚠️ Fonction playSegment non disponible");
+      alert("Fonction playSegment non disponible");
+      return;
+    }
+
+    // Vérification 4: endTime
+    if (clientSelection.endTime === undefined) {
+      console.warn("⚠️ endTime manquant, utilisation d'une durée par défaut");
+      // Utiliser startTime + 5 secondes par défaut
+      const endTime = clientSelection.startTime + 5;
       console.log(
-        `🎵 Lecture segment client: ${clientSelection.startTime}s → ${clientSelection.endTime}s`
+        `🎵 Lecture avec endTime calculé: ${clientSelection.startTime}s → ${endTime}s`
       );
+      try {
+        playSegment(clientSelection.startTime, endTime);
+      } catch (error) {
+        console.error("Erreur playSegment:", error);
+        alert(`Erreur lors de la lecture: ${error.message}`);
+      }
+      return;
+    }
+
+    // Lecture normale avec startTime et endTime
+    console.log(
+      `🎵 Lecture segment: ${clientSelection.startTime}s → ${clientSelection.endTime}s`
+    );
+    try {
       playSegment(clientSelection.startTime, clientSelection.endTime);
-    } else {
-      console.warn(
-        "⚠️ Audio original non disponible ou temps de fin manquant",
-        {
-          audioSrc: !!audioSrc,
-          startTime: clientSelection?.startTime,
-          endTime: clientSelection?.endTime,
-        }
-      );
+      console.log("✅ Commande playSegment envoyée avec succès");
+    } catch (error) {
+      console.error("❌ Erreur lors de l'exécution de playSegment:", error);
+      alert(`Erreur lors de la lecture: ${error.message}`);
     }
   };
 
@@ -628,8 +682,8 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
                   {tts.isLoading && activeSegment === "complete"
                     ? "Génération..."
                     : activeSegment === "complete" && tts.isPlaying
-                    ? "Arrêter la lecture"
-                    : "🎭 Lire l'échange complet"}
+                      ? "Arrêter la lecture"
+                      : "🎭 Lire l'échange complet"}
                 </Button>
 
                 {conversationalSettings.enabled && (

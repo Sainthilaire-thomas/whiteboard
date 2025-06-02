@@ -361,15 +361,70 @@ const EntrainementSuivi = ({ hideHeader = false }: EntrainementSuiviProps) => {
     const newValue = editingNudges[nudgeIndex];
     if (!newValue || !selectedPratique) return;
 
-    const nudgeKey = `custom_nudge${nudgeIndex}` as keyof CustomNudges;
-    const updatedData: Partial<CustomNudges> = {
+    // 🔧 Construire l'objet complet avec TOUS les nudges
+    const completeNudgesData: Partial<CustomNudges> = {
       id_pratique: selectedPratique,
-      [nudgeKey]: newValue,
     };
 
-    const success = await saveCustomNudges(updatedData);
+    // 📋 Récupérer les nudges originaux (recommandations initiales)
+    const originalNudges =
+      exercices.length > 0 && exercices[0].nudges
+        ? (Object.values(exercices[0].nudges).filter(Boolean) as string[])
+        : [];
+
+    // 🔄 Remplir tous les custom_nudges (1 à 6)
+    for (let i = 1; i <= 6; i++) {
+      const nudgeKey = `custom_nudge${i}` as keyof CustomNudges;
+
+      if (i === nudgeIndex) {
+        // 📝 Le nudge actuellement modifié
+        completeNudgesData[nudgeKey] = newValue;
+      } else if (customNudges && customNudges[nudgeKey]) {
+        // 💾 Nudge déjà personnalisé existant
+        completeNudgesData[nudgeKey] = customNudges[nudgeKey];
+      } else if (editingNudges[i]) {
+        // ✏️ Nudge en cours d'édition (pas encore sauvegardé)
+        completeNudgesData[nudgeKey] = editingNudges[i];
+      } else if (originalNudges[i - 1]) {
+        // 🎯 Nudge original (recommandation initiale)
+        completeNudgesData[nudgeKey] = originalNudges[i - 1];
+      }
+      // Si aucune de ces conditions, le nudge reste undefined (pas de valeur)
+    }
+
+    // 📅 Optionnel : Ajouter les dates si nécessaire
+    // Si vous voulez gérer les dates automatiquement :
+    /*
+  const currentDate = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+  for (let i = 1; i <= 6; i++) {
+    const dateKey = `custom_nudge${i}_date` as keyof CustomNudges;
+    if (completeNudgesData[`custom_nudge${i}` as keyof CustomNudges]) {
+      // Si le nudge existe, ajouter la date seulement si pas déjà définie
+      if (!customNudges?.[dateKey]) {
+        completeNudgesData[dateKey] = currentDate;
+      }
+    }
+  }
+  */
+
+    console.log("💾 Sauvegarde des nudges:", completeNudgesData);
+
+    // 💾 Sauvegarder TOUS les nudges
+    const success = await saveCustomNudges(completeNudgesData);
+
     if (success) {
       setEditMode((prev) => ({ ...prev, [nudgeIndex]: false }));
+
+      // 🧹 Nettoyer le state d'édition pour ce nudge
+      setEditingNudges((prev) => {
+        const newState = { ...prev };
+        delete newState[nudgeIndex];
+        return newState;
+      });
+
+      console.log("✅ Nudge sauvegardé avec succès");
+    } else {
+      console.error("❌ Erreur lors de la sauvegarde");
     }
   };
 

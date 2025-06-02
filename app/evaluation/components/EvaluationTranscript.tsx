@@ -130,8 +130,9 @@ export default function EvaluationTranscript({
           ) : (
             <TranscriptAlternative
               callId={selectedCall.callid}
-              hideHeader={true}
+              hideHeader={hideHeader}
               highlightSpeakers={highlightSpeakers}
+              transcriptSelectionMode={transcriptSelectionMode} // ✅ AJOUTER cette ligne
             />
           ))}
       </Box>

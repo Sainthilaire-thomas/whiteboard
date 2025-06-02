@@ -16,11 +16,26 @@ import KeyboardArrowLeft from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import CheckIcon from "@mui/icons-material/Check";
 
+// 🔧 CORRECTION: Import du type NavigationStep depuis le fichier types local
+import { NavigationStep } from "../types";
+
+// 🔧 CORRECTION: Interface pour les props du composant
+interface StepNavigationProps {
+  steps: NavigationStep[];
+  activeStep: number;
+  isCompleted: boolean;
+  hasRealSubject: boolean;
+  navigateToStep: (stepIndex: number) => void;
+  handleNext: () => void;
+  handleBack: () => void;
+  temporaryEditMode?: boolean;
+}
+
 /**
  * Composant de navigation entre les étapes du Postit
  * Version épurée avec guidage visuel clair et sans redondance
  */
-export const StepNavigation = ({
+export const StepNavigation: React.FC<StepNavigationProps> = ({
   steps,
   activeStep,
   isCompleted,
@@ -46,8 +61,8 @@ export const StepNavigation = ({
               activeStep === 0
                 ? "primary.main"
                 : activeStep === 1
-                ? "success.main"
-                : "secondary.main"
+                  ? "success.main"
+                  : "secondary.main"
             }
             fontWeight={500}
           >
@@ -108,7 +123,8 @@ export const StepNavigation = ({
           pb: 1,
         }}
       >
-        {steps.map((step, index) => (
+        {/* 🔧 CORRECTION: Types explicites pour step et index */}
+        {steps.map((step: NavigationStep, index: number) => (
           <Step
             key={index}
             completed={step.isCompleted}
@@ -120,7 +136,7 @@ export const StepNavigation = ({
           >
             <StepButton
               onClick={() => navigateToStep(index)}
-              disabled={!step.isAccessible}
+              disabled={!step.isAccessible} // Utilise isAccessible au lieu d'optional
               sx={{
                 "&:hover": {
                   backgroundColor: step.isAccessible
@@ -144,14 +160,14 @@ export const StepNavigation = ({
                         step.isCompleted
                           ? theme.palette.success.main
                           : index === activeStep
-                          ? theme.palette.primary.main
-                          : theme.palette.grey[400]
+                            ? theme.palette.primary.main
+                            : theme.palette.grey[400]
                       }`,
                       color: step.isCompleted
                         ? theme.palette.success.main
                         : index === activeStep
-                        ? theme.palette.primary.main
-                        : theme.palette.grey[600],
+                          ? theme.palette.primary.main
+                          : theme.palette.grey[600],
                       backgroundColor: "transparent",
                       transition: "all 0.2s ease",
                     }}
@@ -174,15 +190,15 @@ export const StepNavigation = ({
                       color: step.isCompleted
                         ? theme.palette.success.main
                         : index === activeStep
-                        ? theme.palette.primary.main
-                        : "text.secondary",
+                          ? theme.palette.primary.main
+                          : "text.secondary",
                     }}
                   >
                     {step.label}
                   </Typography>
 
                   {/* Info additionnelle avec style discret */}
-                  {step.additionalInfo && (
+                  {step.description && (
                     <Typography
                       variant="caption"
                       sx={{
@@ -191,7 +207,7 @@ export const StepNavigation = ({
                         fontStyle: "italic",
                       }}
                     >
-                      {step.additionalInfo}
+                      {step.description}
                     </Typography>
                   )}
                 </Box>

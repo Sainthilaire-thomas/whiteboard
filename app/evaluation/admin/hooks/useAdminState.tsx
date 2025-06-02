@@ -6,6 +6,7 @@ export const useAdminState = () => {
   const [state, setState] = useState<AdminState>({
     selectedEntreprise: "",
     selectedDomaineQualite: "",
+    selectedSujet: "", // ✅ CORRECTION 1: Ajouter ": """ après selectedSujet
     currentMode: "view",
     currentSection: "ponderations",
     loading: false,
@@ -19,6 +20,7 @@ export const useAdminState = () => {
       ...prev,
       selectedEntreprise: id,
       selectedDomaineQualite: "", // Reset domaine selection
+      selectedSujet: "", // ✅ CORRECTION 2: Ajouter reset du sujet
       error: "",
       success: "",
     }));
@@ -28,6 +30,17 @@ export const useAdminState = () => {
     setState((prev) => ({
       ...prev,
       selectedDomaineQualite: id,
+      selectedSujet: "", // ✅ CORRECTION 3: Ajouter reset du sujet
+      error: "",
+      success: "",
+    }));
+  }, []);
+
+  // ✅ CORRECTION 4: Ajouter cette fonction qui manque
+  const setSelectedSujet = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      selectedSujet: id,
       error: "",
       success: "",
     }));
@@ -76,6 +89,7 @@ export const useAdminState = () => {
     ...state,
     setSelectedEntreprise,
     setSelectedDomaineQualite,
+    setSelectedSujet, // ✅ Cette fonction existe maintenant
     setCurrentMode,
     setCurrentSection,
     setLoading,

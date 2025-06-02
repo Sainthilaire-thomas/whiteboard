@@ -187,20 +187,29 @@ const AdminPonderationPage: React.FC = () => {
       setLoading(true);
       setError("");
 
-      // Charger les sujets pour ce domaine
+      // ✅ VERSION ALTERNATIVE: Sélection de toutes les colonnes puis filtrage côté client
       const { data: sujetsData, error: sujetsError } = await supabase
         .from("sujets")
-        .select(
-          "idsujet, nomsujet, description, valeurnumérique, idcategoriesujet, iddomaine"
-        )
+        .select("*") // Sélectionner toutes les colonnes
         .eq("iddomaine", domaineId)
         .order("nomsujet");
 
       if (sujetsError) throw sujetsError;
-      setSujets(sujetsData || []);
+
+      // Mapper pour s'assurer que nous avons les bonnes propriétés
+      const mappedSujets = (sujetsData || []).map((sujet) => ({
+        idsujet: sujet.idsujet,
+        nomsujet: sujet.nomsujet,
+        description: sujet.description,
+        valeurnumérique: sujet.valeurnumérique, // Avec accent
+        idcategoriesujet: sujet.idcategoriesujet,
+        iddomaine: sujet.iddomaine,
+      }));
+
+      setSujets(mappedSujets);
 
       // Charger les pondérations existantes pour ces sujets
-      const sujetIds = (sujetsData || []).map((s) => s.idsujet);
+      const sujetIds = mappedSujets.map((s) => s.idsujet);
       if (sujetIds.length > 0) {
         const { data: ponderationsData, error: ponderationsError } =
           await supabase
@@ -280,7 +289,7 @@ const AdminPonderationPage: React.FC = () => {
           permet_partiellement_conforme: p.permet_partiellement_conforme,
         })),
         {
-          onConflict: ["idsujet"],
+          onConflict: "idsujet",
         }
       );
 

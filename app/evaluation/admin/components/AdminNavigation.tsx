@@ -9,19 +9,9 @@ import {
   Assignment,
   TuneOutlined,
   Dashboard,
+  SwapHoriz, // ✅ CORRECTION 1: Ajouter cette import
 } from "@mui/icons-material";
-import { AdminSection } from "../types/admin";
-
-interface AdminNavigationProps {
-  currentSection: AdminSection;
-  onSectionChange: (section: AdminSection) => void;
-  counters?: {
-    entreprises?: number;
-    domaines?: number;
-    categories?: number;
-    sujets?: number;
-  };
-}
+import { AdminSection, AdminNavigationProps } from "../types/admin";
 
 const SECTIONS = [
   {
@@ -53,6 +43,13 @@ const SECTIONS = [
     label: "Pondérations",
     icon: <TuneOutlined />,
     description: "Configuration des pondérations",
+  },
+  // ✅ CORRECTION 3: Ajouter cette section complète
+  {
+    key: "traducteur" as AdminSection,
+    label: "Traducteur",
+    icon: <SwapHoriz />,
+    description: "Associations sujets ↔ pratiques",
   },
 ];
 
@@ -94,13 +91,18 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 {section.icon}
                 <span>{section.label}</span>
-                {counters[section.key] !== undefined && (
-                  <Badge
-                    badgeContent={counters[section.key]}
-                    color="primary"
-                    showZero
-                  />
-                )}
+                {/* ✅ CORRECTION 4: Modifier la logique du counter pour traducteur */}
+                {(() => {
+                  let count;
+                  if (section.key === "traducteur") {
+                    count = counters.associations;
+                  } else {
+                    count = counters[section.key];
+                  }
+                  return count !== undefined ? (
+                    <Badge badgeContent={count} color="primary" showZero />
+                  ) : null;
+                })()}
               </Box>
             }
           />

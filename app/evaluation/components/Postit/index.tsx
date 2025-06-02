@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -9,8 +9,12 @@ import {
   DialogTitle,
   Modal,
   Alert,
+  IconButton,
+  Dialog,
+  DialogActions,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 // Importations des types
 import { PostitProps } from "./types";
@@ -45,6 +49,9 @@ const Postit: React.FC<PostitProps> = ({
 }) => {
   // Récupération du selectedPostit en premier
   const { selectedPostit, setSelectedPostit } = useCallData();
+
+  // État pour la confirmation de suppression
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Retour anticipé si pas de postit sélectionné
   if (!selectedPostit) return null;
@@ -118,6 +125,26 @@ const Postit: React.FC<PostitProps> = ({
     additionalInfo: step.additionalInfo,
   }));
 
+  // Gestion de la suppression avec confirmation
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await handleDelete(selectedPostit.id);
+      setShowDeleteConfirm(false);
+      setSelectedPostit(null); // Fermer le modal après suppression
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error);
+      // Vous pouvez ajouter une notification d'erreur ici
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+  };
+
   // Rendu du contenu
   const content = (
     <>
@@ -139,6 +166,18 @@ const Postit: React.FC<PostitProps> = ({
               isCompleted={isCompleted}
               hasSubject={hasValidSubject(selectedPostit)}
             />
+
+            {/* Bouton de suppression */}
+            <IconButton
+              onClick={handleDeleteClick}
+              color="error"
+              size="small"
+              sx={{ ml: 1 }}
+              title="Supprimer ce post-it"
+            >
+              <DeleteIcon />
+            </IconButton>
+
             <Button
               onClick={() => setSelectedPostit(null)}
               variant="outlined"
@@ -173,6 +212,7 @@ const Postit: React.FC<PostitProps> = ({
         handleNext={handleNext}
         handleBack={handleBack}
         temporaryEditMode={temporaryEditMode}
+        onDelete={handleDeleteClick}
       />
 
       {/* Contenu principal */}
@@ -180,6 +220,86 @@ const Postit: React.FC<PostitProps> = ({
         {/* Navigation et contenu de l'étape */}
         <Box sx={{ px: 1, py: 1 }}>{steps[activeStep].content}</Box>
       </DialogContent>
+
+      {/* Dialog de confirmation de suppression */}
+      <Dialog
+        open={showDeleteConfirm}
+        onClose={handleCancelDelete}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: "grey.900", // ✅ Fond sombre
+            color: "white", // ✅ Texte blanc
+          },
+        }}
+      >
+        <DialogTitle sx={{ color: "white" }}>
+          Confirmer la suppression
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "grey.300" }}>
+            Êtes-vous sûr de vouloir supprimer ce post-it ? Cette action est
+            irréversible.
+          </Typography>
+          <Box
+            sx={{
+              mt: 2,
+              p: 2,
+              bgcolor: "grey.800", // ✅ Fond encore plus sombre pour le contenu
+              borderRadius: 1,
+              border: "1px solid",
+              borderColor: "grey.700",
+            }}
+          >
+            <Typography variant="body2" sx={{ color: "grey.400" }}>
+              <strong style={{ color: "white" }}>Contenu :</strong>{" "}
+              {selectedPostit.text}
+            </Typography>
+            {selectedPostit.sujet && (
+              <Typography variant="body2" sx={{ color: "grey.400", mt: 1 }}>
+                <strong style={{ color: "white" }}>Sujet :</strong>{" "}
+                {selectedPostit.sujet}
+              </Typography>
+            )}
+            {selectedPostit.pratique && (
+              <Typography variant="body2" sx={{ color: "grey.400", mt: 1 }}>
+                <strong style={{ color: "white" }}>Pratique :</strong>{" "}
+                {selectedPostit.pratique}
+              </Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions
+          sx={{ borderTop: "1px solid", borderColor: "grey.700", pt: 2 }}
+        >
+          <Button
+            onClick={handleCancelDelete}
+            sx={{
+              color: "grey.300",
+              "&:hover": {
+                bgcolor: "grey.800",
+              },
+            }}
+          >
+            Annuler
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+            startIcon={<DeleteIcon />}
+            sx={{
+              bgcolor: "error.main",
+              "&:hover": {
+                bgcolor: "error.dark",
+              },
+            }}
+          >
+            Supprimer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 

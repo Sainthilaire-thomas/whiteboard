@@ -1,17 +1,20 @@
 import { useState } from "react";
 import { AlertColor } from "@mui/material";
 
+// 🔧 CORRECTION: Import du type depuis le fichier types local
+import { NotificationState } from "../types/types";
+
 /**
  * Hook personnalisé pour gérer les notifications
- * @returns {Object} État et fonctions pour les notifications
+ * @returns {NotificationState} État et fonctions pour les notifications
  */
-export const useNotifications = () => {
+export const useNotifications = (): NotificationState => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState("info");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<AlertColor>("info");
 
-  // Afficher une notification
-  const showNotification = (message, severity = "info") => {
+  // 🔧 CORRECTION: Types explicites pour les paramètres (ligne 14)
+  const showNotification = (message: string, severity: AlertColor = "info") => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);

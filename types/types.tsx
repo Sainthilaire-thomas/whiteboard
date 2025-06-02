@@ -1,4 +1,7 @@
-// 📌 types.ts - Centralisation de tous les types
+// 📌 types.ts - Central types/types.tsx
+
+// ✅ FIX: Ajout des imports React nécessaires EN PREMIER
+import { RefObject, SetStateAction } from "react";
 
 // 🔹 Appels
 export interface EntrepriseCall {
@@ -61,6 +64,7 @@ export interface Postit {
   sujet: string; // ✅ Sujet en texte
   idsujet: number | null; // ✅ ID du sujet (ajouté)
   pratique: string;
+  idpratique?: number | null;
   timestamp: number;
   idactivite?: number | null;
 }
@@ -143,6 +147,20 @@ export interface ColumnConfig {
   itemNameKey: string;
 }
 
+// ✅ FIX: Définir Item AVANT Pratique pour éviter les erreurs circulaires
+export interface Item {
+  idsujet: number;
+  valeurnumérique: number;
+  idpratique: number;
+  nompratique: string;
+  nomsujet: string; // Ajout des propriétés manquantes
+  iddomaine: number; // Ajout des propriétés manquantes
+  idcategoriesujet: number; // Ajout des propriétés manquantes
+  idcategoriepratique: number;
+  categoriespratiques: CategoriePratique;
+  [key: string]: any; // Ajout d'une signature d'index
+}
+
 export interface Pratique extends Item {
   idpratique: number;
   nompratique: string;
@@ -163,6 +181,16 @@ export interface Domaine {
   nomdomaine: string;
 }
 
+// ✅ FIX: Ajout du type Domain manquant
+export interface Domain {
+  iddomaine: number;
+  nomdomaine: string;
+  description?: string;
+  color?: string;
+  isActive?: boolean;
+  order?: number;
+}
+
 export interface CategorieSujet {
   idcategoriesujet: number;
   nomcategorie: string;
@@ -177,6 +205,15 @@ export interface Sujet extends Item {
   description?: string;
   idcategoriesujet: number; // ✅ Vérifier qu'il est bien présent
   categoriesujet?: CategorieSujet;
+}
+
+// ✅ FIX: Redéfinir Sujet aussi en tant qu'interface simple pour éviter les conflits
+export interface SujetSimple {
+  idsujet: number;
+  nomsujet: string;
+  iddomaine: number;
+  idcategoriesujet: number;
+  description?: string;
 }
 
 export interface SujetPratiqueRelation {
@@ -215,11 +252,10 @@ export interface ZoneTexts {
   zone3: string;
   zone4: string;
   zone5: string;
+  [key: string]: string; // ✅ Signature d'index ajoutée
 }
 
 // 🔹 Audio & UI
-import { RefObject } from "react";
-
 export interface AudioContextType {
   audioSrc: string | null;
   setAudioSrc: (src: string | null) => void;
@@ -238,6 +274,7 @@ export interface AudioContextType {
   audioRef: React.RefObject<HTMLAudioElement>;
   playerRef?: React.RefObject<HTMLAudioElement>; // Gardé pour compatibilité
 }
+
 export interface UseCallsResult {
   calls: Call[];
   fetchCalls: (identreprise: number) => Promise<void>;
@@ -374,14 +411,6 @@ export interface CallDataContextType {
   rolePlayError: string | null;
 }
 
-export interface UIContextType {
-  drawerOpen: boolean;
-  toggleDrawer: () => void;
-  drawerContent: any;
-  setDrawerContent: (content: any) => void;
-  handleOpenDrawerWithContent?: (content: any) => void; // ✅ Ajout
-}
-
 // 🔹 Contenu du Drawer
 export interface DrawerContent {
   type: string;
@@ -504,26 +533,6 @@ export interface UseUIResult {
   updateAvatarText: (participantId: string, text: string) => void;
 }
 
-export interface Item {
-  idsujet: number;
-  valeurnumérique: number;
-  idpratique: number;
-  nompratique: string;
-  nomsujet: string; // Ajout des propriétés manquantes
-  iddomaine: number; // Ajout des propriétés manquantes
-  idcategoriesujet: number; // Ajout des propriétés manquantes
-  idcategoriepratique: number;
-  categoriespratiques: CategoriePratique;
-  [key: string]: any; // Ajout d'une signature d'index
-}
-
-export interface Sujet {
-  idsujet: number;
-  nomsujet: string;
-  iddomaine: number;
-  idcategoriesujet: number;
-  description?: string;
-}
 // Mise à jour dans types.tsx
 export interface AppContextType {
   // Activités et Avis
@@ -534,17 +543,17 @@ export interface AppContextType {
   averageRating: number;
   categoriesPratiques: CategoriePratique[];
 
-  // Domaines et Sujets
+  // Domaines et Sujets - ✅ FIX: Utiliser Domain maintenant défini
   domains: Domain[];
   selectedDomain: Domain | null;
   selectDomain: (domain: Domain) => void;
-  sujetsData: Sujet[];
+  sujetsData: SujetSimple[]; // ✅ FIX: Utiliser SujetSimple pour éviter les conflits
   categoriesSujets: CategorieSujet[];
   isLoadingDomains: boolean;
   isLoadingSujets: boolean;
   isLoadingCategoriesSujets: boolean;
 
-  // Nudges
+  // Nudges - ✅ FIX: Utiliser SetStateAction maintenant importé
   nudges: Nudge[];
   setNudges: (value: SetStateAction<Nudge[]>) => void;
   fetchNudgesForPractice: (pratiqueId: number) => Promise<void>;
@@ -580,10 +589,6 @@ export interface AppContextType {
   refreshKey: number;
   setRefreshKey: (key: number) => void;
 
-  // 🔴 SUPPRIMÉ : selectedPostit et setSelectedPostit ne sont plus ici
-  // selectedPostit: Postit | null;
-  // setSelectedPostit: (postit: Postit | null) => void;
-
   // Sélections (via useSelection)
   selectedSujet: any;
   handleSelectSujet: (sujet: any) => void;
@@ -613,7 +618,7 @@ export interface UseDomainsResult {
   domainNames: Record<number, string>;
   fetchDomains: () => Promise<void>;
 
-  sujets: Sujet[];
+  sujets: SujetSimple[]; // ✅ FIX: Utiliser SujetSimple
   isLoadingSujets: boolean;
   categoriesSujets: CategorieSujet[];
   isLoadingCategoriesSujets: boolean;
@@ -621,7 +626,7 @@ export interface UseDomainsResult {
   filteredDomains?: Domaine[];
   setSelectedDomain: (domainId: string) => void;
   selectDomain: (domainId: string) => void; // Alias pour `setSelectedDomain`
-  sujetsData: Sujet[];
+  sujetsData: SujetSimple[]; // ✅ FIX: Utiliser SujetSimple
 }
 
 // 🔹 Définition d'un marqueur sur la timeline

@@ -1,8 +1,9 @@
-// utils/audioUploadUtils.js
+// utils/audioUploadUtils.tsx
 import { supabaseClient } from "@/lib/supabaseClient";
 import { generateSignedUrl } from "./supabaseUtils";
 
-export const uploadAudio = async (file, entrepriseId) => {
+// 🔧 CORRECTION: Ajout des types pour les paramètres (ligne 5)
+export const uploadAudio = async (file: File, entrepriseId: number) => {
   // Inclure l'ID d'entreprise dans le chemin du fichier
   const fileName = `${Date.now()}.${file.name.split(".").pop()}`;
   const filePath = `audio/${entrepriseId}/${fileName}`;
@@ -22,8 +23,11 @@ export const uploadAudio = async (file, entrepriseId) => {
   return filePath;
 };
 
-// Ajouter une transcription pour un appel
-export const addTranscription = async (callid, transcriptionText) => {
+// 🔧 CORRECTION: Ajout des types pour les paramètres (ligne 26)
+export const addTranscription = async (
+  callid: number,
+  transcriptionText: any
+) => {
   const { data: transcriptData, error: transcriptError } = await supabaseClient
     .from("transcript")
     .insert([{ callid }])
@@ -39,7 +43,8 @@ export const addTranscription = async (callid, transcriptionText) => {
   const transcriptId = transcriptData[0].transcriptid;
 
   if (transcriptionText?.words) {
-    const wordsData = transcriptionText.words.map((word) => ({
+    // 🔧 CORRECTION: Ajout du type pour le paramètre word (ligne 42)
+    const wordsData = transcriptionText.words.map((word: any) => ({
       transcriptid: transcriptId,
       ...word,
     }));
@@ -58,8 +63,8 @@ export const addTranscription = async (callid, transcriptionText) => {
   return transcriptId;
 };
 
-// Mettre à jour le statut d'un appel
-export const markCallAsPrepared = async (callid) => {
+// 🔧 CORRECTION: Ajout du type pour le paramètre callid (ligne 62)
+export const markCallAsPrepared = async (callid: number) => {
   const { error } = await supabaseClient
     .from("call")
     .update({ preparedfortranscript: true })
@@ -72,7 +77,14 @@ export const markCallAsPrepared = async (callid) => {
   }
 };
 
-export const prepareCallForTagging = async ({ call, showMessage }) => {
+// 🔧 CORRECTION: Ajout des types pour la destructuration (ligne 75)
+export const prepareCallForTagging = async ({
+  call,
+  showMessage,
+}: {
+  call: any;
+  showMessage: (message: string) => void;
+}) => {
   console.log("🔍 prepareCallForTagging - call reçu :", call);
   console.log("🔍 prepareCallForTagging - showMessage reçu :", showMessage);
 
@@ -110,13 +122,17 @@ export const prepareCallForTagging = async ({ call, showMessage }) => {
     // Message de succès
     showMessage?.("L'appel a été préparé pour le tagging avec succès !");
   } catch (error) {
-    console.error("❌ prepareCallForTagging - Erreur :", error.message);
-    showMessage?.(`Erreur: ${error.message}`);
+    // 🔧 CORRECTION: Cast de error pour accéder à .message (lignes 113-114)
+    console.error(
+      "❌ prepareCallForTagging - Erreur :",
+      (error as Error).message
+    );
+    showMessage?.(`Erreur: ${(error as Error).message}`);
     throw error;
   }
 };
 
-// Version modifiée pour inclure l'entrepriseId
+// 🔧 CORRECTION: Ajout des types pour la destructuration (lignes 121-126)
 export const handleCallSubmission = async ({
   audioFile,
   description,
@@ -124,6 +140,13 @@ export const handleCallSubmission = async ({
   showMessage,
   onCallUploaded,
   entrepriseId, // Nouvel argument pour l'ID d'entreprise
+}: {
+  audioFile: File | null;
+  description: string;
+  transcriptionText: string | null;
+  showMessage: (message: string) => void;
+  onCallUploaded: (callId: number) => void;
+  entrepriseId: number;
 }) => {
   let filePath = null;
   let audioUrl = null;
@@ -200,7 +223,8 @@ export const handleCallSubmission = async ({
       // Insert words associated with the transcription
       const parsedData = JSON.parse(transcriptionText);
       if (parsedData.words && parsedData.words.length > 0) {
-        const wordsData = parsedData.words.map((word) => ({
+        // 🔧 CORRECTION: Ajout du type pour le paramètre word (ligne 203)
+        const wordsData = parsedData.words.map((word: any) => ({
           transcriptid: transcriptId,
           ...word,
         }));
@@ -227,8 +251,12 @@ export const handleCallSubmission = async ({
 
     return callId;
   } catch (error) {
-    console.error("Erreur dans handleCallSubmission :", error.message);
-    showMessage(`Erreur: ${error.message}`);
+    // 🔧 CORRECTION: Cast de error pour accéder à .message (lignes 230-231)
+    console.error(
+      "Erreur dans handleCallSubmission :",
+      (error as Error).message
+    );
+    showMessage(`Erreur: ${(error as Error).message}`);
     throw error;
   }
 };

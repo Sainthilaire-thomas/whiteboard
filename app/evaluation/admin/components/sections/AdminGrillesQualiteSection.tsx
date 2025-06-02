@@ -45,7 +45,12 @@ import {
 import { AdminToolbar } from "../AdminToolbar";
 import { GrilleQualiteForm } from "./forms/GrilleQualiteForm";
 import { AssociationGrilleDialog } from "./dialogs/AssociationGrilleDialog";
-import { DomaineQualite, Entreprise, AdminMode } from "../../types/admin";
+import {
+  DomaineQualite,
+  Entreprise,
+  AdminMode,
+  GrilleAvecEntreprises,
+} from "../../types/admin";
 import { AdminDataService } from "../../services/adminDataService";
 
 interface AdminGrillesQualiteSectionProps {
@@ -53,11 +58,6 @@ interface AdminGrillesQualiteSectionProps {
   saving?: boolean;
   onError: (error: string) => void;
   onSuccess: (message: string) => void;
-}
-
-interface GrilleAvecEntreprises extends DomaineQualite {
-  entreprises?: Entreprise[];
-  nombreEntreprises?: number;
 }
 
 export const AdminGrillesQualiteSection: React.FC<
