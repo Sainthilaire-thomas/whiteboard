@@ -2,8 +2,15 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, memo } from "react";
-import { Box } from "@mui/material";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  memo,
+  Suspense,
+} from "react";
+import { Box, CircularProgress } from "@mui/material";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
@@ -29,7 +36,7 @@ import { EvaluationHelpers, type ContextPanelsMap } from "./evaluation.types";
 // Types pour les modes d'affichage
 type DisplayMode = "normal" | "transcript-fullwidth" | "context-fullwidth";
 
-const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
+function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
 
@@ -393,6 +400,27 @@ const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
         </Box>
       </Box>
     </>
+  );
+}
+
+const Evaluation = ({ darkMode, setDarkMode }: EvaluationProps) => {
+  return (
+    <Suspense
+      fallback={
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      }
+    >
+      <EvaluationContent darkMode={darkMode} setDarkMode={setDarkMode} />
+    </Suspense>
   );
 };
 

@@ -1,6 +1,6 @@
 // hooks/usePhaseNavigation.ts - VERSION TEMPS RÉEL
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { PhaseKey, StepStatus, SubStep } from "../types";
 import { useCallData } from "@/context/CallDataContext";
 import { useAppContext } from "@/context/AppContext";
@@ -12,11 +12,24 @@ function useSearchParamsSafe() {
   const [currentView, setCurrentView] = useState<string | null>(null);
 
   useEffect(() => {
-    // Accès côté client uniquement
-    if (typeof window !== "undefined") {
-      const searchParams = new URLSearchParams(window.location.search);
-      setCurrentView(searchParams.get("view"));
-    }
+    // Fonction pour mettre à jour la vue depuis l'URL
+    const updateViewFromURL = () => {
+      if (typeof window !== "undefined") {
+        const searchParams = new URLSearchParams(window.location.search);
+        setCurrentView(searchParams.get("view"));
+      }
+    };
+
+    // Mettre à jour au chargement
+    updateViewFromURL();
+
+    // Écouter les changements d'URL (navigation)
+    const handlePopState = () => updateViewFromURL();
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
   }, []);
 
   return { currentView };
@@ -137,8 +150,8 @@ export const usePhaseNavigation = () => {
         (phaseKey === "selection" && currentView === "selection") ||
         (phaseKey === "evaluation" &&
           (currentView === "synthese" || currentView === "postit")) ||
-        (phaseKey === "coaching" && currentView === "roleplay");
-      phaseKey === "entrainement" && currentView === "entrainement";
+        (phaseKey === "coaching" && currentView === "roleplay") ||
+        (phaseKey === "entrainement" && currentView === "entrainement");
 
       if (isActiveView) {
         return "en cours";
