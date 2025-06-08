@@ -33,10 +33,11 @@ export const usePhaseData = (currentView: string | null) => {
   const phases: Phase[] = useMemo(
     () => [
       {
-        label: LABELS.PHASES.SELECTION.LABEL,
         key: "selection",
+        label: LABELS.PHASES.SELECTION.LABEL,
         icon: <Business />,
         description: LABELS.PHASES.SELECTION.DESCRIPTION,
+        route: ROUTES.EVALUATION.SELECTION, // Ajout de la route requise
         subSteps: [
           {
             label: LABELS.SUB_STEPS.SELECTION_ENTREPRISE,
@@ -45,10 +46,11 @@ export const usePhaseData = (currentView: string | null) => {
         ],
       },
       {
-        label: LABELS.PHASES.EVALUATION.LABEL,
         key: "evaluation",
+        label: LABELS.PHASES.EVALUATION.LABEL,
         icon: <Assessment />,
         description: LABELS.PHASES.EVALUATION.DESCRIPTION,
+        route: ROUTES.EVALUATION.SYNTHESE, // Ajout de la route requise
         subSteps: [
           {
             label: LABELS.SUB_STEPS.SYNTHESE_GENERALE,
@@ -69,10 +71,11 @@ export const usePhaseData = (currentView: string | null) => {
         ],
       },
       {
-        label: LABELS.PHASES.COACHING.LABEL,
         key: "coaching",
+        label: LABELS.PHASES.COACHING.LABEL,
         icon: <Psychology />,
         description: LABELS.PHASES.COACHING.DESCRIPTION,
+        route: ROUTES.EVALUATION.SYNTHESE, // Ajout de la route requise
         subSteps: [
           // Action de retour si on est en jeu de rôle
           ...(currentView === VIEWS.ROLEPLAY
@@ -109,10 +112,11 @@ export const usePhaseData = (currentView: string | null) => {
       },
       // NOUVEAU : Étape Entraînement
       {
-        label: LABELS.PHASES.ENTRAINEMENT.LABEL,
         key: "entrainement",
+        label: LABELS.PHASES.ENTRAINEMENT.LABEL,
         icon: <TrendingUp />,
         description: LABELS.PHASES.ENTRAINEMENT.DESCRIPTION,
+        route: ROUTES.EVALUATION.ENTRAINEMENT, // Ajout de la route requise
         subSteps: [
           // Action de retour si on est dans l'entraînement
           ...(currentView === VIEWS.ENTRAINEMENT
@@ -139,24 +143,27 @@ export const usePhaseData = (currentView: string | null) => {
         ],
       },
       {
-        label: LABELS.PHASES.SUIVI.LABEL,
         key: "suivi",
+        label: LABELS.PHASES.SUIVI.LABEL,
         icon: <Timeline />,
         description: LABELS.PHASES.SUIVI.DESCRIPTION,
+        route: "/suivi", // Ajout d'une route par défaut
       },
       {
-        label: LABELS.PHASES.FEEDBACK.LABEL,
         key: "feedback",
+        label: LABELS.PHASES.FEEDBACK.LABEL,
         icon: <Feedback />,
         description: LABELS.PHASES.FEEDBACK.DESCRIPTION,
+        route: "/feedback", // Ajout d'une route par défaut
       },
       // Section Admin séparée
       {
-        label: LABELS.PHASES.ADMIN.LABEL,
         key: "admin",
+        label: LABELS.PHASES.ADMIN.LABEL,
         icon: <AdminPanelSettings />,
-        isAdmin: true,
+        adminOnly: true, // Correction : utiliser adminOnly au lieu de isAdmin
         description: LABELS.PHASES.ADMIN.DESCRIPTION,
+        route: ROUTES.ADMIN.PONDERATION, // Ajout de la route requise
         subSteps: [
           {
             label: LABELS.SUB_STEPS.PONDERATION_CRITERES,
@@ -170,11 +177,14 @@ export const usePhaseData = (currentView: string | null) => {
 
   // Séparer les phases normales et admin
   const normalPhases = useMemo(
-    () => phases.filter((p) => !p.isAdmin),
+    () => phases.filter((p) => !p.adminOnly), // Correction : utiliser adminOnly
     [phases]
   );
 
-  const adminPhases = useMemo(() => phases.filter((p) => p.isAdmin), [phases]);
+  const adminPhases = useMemo(
+    () => phases.filter((p) => p.adminOnly), // Correction : utiliser adminOnly
+    [phases]
+  );
 
   return {
     phases,

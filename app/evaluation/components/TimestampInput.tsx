@@ -1,7 +1,7 @@
 import { useState, useEffect, ChangeEvent, FC } from "react";
 import { Box, TextField, Typography, Slider, IconButton } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import { useCallData } from "@/context/CallDataContext";
+import { useAudioPlayer } from "@/context/AudioContext"; // Import du contexte audio au lieu de CallDataContext
 
 // Définition des types pour les props
 interface TimestampInputProps {
@@ -14,7 +14,7 @@ const TimestampInput: FC<TimestampInputProps> = ({
   onTimestampChange,
   defaultTimestamp,
 }) => {
-  const { playAudioAtTimestamp } = useCallData();
+  const { playAudioAtTimestamp } = useAudioPlayer(); // Utilise le contexte audio
   const [minutes, setMinutes] = useState<string>("00");
   const [seconds, setSeconds] = useState<string>("00");
   const [offset, setOffset] = useState<number>(0); // Décalage en secondes

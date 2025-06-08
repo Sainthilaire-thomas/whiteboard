@@ -62,7 +62,7 @@ export default function ContextualActions({
               <IconButton
                 size="small"
                 onClick={decreaseFontSize}
-                disabled={fontSize && fontSize <= 10}
+                disabled={fontSize ? fontSize <= 10 : false}
                 sx={{
                   bgcolor: "grey.50",
                   color: "grey.600",
@@ -89,7 +89,7 @@ export default function ContextualActions({
               <IconButton
                 size="small"
                 onClick={increaseFontSize}
-                disabled={fontSize && fontSize >= 24}
+                disabled={fontSize ? fontSize >= 24 : false}
                 sx={{
                   bgcolor: "grey.50",
                   color: "grey.600",
@@ -145,7 +145,7 @@ export default function ContextualActions({
             <IconButton
               size="small"
               onClick={onSave}
-              disabled={isLoadingRolePlay}
+              disabled={Boolean(isLoadingRolePlay)}
               sx={{
                 bgcolor: "success.50",
                 color: "success.main",

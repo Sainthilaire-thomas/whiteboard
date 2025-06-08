@@ -45,7 +45,7 @@ export const PhaseItem: React.FC<PhaseItemProps> = ({
   onSubStepClick,
   isActiveSubStep,
 }) => {
-  const isAdminPhase = phase.isAdmin;
+  const isAdminPhase = phase.adminOnly || false;
 
   return (
     <Box
@@ -82,8 +82,8 @@ export const PhaseItem: React.FC<PhaseItemProps> = ({
                 ? COLORS.ADMIN_BACKGROUND_HOVER
                 : COLORS.PRIMARY_BACKGROUND
               : isAdminPhase
-              ? COLORS.ADMIN_BACKGROUND
-              : "transparent",
+                ? COLORS.ADMIN_BACKGROUND
+                : "transparent",
             borderRadius: 1,
             mx: 0.5,
             transition: ANIMATIONS.HOVER_TRANSITION,

@@ -1,11 +1,3 @@
-// Callback pour notifier le parent lors d'actions utilisateur uniquement
-const notifyParentOfChange = useCallback(
-  (items: TimelineItem[]) => {
-    const newOrder = items.map((item) => item.postit);
-    onOrderChange(newOrder);
-  },
-  [onOrderChange]
-);
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
@@ -116,8 +108,8 @@ const TimelinePostit: React.FC<{
             ? "#616161"
             : "#757575"
           : item.postit.isOriginal
-          ? "#f5f5f5"
-          : "#fff",
+            ? "#f5f5f5"
+            : "#fff",
         color: isDarkMode ? "#fff" : "inherit",
         position: "relative",
         "&:hover": {

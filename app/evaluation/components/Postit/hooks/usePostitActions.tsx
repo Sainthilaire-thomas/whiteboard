@@ -30,6 +30,22 @@ export function usePostitActions() {
     syncPratiquesForActiviteFromMap,
   } = useAppContext();
 
+  // Helper pour convertir les maps de string vers number
+  const convertMapToNumberKeys = useCallback(
+    (map: Record<string, string | null>): Record<number, number | null> => {
+      const result: Record<number, number | null> = {};
+      Object.entries(map).forEach(([key, value]) => {
+        const numKey = parseInt(key, 10);
+        const numValue = value ? parseInt(value, 10) : null;
+        if (!isNaN(numKey)) {
+          result[numKey] = isNaN(numValue as number) ? null : numValue;
+        }
+      });
+      return result;
+    },
+    []
+  );
+
   // Helper pour vérifier si un postit est complet
   const isPostitComplete = useCallback((postit: any) => {
     return (
@@ -42,7 +58,7 @@ export function usePostitActions() {
   }, []);
 
   // Sauvegarde d'un postit
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (): Promise<void> => {
     if (!selectedPostit) return;
 
     // Validation avant sauvegarde
@@ -61,9 +77,13 @@ export function usePostitActions() {
 
     // Synchronisation - maintenant disponible via AppContext
     if (idCallActivite) {
-      await syncSujetsForActiviteFromMap(postitToSujetMap, idCallActivite);
+      // Conversion des maps vers le bon format
+      const convertedSujetMap = convertMapToNumberKeys(postitToSujetMap);
+      const convertedPratiqueMap = convertMapToNumberKeys(postitToPratiqueMap);
+
+      await syncSujetsForActiviteFromMap(convertedSujetMap, idCallActivite);
       await syncPratiquesForActiviteFromMap(
-        postitToPratiqueMap, // ✅ Plus besoin de cast - les types correspondent maintenant
+        convertedPratiqueMap, // ✅ Maintenant le type correspond
         idCallActivite,
         pratiques
       );
@@ -87,10 +107,11 @@ export function usePostitActions() {
     pratiques,
     setSelectedPostit,
     isPostitComplete,
+    convertMapToNumberKeys,
   ]);
 
   // Suppression d'un postit
-  const handleDelete = useCallback(async () => {
+  const handleDelete = useCallback(async (): Promise<void> => {
     if (!selectedPostit?.id) return;
 
     try {
@@ -153,12 +174,16 @@ export function usePostitActions() {
   }, [selectedPostit, idCallActivite, deletePostit, setSelectedPostit]);
 
   // Fermeture du postit
-  const handleClosePostit = useCallback(() => {
+  const handleClosePostit = useCallback((): void => {
     // Synchronisation - maintenant disponible via AppContext
     if (idCallActivite) {
-      syncSujetsForActiviteFromMap(postitToSujetMap, idCallActivite);
+      // Conversion des maps vers le bon format
+      const convertedSujetMap = convertMapToNumberKeys(postitToSujetMap);
+      const convertedPratiqueMap = convertMapToNumberKeys(postitToPratiqueMap);
+
+      syncSujetsForActiviteFromMap(convertedSujetMap, idCallActivite);
       syncPratiquesForActiviteFromMap(
-        postitToPratiqueMap, // ✅ Plus besoin de cast - les types correspondent maintenant
+        convertedPratiqueMap, // ✅ Maintenant le type correspond
         idCallActivite,
         pratiques
       );
@@ -174,6 +199,7 @@ export function usePostitActions() {
     pratiques,
     setSelectedPostit,
     router,
+    convertMapToNumberKeys,
   ]);
 
   return {

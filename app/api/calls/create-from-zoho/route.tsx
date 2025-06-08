@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { createSupabaseServer } from "@/lib/supabaseServer";
 import { createClient } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from "uuid";
 import { handleCallSubmission } from "@/app/zohoworkdrive/lib/audioUploadUtils";
@@ -104,7 +104,8 @@ export async function POST(request: Request) {
       supabaseAuthToken, // Récupérer le token Supabase depuis le corps
     } = body;
 
-    // Authentifier l'utilisateur avec le token Supabase explicite
+    // Créer le client Supabase server et authentifier l'utilisateur
+    const supabaseServer = await createSupabaseServer();
     const {
       data: { user },
     } = await supabaseServer.auth.getUser(supabaseAuthToken);

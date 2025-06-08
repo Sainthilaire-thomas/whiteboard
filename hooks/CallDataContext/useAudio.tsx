@@ -1,17 +1,18 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { AudioContextType, Word } from "@/types/types";
+import { UseAudioResult, Word } from "./useAudio.types";
 
-export function useAudio(): AudioContextType {
+export function useAudio(): UseAudioResult {
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
-  const playerRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentWordIndex, setCurrentWordIndex] = useState<number>(-1); // Ajouter l'index du mot en lecture
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(0);
+  const [currentWordIndex, setCurrentWordIndex] = useState<number>(-1);
 
   const play = useCallback(() => {
-    if (playerRef.current) {
-      // Si l'audio est déjà en train de jouer, on ne relance pas la lecture
+    if (audioRef.current) {
       if (!isPlaying) {
-        playerRef.current.play().catch((error) => {
+        audioRef.current.play().catch((error) => {
           console.error("Erreur lors de la lecture de l'audio :", error);
         });
         setIsPlaying(true);
@@ -20,59 +21,90 @@ export function useAudio(): AudioContextType {
   }, [isPlaying]);
 
   const pause = useCallback(() => {
-    if (playerRef.current) {
-      // Si l'audio est en train de jouer, on le met en pause
+    if (audioRef.current) {
       if (isPlaying) {
-        playerRef.current.pause();
+        audioRef.current.pause();
         setIsPlaying(false);
       }
     }
   }, [isPlaying]);
 
   const seek = useCallback((time: number) => {
-    if (playerRef.current) {
-      playerRef.current.currentTime = time;
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+    }
+  }, []);
+
+  const seekTo = useCallback((time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
     }
   }, []);
 
   const setVolume = useCallback((volume: number) => {
-    if (playerRef.current) {
-      playerRef.current.volume = volume;
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
     }
   }, []);
 
   const setTime = useCallback((time: number) => {
-    if (playerRef.current) {
-      playerRef.current.currentTime = time;
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
     }
   }, []);
 
   const playAudioAtTimestamp = useCallback((timestamp: number) => {
-    if (playerRef.current) {
-      playerRef.current.currentTime = timestamp;
-      playerRef.current.play();
+    if (audioRef.current) {
+      audioRef.current.currentTime = timestamp;
+      audioRef.current.play();
       setIsPlaying(true);
     }
   }, []);
 
-  // Suivi de l'index du mot en lecture
-
   const updateCurrentWordIndex = useCallback(
-    (transcription: Word[], currentTime: number) => {
+    (transcription: Word[], currentTimeParam: number) => {
       const index = transcription.findIndex(
-        (word) => currentTime >= word.startTime && currentTime < word.endTime
+        (word) =>
+          currentTimeParam >= word.startTime && currentTimeParam < word.endTime
       );
-
-      setCurrentWordIndex(index); // Met à jour l'index
+      setCurrentWordIndex(index);
     },
     []
   );
 
+  // Événements audio pour mettre à jour currentTime et duration
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+    };
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("ended", handleEnded);
+    };
+  }, [audioSrc]);
+
   // Détection du changement de visibilité
   useEffect(() => {
     const handleVisibilityChange = () => {
-      const player = playerRef.current;
-      if (document.hidden && player && !player.paused) {
+      const audio = audioRef.current;
+      if (document.hidden && audio && !audio.paused) {
         pause();
       }
     };
@@ -86,15 +118,19 @@ export function useAudio(): AudioContextType {
   return {
     audioSrc,
     setAudioSrc,
-    playAudioAtTimestamp,
-    playerRef,
     isPlaying,
+    currentTime,
+    duration,
+    currentWordIndex,
     play,
     pause,
-    seek,
+    seekTo,
     setVolume,
     setTime,
-    currentWordIndex, // Exposer l'index des mots en lecture
-    updateCurrentWordIndex, // Méthode pour mettre à jour l'index
+    seek,
+    playAudioAtTimestamp,
+    updateCurrentWordIndex,
+    audioRef,
+    playerRef: audioRef, // Alias pour compatibilité
   };
 }

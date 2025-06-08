@@ -1,4 +1,3 @@
-// components/common/AuthStatus.tsx
 "use client";
 
 import React from "react";
@@ -14,12 +13,14 @@ import {
 import { AccountCircle, Login } from "@mui/icons-material";
 import Link from "next/link";
 import { useSupabase } from "@/context/SupabaseContext";
+import type { User } from "@supabase/supabase-js";
 
 export default function AuthStatus() {
   const { supabase } = useSupabase();
-  const [user, setUser] = React.useState(null);
+  // Correction : Typage correct de l'état user
+  const [user, setUser] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   // Charger les données utilisateur au montage du composant
   React.useEffect(() => {
@@ -65,7 +66,8 @@ export default function AuthStatus() {
     };
   }, [supabase]);
 
-  const handleMenu = (event) => {
+  // Correction : Typage explicite du paramètre event
+  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
 

@@ -38,7 +38,7 @@ import {
   CloudUpload as CloudUploadIcon,
 } from "@mui/icons-material";
 
-import { ZohoAuthToken, ZohoFile } from "../types/zoho";
+import { ZohoAuthToken, ZohoFile } from "../types";
 import { clientGetFiles } from "../lib/zohoworkdrive/api";
 import { getToken, saveToken, isTokenExpired } from "../utils/storage";
 import { supabaseClient } from "@/lib/supabaseClient";

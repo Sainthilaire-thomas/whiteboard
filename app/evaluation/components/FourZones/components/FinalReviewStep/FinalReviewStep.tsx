@@ -47,6 +47,7 @@ import {
   ZoneAwareTextSegment,
 } from "../../utils/generateFinalText";
 
+import type { PostitType } from "../../types/types";
 // Import des composants existants
 import EnhancedClientSection from "./components/EnhancedClientSection";
 import EnrichedTextDisplay from "./components/EnrichedTextDisplay";
@@ -128,6 +129,16 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
 
   // ✅ NOUVEAU : Utiliser la composition courante (modifiée ou originale)
   const zoneComposition = currentComposition || originalZoneComposition;
+
+  const getErrorMessage = (error: unknown): string => {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    if (typeof error === "string") {
+      return error;
+    }
+    return "Une erreur inconnue est survenue";
+  };
 
   // ✅ NOUVEAU : Synchroniser la composition courante avec l'originale
   useEffect(() => {
@@ -243,7 +254,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
         setActiveSegment(null);
       }
     } catch (error) {
-      console.error("❌ Erreur lors de la lecture:", error);
+      console.error("❌ Erreur lors de la lecture:", getErrorMessage(error));
       setActiveSegment(null);
     }
   };
@@ -345,7 +356,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
         playSegment(clientSelection.startTime, endTime);
       } catch (error) {
         console.error("Erreur playSegment:", error);
-        alert(`Erreur lors de la lecture: ${error.message}`);
+        alert(`Erreur lors de la lecture: ${getErrorMessage(error)}`);
       }
       return;
     }
@@ -359,7 +370,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
       console.log("✅ Commande playSegment envoyée avec succès");
     } catch (error) {
       console.error("❌ Erreur lors de l'exécution de playSegment:", error);
-      alert(`Erreur lors de la lecture: ${error.message}`);
+      alert(`Erreur lors de la lecture: ${getErrorMessage(error)}`);
     }
   };
 

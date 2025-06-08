@@ -11,6 +11,7 @@ export const useActivityPhases = () => {
     evaluation: "à faire",
     coaching: "à faire",
     suivi: "à faire",
+    entrainement: "à faire",
     feedback: "à faire",
     admin: "à faire",
   });
@@ -123,8 +124,8 @@ export const useActivityPhases = () => {
         currentStatus === "à faire"
           ? "en cours"
           : currentStatus === "en cours"
-          ? "réalisé"
-          : "à faire";
+            ? "réalisé"
+            : "à faire";
 
       savePhase(phaseKey, nextStatus);
     },

@@ -39,6 +39,23 @@ export function usePostitActions() {
     );
   }, []);
 
+  //fonction utilitaire pour convertir un objet avec des clés de type string en un objet avec des clés de type number
+  const convertStringMapToNumberMap = (
+    stringMap: Record<string, string | null>
+  ): Record<number, number | null> => {
+    const numberMap: Record<number, number | null> = {};
+
+    Object.entries(stringMap).forEach(([key, value]) => {
+      const numericKey = parseInt(key, 10);
+      const numericValue = value ? parseInt(value, 10) : null;
+
+      if (!isNaN(numericKey)) {
+        numberMap[numericKey] = isNaN(numericValue!) ? null : numericValue;
+      }
+    });
+
+    return numberMap;
+  };
   // Sauvegarde d'un postit
   const handleSave = useCallback(async () => {
     if (!selectedPostit) return;
@@ -59,9 +76,13 @@ export function usePostitActions() {
 
     // Synchronisation
     if (idCallActivite) {
-      await syncSujetsForActiviteFromMap(postitToSujetMap, idCallActivite);
+      const numericSujetMap = convertStringMapToNumberMap(postitToSujetMap);
+      const numericPratiqueMap =
+        convertStringMapToNumberMap(postitToPratiqueMap);
+
+      await syncSujetsForActiviteFromMap(numericSujetMap, idCallActivite);
       await syncPratiquesForActiviteFromMap(
-        postitToPratiqueMap,
+        numericPratiqueMap,
         idCallActivite,
         pratiques
       );
@@ -153,9 +174,13 @@ export function usePostitActions() {
   // Fermeture du postit
   const handleClosePostit = useCallback(() => {
     if (idCallActivite) {
-      syncSujetsForActiviteFromMap(postitToSujetMap, idCallActivite);
+      const numericSujetMap = convertStringMapToNumberMap(postitToSujetMap);
+      const numericPratiqueMap =
+        convertStringMapToNumberMap(postitToPratiqueMap);
+
+      syncSujetsForActiviteFromMap(numericSujetMap, idCallActivite);
       syncPratiquesForActiviteFromMap(
-        postitToPratiqueMap,
+        numericPratiqueMap,
         idCallActivite,
         pratiques
       );

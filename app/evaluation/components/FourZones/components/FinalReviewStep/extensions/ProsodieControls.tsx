@@ -1,4 +1,4 @@
-// extensions/ProsodieControls.tsx - Version adaptée Dark Mode
+// extensions/ProsodieControls.tsx - Version adaptée Dark Mode avec corrections TypeScript
 
 import React from "react";
 import {
@@ -13,10 +13,10 @@ import {
   Chip,
   Divider,
   Alert,
-  Button, // ✅ AJOUT pour le bouton reset
+  Button,
   useTheme,
 } from "@mui/material";
-import { RestartAlt } from "@mui/icons-material"; // ✅ AJOUT icône reset
+import { RestartAlt } from "@mui/icons-material";
 import { TTSSettings } from "../hooks/useTTS";
 
 interface ProsodieControlsProps {
@@ -26,45 +26,63 @@ interface ProsodieControlsProps {
   selectedText?: string;
 }
 
+// ✅ AJOUT : Types pour une meilleure sécurité
+type ToneValue =
+  | "professionnel"
+  | "empathique"
+  | "explication"
+  | "resolution_probleme"
+  | "instructions"
+  | "calme"
+  | "confiant";
+type ContextKey =
+  | "probleme"
+  | "explication"
+  | "procedure"
+  | "emotion"
+  | "urgence"
+  | "technique"
+  | "general";
+
 const TONE_OPTIONS = [
   {
-    value: "professionnel",
+    value: "professionnel" as ToneValue,
     label: "🏢 Professionnel",
     description: "Ton courtois et structuré",
     contexts: ["general", "presentation"],
   },
   {
-    value: "empathique",
+    value: "empathique" as ToneValue,
     label: "🤝 Empathique",
     description: "Compréhensif et bienveillant",
     contexts: ["probleme", "emotion"],
   },
   {
-    value: "explication",
+    value: "explication" as ToneValue,
     label: "📚 Pédagogique",
     description: "Clair et structuré pour expliquer",
     contexts: ["technique", "procedure"],
   },
   {
-    value: "resolution_probleme",
+    value: "resolution_probleme" as ToneValue,
     label: "🔧 Solution",
     description: "Dynamique et orienté action",
     contexts: ["probleme", "urgence"],
   },
   {
-    value: "instructions",
+    value: "instructions" as ToneValue,
     label: "📋 Directif",
     description: "Clair et précis pour les étapes",
     contexts: ["procedure", "action"],
   },
   {
-    value: "calme",
+    value: "calme" as ToneValue,
     label: "😌 Apaisant",
     description: "Rassurant et posé",
     contexts: ["stress", "urgence"],
   },
   {
-    value: "confiant",
+    value: "confiant" as ToneValue,
     label: "💪 Confiant",
     description: "Assuré et déterminé",
     contexts: ["decision", "validation"],
@@ -90,33 +108,34 @@ const ENHANCEMENT_OPTIONS = [
 ];
 
 // Analyse simple du contexte pour suggestion
-const analyzeTextContext = (text: string) => {
+const analyzeTextContext = (text: string): ContextKey | null => {
   if (!text) return null;
 
-  const patterns = {
+  const patterns: Record<ContextKey, RegExp> = {
     probleme: /(problème|difficulté|erreur|bug|dysfonctionnement)/i,
     explication: /(donc|ainsi|c'est-à-dire|pour expliquer|voici comment)/i,
     procedure: /(étape|d'abord|ensuite|suivez|procédez)/i,
     emotion: /(désolé|inquiet|préoccupé|frustré|comprends)/i,
     urgence: /(urgent|rapidement|immédiatement|dès que possible)/i,
     technique: /(configuration|paramètre|installation|réglage)/i,
+    general: /./i, // Pattern par défaut
   };
 
   for (const [context, pattern] of Object.entries(patterns)) {
     if (pattern.test(text)) {
-      return context;
+      return context as ContextKey;
     }
   }
   return "general";
 };
 
-// Suggestions de tons selon le contexte
-const getSuggestedTones = (context: string) => {
-  const suggestions = {
+// ✅ CORRECTION : Suggestions de tons selon le contexte avec types stricts
+const getSuggestedTones = (context: ContextKey): ToneValue[] => {
+  const suggestions: Record<ContextKey, ToneValue[]> = {
     probleme: ["empathique", "resolution_probleme", "calme"],
     explication: ["explication", "professionnel", "calme"],
     procedure: ["instructions", "professionnel", "explication"],
-    emotion: ["empathique", "calme", "chaleureux"],
+    emotion: ["empathique", "calme", "professionnel"], // ✅ CORRECTION: "chaleureux" n'existe pas dans ToneValue
     urgence: ["resolution_probleme", "confiant", "instructions"],
     technique: ["explication", "professionnel", "instructions"],
     general: ["professionnel", "empathique"],
@@ -131,14 +150,13 @@ export const ProsodieControls: React.FC<ProsodieControlsProps> = ({
   disabled = false,
   selectedText = "",
 }) => {
-  // ✅ UTILISATION DU THÈME
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === "dark";
 
   const detectedContext = analyzeTextContext(selectedText);
   const suggestedTones = getSuggestedTones(detectedContext || "general");
 
-  // ✅ AJOUT : Calcul de l'état de la prosodie
+  // Calcul de l'état de la prosodie
   const isProsodieActive =
     settings.tone !== "professionnel" ||
     settings.textEnhancement !== "aucun" ||
@@ -151,7 +169,7 @@ export const ProsodieControls: React.FC<ProsodieControlsProps> = ({
     });
   };
 
-  // ✅ AJOUT : Fonction de reset vers les paramètres standard
+  // Fonction de reset vers les paramètres standard
   const handleResetToStandard = () => {
     onChange({
       ...settings,
@@ -165,7 +183,7 @@ export const ProsodieControls: React.FC<ProsodieControlsProps> = ({
 
   return (
     <Box>
-      {/* ✅ NOUVEAU : En-tête avec statut et contrôles */}
+      {/* En-tête avec statut et contrôles */}
       <Box
         sx={{
           display: "flex",
@@ -178,7 +196,7 @@ export const ProsodieControls: React.FC<ProsodieControlsProps> = ({
           🎭 Contrôle de la prosodie
         </Typography>
 
-        {/* ✅ Indicateur de statut */}
+        {/* Indicateur de statut */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Chip
             label={isProsodieActive ? "ACTIVÉE" : "STANDARD"}
@@ -187,7 +205,7 @@ export const ProsodieControls: React.FC<ProsodieControlsProps> = ({
             variant={isProsodieActive ? "filled" : "outlined"}
           />
 
-          {/* ✅ Bouton de reset vers standard */}
+          {/* Bouton de reset vers standard */}
           {isProsodieActive && (
             <Button
               size="small"
@@ -246,7 +264,7 @@ export const ProsodieControls: React.FC<ProsodieControlsProps> = ({
             console.log("🎭 Ton changé:", e.target.value);
             handleChange("tone", e.target.value);
           }}
-          disabled={disabled} // ✅ SUPPRESSION DE !isAdvancedModel pour permettre le test
+          disabled={disabled}
           label="Ton de voix"
         >
           {TONE_OPTIONS.map((option) => (
@@ -254,7 +272,6 @@ export const ProsodieControls: React.FC<ProsodieControlsProps> = ({
               key={option.value}
               value={option.value}
               sx={{
-                // ✅ ADAPTATION DARK MODE pour les suggestions
                 bgcolor: suggestedTones.includes(option.value)
                   ? isDarkMode
                     ? "success.dark"
@@ -283,7 +300,8 @@ export const ProsodieControls: React.FC<ProsodieControlsProps> = ({
             Tons suggérés pour ce contexte:
           </Typography>
           <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mt: 0.5 }}>
-            {suggestedTones.slice(0, 3).map((tone) => {
+            {suggestedTones.slice(0, 3).map((tone: ToneValue) => {
+              // ✅ CORRECTION: Type explicite
               const option = TONE_OPTIONS.find((opt) => opt.value === tone);
               return (
                 <Chip
@@ -294,7 +312,7 @@ export const ProsodieControls: React.FC<ProsodieControlsProps> = ({
                   color={settings.tone === tone ? "primary" : "default"}
                   variant={settings.tone === tone ? "filled" : "outlined"}
                   sx={{ cursor: "pointer", fontSize: "0.7rem" }}
-                  disabled={disabled} // ✅ SUPPRESSION DE !isAdvancedModel
+                  disabled={disabled}
                 />
               );
             })}
@@ -326,15 +344,13 @@ export const ProsodieControls: React.FC<ProsodieControlsProps> = ({
         </Select>
       </FormControl>
 
-      {/* ✅ APERÇU ADAPTÉ AU DARK MODE */}
+      {/* Aperçu adapté au Dark Mode */}
       <Box
         sx={{
           mt: 2,
           p: 1.5,
-          // ✅ COULEUR DE FOND ADAPTÉE AU THÈME
           bgcolor: isDarkMode ? "grey.800" : "grey.50",
           borderRadius: 1,
-          // ✅ BORDURE ADAPTÉE AU THÈME
           border: `1px solid ${isDarkMode ? theme.palette.grey[700] : theme.palette.grey[300]}`,
         }}
       >

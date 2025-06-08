@@ -1,7 +1,7 @@
 // app/api/ponderation-sujets/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { createSupabaseServer } from "@/lib/supabaseServer";
 
 // Type pour la pondération (correspond à votre table)
 export interface PonderationSujet {
@@ -16,6 +16,7 @@ export interface PonderationSujet {
 // GET - Récupérer toutes les pondérations OU une pondération spécifique
 export async function GET(request: NextRequest) {
   try {
+    const supabaseServer = await createSupabaseServer();
     const { searchParams } = new URL(request.url);
     const idsujet = searchParams.get("idsujet");
 
@@ -103,6 +104,7 @@ export async function GET(request: NextRequest) {
 // POST - Sauvegarder le choix de conformité d'un postit
 export async function POST(request: NextRequest) {
   try {
+    const supabaseServer = await createSupabaseServer();
     const body = await request.json();
     const {
       postitId,

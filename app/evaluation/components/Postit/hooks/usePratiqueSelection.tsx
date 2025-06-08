@@ -26,7 +26,13 @@ export function usePratiqueSelection() {
   // Récupération des pratiques de l'activité basée sur les IDs
   const pratiquesDeLActivite = Object.values(postitToPratiqueMap || {})
     .filter((id) => id !== null && id !== undefined)
-    .filter((id, index, array) => array.indexOf(id) === index) as number[];
+    .map((id) => {
+      // Convertir string vers number si nécessaire
+      const numericId = typeof id === "string" ? parseInt(id, 10) : id;
+      return isNaN(numericId) ? null : numericId;
+    })
+    .filter((id): id is number => id !== null)
+    .filter((id, index, array) => array.indexOf(id) === index);
 
   // GESTIONNAIRE DE CLIC - Logique identique mais contexte changé
   const handlePratiqueClick = useCallback(
@@ -69,8 +75,8 @@ export function usePratiqueSelection() {
 
       // 2. Mise à jour de la map
       updatePostitToPratiqueMap(
-        updatedPostit.id,
-        updatedPostit.idpratique ?? null
+        updatedPostit.id.toString(), // ✅ Convertir en string
+        updatedPostit.idpratique?.toString() ?? null // ✅ Convertir en string ou null
       );
       console.log("✅ updatePostitToPratiqueMap appelé");
 

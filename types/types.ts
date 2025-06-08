@@ -67,6 +67,7 @@ export interface Postit {
   idpratique?: number | null;
   timestamp: number;
   idactivite?: number | null;
+  initialStep?: number;
 }
 
 export interface UsePostitsResult {

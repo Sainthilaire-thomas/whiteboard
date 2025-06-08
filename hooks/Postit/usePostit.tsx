@@ -4,6 +4,23 @@ import { useState, useEffect, useMemo } from "react";
 import { useCallData } from "@/context/CallDataContext";
 import { useAppContext } from "@/context/AppContext";
 
+// Types pour le hook
+interface StepChanges {
+  0: boolean; // Contexte
+  1: boolean; // Sujet
+  2: boolean; // Pratique
+  3: boolean; // Synthèse
+}
+
+interface PostitStep {
+  id: number;
+  label: string;
+  icon: string;
+  isAccessible: boolean;
+  isCompleted: boolean;
+  additionalInfo?: string | null;
+}
+
 /**
  * Hook principal pour gérer l'état et la logique du composant Postit
  * @returns Objet contenant l'état et les fonctions pour gérer le composant Postit
@@ -17,13 +34,14 @@ export function usePostit() {
   } = useCallData();
 
   // États locaux
-  const [showTabs, setShowTabs] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [readyToDisplayGrids, setReadyToDisplayGrids] = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
+  const [showTabs, setShowTabs] = useState<boolean>(false);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [readyToDisplayGrids, setReadyToDisplayGrids] =
+    useState<boolean>(false);
+  const [activeStep, setActiveStep] = useState<number>(0);
 
   // État pour suivre si un changement a été effectué dans une étape
-  const [stepChanges, setStepChanges] = useState({
+  const [stepChanges, setStepChanges] = useState<StepChanges>({
     0: false, // Étape contexte
     1: false, // Étape sujet
     2: false, // Étape pratique
@@ -65,7 +83,11 @@ export function usePostit() {
       }
 
       // Vérifier si une étape initiale est spécifiée dans le postit (pour le TimeLineAudio)
-      if (selectedPostit.initialStep !== undefined) {
+      // CORRECTION: Utiliser une assertion de type ou vérification de propriété
+      if (
+        "initialStep" in selectedPostit &&
+        typeof selectedPostit.initialStep === "number"
+      ) {
         initialStep = selectedPostit.initialStep;
       }
 
@@ -83,7 +105,7 @@ export function usePostit() {
   }, [selectedPostit?.id]); // Seulement quand l'ID change = nouveau postit
 
   // Navigation entre les étapes
-  const handleNext = () => {
+  const handleNext = (): void => {
     if (activeStep === 1 && !selectedPostit?.idsujet) {
       alert("Veuillez sélectionner un sujet avant de continuer.");
       return;
@@ -103,7 +125,7 @@ export function usePostit() {
     }
   };
 
-  const handleBack = () => {
+  const handleBack = (): void => {
     setActiveStep((prevStep) => prevStep - 1);
   };
 
@@ -112,7 +134,10 @@ export function usePostit() {
    * @param step Numéro de l'étape vers laquelle naviguer
    * @param skipAccessCheck Option pour ignorer la vérification d'accessibilité (pour les modifications directes)
    */
-  const navigateToStep = (step, skipAccessCheck = false) => {
+  const navigateToStep = (
+    step: number,
+    skipAccessCheck: boolean = false
+  ): void => {
     if (skipAccessCheck || canAccessStep(step)) {
       setActiveStep(step);
     }
@@ -123,7 +148,7 @@ export function usePostit() {
    * @param step Numéro de l'étape à vérifier
    * @returns Booléen indiquant si l'étape est accessible
    */
-  const canAccessStep = (step) => {
+  const canAccessStep = (step: number): boolean => {
     // Étape 0 (contexte) : toujours accessible
     if (step === 0) return true;
 
@@ -149,20 +174,22 @@ export function usePostit() {
   };
 
   // Vérification si le sujet est réel
-  const hasRealSubject =
-    selectedPostit &&
+  const hasRealSubject: boolean =
+    selectedPostit !== null &&
+    selectedPostit !== undefined &&
     selectedPostit.idsujet !== null &&
     selectedPostit.idsujet !== undefined;
 
   // Vérification si la pratique est réelle (utiliser idpratique comme référence principale)
-  const hasRealPractice =
-    selectedPostit &&
+  const hasRealPractice: boolean =
+    selectedPostit !== null &&
+    selectedPostit !== undefined &&
     selectedPostit.idpratique !== null &&
     selectedPostit.idpratique !== undefined &&
     selectedPostit.idpratique > 0; // Supposant que les IDs valides sont > 0
 
   // Liste des étapes avec leur état d'accessibilité et de complétion
-  const steps = useMemo(
+  const steps: PostitStep[] = useMemo(
     () => [
       {
         id: 0,

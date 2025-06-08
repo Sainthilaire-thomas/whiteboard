@@ -71,7 +71,7 @@ export function useSujetSelection() {
   const sujetsDeLActivite = useMemo(() => {
     const allSujetIds = Object.values(postitToSujetMap || {})
       .filter((id) => id !== null)
-      .filter((id, index, array) => array.indexOf(id) === index) as number[];
+      .filter((id, index, array) => array.indexOf(id) === index);
 
     console.log("🔍 All sujet IDs from postitToSujetMap:", allSujetIds);
 
@@ -84,7 +84,7 @@ export function useSujetSelection() {
     console.log("🔍 Domain sujet IDs:", domainSujetIds);
 
     const result = allSujetIds.filter((sujetId) =>
-      domainSujetIds.includes(sujetId)
+      domainSujetIds.includes(Number(sujetId))
     );
     console.log("🔍 Final sujetsDeLActivite:", result);
 
@@ -131,9 +131,12 @@ export function useSujetSelection() {
       console.log("🔍 Updated postit:", updatedPostit);
 
       setSelectedPostit(updatedPostit);
-      updatePostitToSujetMap(updatedPostit.id, updatedPostit.idsujet ?? null);
+      updatePostitToSujetMap(
+        String(selectedPostit.id),
+        updatedPostit.idsujet ? String(updatedPostit.idsujet) : null
+      );
 
-      updatePostit(updatedPostit.id, {
+      updatePostit(selectedPostit.id, {
         sujet: updatedPostit.sujet,
         idsujet: updatedPostit.idsujet,
         iddomaine: updatedPostit.iddomaine,

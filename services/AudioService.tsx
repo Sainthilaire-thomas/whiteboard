@@ -82,8 +82,25 @@ export const AudioService = {
         return null;
       }
 
-      // Retourne la première URL signée du tableau
-      return data.signedUrls[0] || null;
+      // Vérification de la structure de la réponse et accès à l'URL signée
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        console.error("🔴 Aucune donnée retournée par Supabase");
+        return null;
+      }
+
+      // La réponse est un tableau d'objets avec { error, path, signedUrl }
+      const firstResult = data[0];
+
+      if (firstResult.error) {
+        console.error(
+          "🔴 Erreur dans la génération de l'URL signée:",
+          firstResult.error
+        );
+        return null;
+      }
+
+      // Retourne l'URL signée du premier élément
+      return firstResult.signedUrl || null;
     } catch (error) {
       console.error("🔴 Erreur lors de la génération directe d'URL:", error);
       return null;

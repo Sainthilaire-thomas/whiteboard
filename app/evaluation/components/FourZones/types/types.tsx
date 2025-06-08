@@ -11,6 +11,13 @@ export interface PostitType {
   isOriginal: boolean;
 }
 
+export interface SortablePostitProps {
+  postit: PostitType;
+  fontSize: number;
+  onEdit: (id: string, content: string) => void;
+  onDelete: (id: string) => void;
+  isOriginal?: boolean;
+}
 /**
  * Type représentant les données d'un appel
  */

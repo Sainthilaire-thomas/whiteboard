@@ -9,6 +9,10 @@ export function useCalls(): UseCallsResult {
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [isLoadingCalls, setIsLoadingCalls] = useState(false);
 
+  // ✅ Nouvelles propriétés ajoutées pour corriger l'erreur TypeScript
+  const [idCallActivite, setIdCallActivite] = useState<number | null>(null);
+  const [isLoadingActivity, setIsLoadingActivity] = useState(false);
+
   // 🔁 Récupération des appels pour une entreprise (avec activités)
   const fetchCalls = useCallback(async (identreprise: number) => {
     if (!identreprise) {
@@ -95,10 +99,62 @@ export function useCalls(): UseCallsResult {
     setIsLoadingCalls(false);
   }, []);
 
-  // ✅ Sélection d’un appel
+  // ✅ Sélection d'un appel
   const selectCall = useCallback((call: Call) => {
     setSelectedCall(call);
   }, []);
+
+  // ✅ Nouvelle fonction pour créer une activité pour un appel
+  const createActivityForCall = useCallback(
+    async (
+      callId: number,
+      activityType: "evaluation" | "coaching",
+      idConseiller: number
+    ) => {
+      setIsLoadingActivity(true);
+      try {
+        // Créer d'abord l'activité
+        const { data: activityData, error: activityError } =
+          await supabaseClient
+            .from("activitesconseillers")
+            .insert({
+              nature: activityType,
+              idconseiller: idConseiller,
+              datecreation: new Date().toISOString(),
+            })
+            .select("idactivite")
+            .single();
+
+        if (activityError) {
+          console.error("❌ Erreur création activité:", activityError);
+          throw activityError;
+        }
+
+        const activityId = activityData.idactivite;
+
+        // Associer l'activité à l'appel
+        const { error: relationError } = await supabaseClient
+          .from("callactivityrelation")
+          .insert({
+            callid: callId,
+            activityid: activityId,
+          });
+
+        if (relationError) {
+          console.error("❌ Erreur association call-activity:", relationError);
+          throw relationError;
+        }
+
+        setIdCallActivite(activityId);
+        console.log("✅ Activité créée et associée avec succès:", activityId);
+      } catch (error) {
+        console.error("❌ Erreur lors de la création de l'activité:", error);
+      } finally {
+        setIsLoadingActivity(false);
+      }
+    },
+    []
+  );
 
   return {
     calls,
@@ -107,6 +163,11 @@ export function useCalls(): UseCallsResult {
     selectCall,
     setSelectedCall,
     isLoadingCalls,
+
+    // ✅ Nouvelles propriétés ajoutées
+    idCallActivite,
+    createActivityForCall,
+    isLoadingActivity,
 
     archiveCall: async (callId: number) => {
       try {

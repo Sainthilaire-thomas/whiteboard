@@ -1,5 +1,5 @@
 // types.ts - Types spécifiques aux hooks Postit
-
+import { Postit } from "@/types/types";
 // Interface étendue pour Postit avec idpratique
 export interface PostitWithPracticeId extends Postit {
   idpratique?: number | null;

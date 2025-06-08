@@ -2,7 +2,21 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSupabase } from "@/context/SupabaseContext";
-import { PonderationSujet, ConformiteChoice } from "@/types/types";
+
+// Types définis localement pour ce hook
+export interface PonderationSujet {
+  id_ponderation: number;
+  idsujet: number;
+  conforme: number;
+  partiellement_conforme: number;
+  non_conforme: number;
+  permet_partiellement_conforme: boolean;
+}
+
+export type ConformiteChoice =
+  | "conforme"
+  | "partiellement_conforme"
+  | "non_conforme";
 
 interface UsePonderationSujetsReturn {
   ponderations: PonderationSujet[];
@@ -27,11 +41,11 @@ interface SaveConformiteParams {
 export const usePonderationSujets = (): UsePonderationSujetsReturn => {
   const { supabase, isSupabaseReady } = useSupabase();
   const [ponderations, setPonderations] = useState<PonderationSujet[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fonction pour récupérer les pondérations directement depuis Supabase
-  const fetchPonderationsFromSupabase = useCallback(async () => {
+  const fetchPonderationsFromSupabase = useCallback(async (): Promise<void> => {
     if (!isSupabaseReady) {
       console.warn("Supabase n'est pas encore prêt");
       return;
@@ -106,7 +120,7 @@ export const usePonderationSujets = (): UsePonderationSujetsReturn => {
   }, [supabase, isSupabaseReady]);
 
   // Fonction pour récupérer via l'API (alternative)
-  const fetchPonderationsFromAPI = useCallback(async () => {
+  const fetchPonderationsFromAPI = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
 
@@ -136,7 +150,7 @@ export const usePonderationSujets = (): UsePonderationSujetsReturn => {
   }, []);
 
   // Fonction principale de récupération (utilise Supabase en priorité)
-  const fetchPonderations = useCallback(async () => {
+  const fetchPonderations = useCallback(async (): Promise<void> => {
     if (isSupabaseReady) {
       await fetchPonderationsFromSupabase();
     } else {
@@ -208,7 +222,7 @@ export const usePonderationSujets = (): UsePonderationSujetsReturn => {
   );
 
   // Fonction pour rafraîchir les pondérations
-  const refreshPonderations = useCallback(async () => {
+  const refreshPonderations = useCallback(async (): Promise<void> => {
     await fetchPonderations();
   }, [fetchPonderations]);
 

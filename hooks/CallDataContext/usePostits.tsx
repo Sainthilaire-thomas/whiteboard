@@ -7,6 +7,37 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
   const [allPostits, setAllPostits] = useState<Postit[]>([]);
   const [appelPostits, setAppelPostits] = useState<Postit[]>([]);
 
+  // ✅ NOUVEAU : Maps pour la correspondance ID ↔ Nom
+  const [pratiqueIdToNameMap, setPratiqueIdToNameMap] = useState<
+    Record<number, string>
+  >({});
+  const [pratiqueNameToIdMap, setPratiqueNameToIdMap] = useState<
+    Record<string, number>
+  >({});
+
+  // ✅ Récupérer les pratiques pour créer les maps de correspondance
+  const fetchPratiquesMapping = useCallback(async () => {
+    const { data, error } = await supabaseClient
+      .from("pratiques")
+      .select("idpratique, nompratique");
+
+    if (error) {
+      console.error("Erreur récupération pratiques:", error);
+      return;
+    }
+
+    const idToName: Record<number, string> = {};
+    const nameToId: Record<string, number> = {};
+
+    data.forEach((pratique: any) => {
+      idToName[pratique.idpratique] = pratique.nompratique;
+      nameToId[pratique.nompratique] = pratique.idpratique;
+    });
+
+    setPratiqueIdToNameMap(idToName);
+    setPratiqueNameToIdMap(nameToId);
+  }, []);
+
   const fetchAllPostits = useCallback(async () => {
     const { data, error } = await supabaseClient.from("postit").select("*");
     if (error) {
@@ -21,14 +52,40 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     [allPostits]
   );
 
+  // ✅ Maps principales - gardons les numbers en interne pour la robustesse
   const [postitToSujetMap, setPostitToSujetMap] = useState<
     Record<number, number | null>
   >({});
 
-  // Map pratique avec les IDs maintenant
   const [postitToPratiqueMap, setPostitToPratiqueMap] = useState<
-    Record<number, number | null> // Changé de string | null vers number | null
+    Record<number, number | null>
   >({});
+
+  // ✅ UTILITAIRES DE CONVERSION pour compatibilité
+  const convertPratiqueIdToName = useCallback(
+    (id: number | null): string | null => {
+      if (id === null) return null;
+      return pratiqueIdToNameMap[id] || null;
+    },
+    [pratiqueIdToNameMap]
+  );
+
+  const convertPratiqueNameToId = useCallback(
+    (name: string | null): number | null => {
+      if (name === null) return null;
+      return pratiqueNameToIdMap[name] || null;
+    },
+    [pratiqueNameToIdMap]
+  );
+
+  // ✅ INTERFACES LEGACY pour compatibilité avec l'ancien code
+  const postitToPratiqueMapLegacy = useMemo(() => {
+    const legacyMap: Record<string, string | null> = {};
+    Object.entries(postitToPratiqueMap).forEach(([postitId, pratiqueId]) => {
+      legacyMap[postitId] = convertPratiqueIdToName(pratiqueId);
+    });
+    return legacyMap;
+  }, [postitToPratiqueMap, convertPratiqueIdToName]);
 
   const addPostit = useCallback(
     async (
@@ -49,14 +106,14 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         sujet: additionalData.sujet || "Non assigné",
         idsujet: additionalData.idsujet || null,
         pratique: additionalData.pratique || "Non assigné",
-        idpratique: additionalData.idpratique || null, // AJOUT
+        idpratique: additionalData.idpratique || null,
       };
 
       const { data, error } = await supabaseClient
         .from("postit")
         .insert([newPostit])
         .select(
-          "id, callid, wordid, word, timestamp, text, iddomaine, sujet, idsujet, pratique, idpratique" // AJOUT idpratique
+          "id, callid, wordid, word, timestamp, text, iddomaine, sujet, idsujet, pratique, idpratique"
         )
         .single();
 
@@ -80,7 +137,6 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     [selectedCallId]
   );
 
-  // FONCTION UPDATEPOSTIT CORRIGÉE
   const updatePostit = useCallback(
     async (id: number, updatedFields: Record<string, any>) => {
       if (
@@ -95,7 +151,6 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
       }
 
       try {
-        // Construire les données sécurisées
         const safeUpdatedFields: Record<string, any> = {};
 
         if ("text" in updatedFields)
@@ -112,7 +167,6 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
           safeUpdatedFields.idpratique = updatedFields.idpratique ?? null;
         }
 
-        // Mise à jour Supabase
         const { data, error } = await supabaseClient
           .from("postit")
           .update(safeUpdatedFields)
@@ -124,7 +178,6 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
           return;
         }
 
-        // Mise à jour des états locaux avec fonction pour éviter stale closure
         setAllPostits((prevPostits) => {
           return prevPostits.map((postit) =>
             postit.id === id ? { ...postit, ...safeUpdatedFields } : postit
@@ -140,10 +193,10 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
         console.error("❌ Erreur dans updatePostit:", error);
       }
     },
-    [] // Dépendances vides pour stabilité
+    []
   );
 
-  // 🔁 FONCTION POUR LES SUJETS (À GARDER - utilisée ailleurs)
+  // ✅ FONCTION MODERNE (avec IDs) - pour le nouveau code
   const updatePostitToSujetMap = useCallback(
     (postitId: number, sujetId: number | null) => {
       setPostitToSujetMap((prev) => ({
@@ -154,17 +207,29 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     []
   );
 
-  // 🔁 FONCTION POUR LES PRATIQUES (CORRIGÉE pour les IDs)
-  const updatePostitToPratiqueMap = useCallback(
+  // ✅ FONCTION MODERNE (avec IDs) - pour le nouveau code
+  const updatePostitToPratiqueMapModern = useCallback(
     (postitId: number, pratiqueId: number | null) => {
-      // Changé de string vers number
-
       setPostitToPratiqueMap((prev) => ({
         ...prev,
-        [postitId]: pratiqueId, // Stocke l'ID, pas le nom
+        [postitId]: pratiqueId,
       }));
     },
     []
+  );
+
+  // ✅ FONCTION LEGACY (avec noms) - pour compatibilité avec l'ancien code
+  const updatePostitToPratiqueMap = useCallback(
+    (postitId: string, pratiqueName: string | null) => {
+      const postitIdNum = parseInt(postitId);
+      const pratiqueId = convertPratiqueNameToId(pratiqueName);
+
+      setPostitToPratiqueMap((prev) => ({
+        ...prev,
+        [postitIdNum]: pratiqueId,
+      }));
+    },
+    [convertPratiqueNameToId]
   );
 
   const deletePostit = useCallback(async (postitId: number) => {
@@ -181,9 +246,11 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     setAppelPostits((prev) => prev.filter((postit) => postit.id !== postitId));
   }, []);
 
+  // ✅ Initialisation au démarrage
   useEffect(() => {
+    fetchPratiquesMapping();
     fetchAllPostits();
-  }, [fetchAllPostits]);
+  }, [fetchPratiquesMapping, fetchAllPostits]);
 
   useEffect(() => {
     if (selectedCallId) {
@@ -193,7 +260,7 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     }
   }, [selectedCallId, getPostitsForCall]);
 
-  // Initialisation de la map des sujets (inchangé)
+  // Initialisation de la map des sujets
   useEffect(() => {
     if (!selectedCallId || appelPostits.length === 0) return;
 
@@ -205,13 +272,12 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     setPostitToSujetMap(initialMap);
   }, [appelPostits, selectedCallId]);
 
-  // EFFET CORRIGÉ : Initialiser la map pratique avec les IDs
+  // Initialisation de la map des pratiques
   useEffect(() => {
     if (!selectedCallId || appelPostits.length === 0) return;
 
-    const initialPratiqueMap: Record<number, number | null> = {}; // Changé vers number | null
+    const initialPratiqueMap: Record<number, number | null> = {};
     appelPostits.forEach((postit) => {
-      // Stocker l'ID pratique, pas le nom
       initialPratiqueMap[postit.id] = postit.idpratique ?? null;
     });
 
@@ -227,8 +293,19 @@ export function usePostits(selectedCallId: number | null): UsePostitsResult {
     updatePostit,
     deletePostit,
     postitToSujetMap,
-    updatePostitToSujetMap, // ← FONCTION POUR LES SUJETS (GARDÉE)
-    postitToPratiqueMap,
-    updatePostitToPratiqueMap, // ← FONCTION POUR LES PRATIQUES (CORRIGÉE)
+    updatePostitToSujetMap,
+
+    // ✅ COMPATIBILITÉ : Interface legacy pour l'ancien code
+    postitToPratiqueMap: postitToPratiqueMapLegacy,
+    updatePostitToPratiqueMap,
+
+    // ✅ BONUS : Fonctions modernes pour le nouveau code (optionnel)
+    // Vous pouvez les exposer si vous voulez migrer progressivement
+    // postitToPratiqueMapModern: postitToPratiqueMap,
+    // updatePostitToPratiqueMapModern,
+
+    // ✅ UTILITAIRES de conversion exposés pour usage externe si nécessaire
+    // convertPratiqueIdToName,
+    // convertPratiqueNameToId,
   };
 }

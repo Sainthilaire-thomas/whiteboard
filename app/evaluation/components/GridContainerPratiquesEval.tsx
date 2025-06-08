@@ -98,8 +98,8 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
     // ✅ CORRECTION: Utiliser l'ID de la pratique au lieu du nom
     setSelectedPostit(updatedPostit);
     updatePostitToPratiqueMap(
-      updatedPostit.id,
-      isSelectedForPostit ? null : selectedItem.idpratique // ✅ FIXÉ: Utiliser l'ID au lieu du nom
+      updatedPostit.id.toString(),
+      isSelectedForPostit ? null : selectedItem.idpratique.toString()
     );
 
     // ✅ Met à jour le post-it dans Supabase (ancien comportement)
