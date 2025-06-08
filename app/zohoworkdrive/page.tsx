@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { ZohoAuthToken } from "./types"; // ✅ Import depuis les types locaux
+import { ZohoAuthToken } from "./types";
 import WorkdriveExplorer from "./components/WorkdriveExplorer";
 import EnterpriseCallsList from "./components/EnterpriseCallsList";
 import { useAppContext } from "@/context/AppContext";
@@ -24,7 +24,8 @@ import {
 } from "@mui/material";
 import { SyntheticEvent } from "react";
 
-export default function ZohoWorkdrivePage() {
+// Composant qui utilise useSearchParams
+function ZohoWorkdriveContent() {
   const [token, setToken] = useState<ZohoAuthToken | null>(null);
   const [activeTab, setActiveTab] = useState<number>(0);
   const searchParams = useSearchParams();
@@ -37,7 +38,7 @@ export default function ZohoWorkdrivePage() {
     isLoadingEntreprises,
   } = useAppContext();
 
-  // Récupérer le token depuis les paramètres d'URL (utilisé après le callback d'authentification)
+  // Récupérer le token depuis les paramètres d'URL
   useEffect(() => {
     const tokenParam = searchParams.get("token");
 
@@ -48,7 +49,7 @@ export default function ZohoWorkdrivePage() {
         ) as ZohoAuthToken;
         setToken(parsedToken);
 
-        // Supprimer le token de l'URL (pour éviter qu'il reste dans l'historique)
+        // Supprimer le token de l'URL
         window.history.replaceState({}, document.title, "/zohoworkdrive");
       } catch (error) {
         console.error("Failed to parse token:", error);
@@ -56,7 +57,7 @@ export default function ZohoWorkdrivePage() {
     }
   }, [searchParams]);
 
-  // ✅ Gestionnaire pour le changement d'entreprise avec types corrects
+  // Gestionnaires d'événements
   const handleEntrepriseChange = (
     event: SelectChangeEvent<string | number>
   ): void => {
@@ -64,7 +65,6 @@ export default function ZohoWorkdrivePage() {
     setSelectedEntreprise(entrepriseId);
   };
 
-  // ✅ Gestionnaire pour le changement d'onglet avec types corrects
   const handleTabChange = (event: SyntheticEvent, newValue: number): void => {
     setActiveTab(newValue);
   };
@@ -141,5 +141,29 @@ export default function ZohoWorkdrivePage() {
         </>
       )}
     </Container>
+  );
+}
+
+// Composant principal avec Suspense
+export default function ZohoWorkdrivePage() {
+  return (
+    <Suspense
+      fallback={
+        <Container maxWidth="lg">
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "50vh",
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        </Container>
+      }
+    >
+      <ZohoWorkdriveContent />
+    </Suspense>
   );
 }
