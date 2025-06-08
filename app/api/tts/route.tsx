@@ -7,8 +7,21 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// ✅ TYPES POUR LES TONS
+type ToneType =
+  | "professionnel"
+  | "chaleureux"
+  | "enthousiaste"
+  | "calme"
+  | "confiant"
+  | "explication"
+  | "empathique"
+  | "resolution_probleme"
+  | "instructions"
+  | "urgence_controlee";
+
 // ✅ TONS SPÉCIALISÉS POUR LE CONSEIL
-const toneInstructions = {
+const toneInstructions: Record<ToneType, string> = {
   professionnel:
     "Parlez d'un ton professionnel et courtois, adapté au conseil clientèle.",
   chaleureux:
@@ -29,26 +42,39 @@ const toneInstructions = {
     "Transmettez l'importance tout en restant calme et maîtrisé.",
 };
 
+// ✅ FONCTION HELPER POUR VÉRIFIER LES TONS VALIDES
+const isValidTone = (tone: any): tone is ToneType => {
+  return tone && typeof tone === "string" && tone in toneInstructions;
+};
+
 // ✅ ANALYSE CONTEXTUELLE SIMPLIFIÉE
-const analyzeTextContext = (text: string) => {
-  const patterns = {
+const analyzeTextContext = (text: string): ToneType => {
+  const patterns: Record<ToneType, RegExp> = {
     explication: /(donc|ainsi|c'est-à-dire|en effet|par conséquent)/i,
     empathique: /(je comprends|je vois|effectivement|désolé)/i,
     resolution_probleme: /(solution|résoudre|problème|nous allons)/i,
     instructions: /(vous devez|il faut|suivez|procédez|étape)/i,
     urgence_controlee: /(urgent|rapidement|important|attention)/i,
+    professionnel: /./,
+    chaleureux: /./,
+    enthousiaste: /./,
+    calme: /./,
+    confiant: /./,
   };
 
   for (const [context, pattern] of Object.entries(patterns)) {
-    if (pattern.test(text)) {
-      return context;
+    if (context !== "professionnel" && pattern.test(text)) {
+      return context as ToneType;
     }
   }
   return "professionnel";
 };
 
 // ✅ PREPROCESSING SIMPLIFIÉ
-const enhanceTextForProsodie = (text: string, detectedContext: string) => {
+const enhanceTextForProsodie = (
+  text: string,
+  detectedContext: ToneType
+): string => {
   let enhancedText = text.replace(/\s+/g, " ").trim();
 
   switch (detectedContext) {
@@ -86,7 +112,7 @@ export async function POST(request: NextRequest) {
     });
 
     let processedText = text;
-    let effectiveTone = tone || "professionnel";
+    let effectiveTone: ToneType = "professionnel";
 
     // ✅ ENHANCEMENT AUTOMATIQUE DU CONTEXTE
     if (autoDetectContext || textEnhancement === "contextuel") {
@@ -95,20 +121,23 @@ export async function POST(request: NextRequest) {
 
       if (!tone) {
         effectiveTone = detectedContext;
+      } else if (isValidTone(tone)) {
+        effectiveTone = tone;
       }
 
       if (textEnhancement === "contextuel") {
         processedText = enhanceTextForProsodie(text, detectedContext);
         console.log(`📝 Texte enrichi: ${processedText}`);
       }
+    } else if (isValidTone(tone)) {
+      effectiveTone = tone;
     }
 
     // ✅ CORRECTION: Utiliser le bon nom de modèle
     if (model === "gpt-4o-mini-tts" || model === "gpt-4o-audio") {
       // ✅ Vérifier si le modèle GPT-4o-audio est disponible
       try {
-        const selectedInstruction =
-          toneInstructions[effectiveTone] || toneInstructions["professionnel"];
+        const selectedInstruction = toneInstructions[effectiveTone];
 
         const completion = await openai.chat.completions.create({
           model: "gpt-4o-audio-preview", // ✅ MODÈLE CORRECT

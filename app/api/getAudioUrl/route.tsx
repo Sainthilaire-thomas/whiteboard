@@ -25,8 +25,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Vérifier que nous avons des données et que le premier élément existe
+    if (!data || data.length === 0) {
+      return NextResponse.json(
+        { error: "Aucune URL signée générée" },
+        { status: 500 }
+      );
+    }
+
+    // Vérifier si il y a une erreur pour ce fichier spécifique
+    const firstResult = data[0];
+    if (firstResult.error) {
+      return NextResponse.json({ error: firstResult.error }, { status: 500 });
+    }
+
     // Retourne la première URL signée du tableau
-    return NextResponse.json({ signedUrl: data.signedUrls[0] });
+    return NextResponse.json({ signedUrl: firstResult.signedUrl });
   } catch (error: any) {
     console.error("Erreur serveur:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

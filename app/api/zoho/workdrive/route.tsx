@@ -5,7 +5,7 @@ import {
   getDownloadUrl,
 } from "@/app/zohoworkdrive/lib/zohoworkdrive/api";
 
-import { ZohoAuthToken } from "@/app/zohoworkdrive/types/zoho";
+import { ZohoAuthToken } from "@/app/zohoworkdrive/types";
 
 export async function GET(request: NextRequest) {
   // Récupérer le token depuis les headers

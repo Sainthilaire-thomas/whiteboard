@@ -4,8 +4,21 @@ import { createClient } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from "uuid";
 import { handleCallSubmission } from "@/app/zohoworkdrive/lib/audioUploadUtils";
 
+// Interface for word data structure
+interface WordData {
+  word: string;
+  start_time?: number;
+  end_time?: number;
+  confidence?: number;
+  speaker?: string;
+  [key: string]: any; // Allow for additional properties
+}
+
 // Fonction d'upload modifiée pour utiliser le client admin
-const uploadAudioAdmin = async (file, entrepriseId) => {
+const uploadAudioAdmin = async (
+  file: File,
+  entrepriseId: string
+): Promise<string> => {
   // Créer un client admin qui contourne les RLS
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,7 +51,10 @@ const uploadAudioAdmin = async (file, entrepriseId) => {
 };
 
 // Fonction pour générer une URL signée
-const generateSignedUrlAdmin = async (filePath, expiresIn = 60) => {
+const generateSignedUrlAdmin = async (
+  filePath: string,
+  expiresIn: number = 60
+): Promise<string> => {
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -235,7 +251,7 @@ export async function POST(request: Request) {
       // Insert words associated with the transcription
       const parsedData = JSON.parse(transcriptionText);
       if (parsedData.words && parsedData.words.length > 0) {
-        const wordsData = parsedData.words.map((word) => ({
+        const wordsData = parsedData.words.map((word: WordData) => ({
           transcriptid: transcriptId,
           ...word,
         }));
