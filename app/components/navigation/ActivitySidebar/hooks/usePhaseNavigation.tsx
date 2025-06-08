@@ -8,10 +8,23 @@ import { useConseiller } from "@/context/ConseillerContext";
 import { STATUS_CONFIG, ROUTES, VIEWS, COLORS } from "../constants";
 import { useActivityPhases } from "./useActivityPhases";
 
+function useSearchParamsSafe() {
+  const [currentView, setCurrentView] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Accès côté client uniquement
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      setCurrentView(searchParams.get("view"));
+    }
+  }, []);
+
+  return { currentView };
+}
+
 export const usePhaseNavigation = () => {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const currentView = searchParams.get("view");
+  const { currentView } = useSearchParamsSafe();
 
   const [openPhase, setOpenPhase] = useState<PhaseKey | null>(null);
 
@@ -459,9 +472,15 @@ export const usePhaseNavigation = () => {
         return window.location.pathname === "/evaluation/admin";
       }
 
-      return !!searchParams?.toString().includes(route.split("?")[1]);
+      // Utiliser window.location.search au lieu de searchParams
+      if (typeof window !== "undefined") {
+        const urlSearchParams = new URLSearchParams(window.location.search);
+        return urlSearchParams.toString().includes(route.split("?")[1]);
+      }
+
+      return false;
     },
-    [searchParams]
+    [] // Retirer searchParams des dépendances
   );
 
   const isActivePhase = useCallback(

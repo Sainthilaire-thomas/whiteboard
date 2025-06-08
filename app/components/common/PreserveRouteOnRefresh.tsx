@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCallData } from "@/context/CallDataContext";
 
-export default function PreserveRouteOnRefresh() {
+// Composant qui utilise useSearchParams
+function PreserveRouteContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -49,4 +50,13 @@ export default function PreserveRouteOnRefresh() {
   }, [pathname, searchParams, router, selectedCall, selectCall, calls]);
 
   return null;
+}
+
+// Composant principal avec Suspense
+export default function PreserveRouteOnRefresh() {
+  return (
+    <Suspense fallback={null}>
+      <PreserveRouteContent />
+    </Suspense>
+  );
 }
