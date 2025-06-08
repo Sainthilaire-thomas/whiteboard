@@ -15,7 +15,7 @@ import {
   Divider,
 } from "@mui/material";
 import { TrendingUp, Assessment, Star, Warning } from "@mui/icons-material";
-import { SyntheseTabProps } from "@/types/evaluation";
+import { SyntheseTabProps } from "./syntheseEvaluation.types";
 import { formatMotif } from "./utils/formatters";
 import { useAppContext } from "@/context/AppContext";
 import { useSupabase } from "@/context/SupabaseContext";
@@ -129,7 +129,7 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
         setShouldAutoSelect(true);
 
         // Mettre à jour le domaine sélectionné dans le contexte
-        if (selectedDomain !== singleDomain) {
+        if (selectedDomain !== singleDomain && singleDomain != null) {
           console.log(
             "🔄 Mise à jour automatique du domaine sélectionné:",
             singleDomain
@@ -831,8 +831,8 @@ const SyntheseTab: React.FC<SyntheseTabProps> = ({
                                       scorePercent >= 80
                                         ? "#4caf50"
                                         : scorePercent >= 60
-                                        ? "#ff9800"
-                                        : "#f44336",
+                                          ? "#ff9800"
+                                          : "#f44336",
                                   }}
                                 >
                                   {Math.round(scorePercent)}%

@@ -1,4 +1,4 @@
-// TTSStudioPanel.tsx - Version enrichie avec support des zones
+// TTSStudioPanel.tsx - Version enrichie avec support des zones ET prosodie
 import React, { useState } from "react";
 import {
   Box,
@@ -21,6 +21,7 @@ import {
   CompareArrows,
   ExpandMore,
   ExpandLess,
+  TheaterComedy, // ✅ NOUVEAU ICON pour prosodie
 } from "@mui/icons-material";
 
 // Import des extensions
@@ -39,7 +40,10 @@ import {
 } from "./extensions/SmartTextSegmentation";
 import { TTSSettings } from "./hooks/useTTS";
 
-// ✅ NOUVEAUX IMPORTS pour les zones
+// ✅ NOUVEAU : Import pour la prosodie
+import { ProsodieControls } from "./extensions/ProsodieControls";
+
+// Imports pour les zones (existants)
 import {
   ZoneComposition,
   ZoneAwareTextSegment,
@@ -65,7 +69,7 @@ interface TTSStudioPanelProps {
   onPlaySegment: (segment: TextSegment) => void;
   onStopSegment: (segmentId: string) => void;
 
-  // ✅ NOUVELLES PROPS pour les zones
+  // Props pour les zones (existantes)
   zoneComposition?: ZoneComposition;
   onPlayZoneSegment?: (segment: ZoneAwareTextSegment) => void;
   onDownloadZoneSegment?: (segment: ZoneAwareTextSegment) => void;
@@ -115,7 +119,7 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
   onSegmentsChange,
   onPlaySegment,
   onStopSegment,
-  // ✅ NOUVELLES PROPS
+  // Props zones (existantes)
   zoneComposition,
   onPlayZoneSegment,
   onDownloadZoneSegment,
@@ -133,7 +137,7 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
     setActiveTab(newValue);
   };
 
-  // ✅ Gestion du callback pour les segments de zone
+  // Gestion du callback pour les segments de zone (existant)
   const handlePlayZoneSegment = (segment: ZoneAwareTextSegment) => {
     if (onPlayZoneSegment) {
       onPlayZoneSegment(segment);
@@ -146,15 +150,22 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
     }
   };
 
-  // Comptage des fonctionnalités actives
+  // ✅ NOUVEAU : Détection des fonctionnalités prosodie actives
+  const hasProsodieFeatures =
+    basicSettings.tone !== "professionnel" ||
+    basicSettings.textEnhancement !== "aucun" ||
+    basicSettings.autoDetectContext === true;
+
+  // Comptage des fonctionnalités actives ✅ ENRICHI
   const activeFeatures = [
     roleVoiceSettings.enabled && "Voix par rôle",
     conversationalSettings.enabled && "Agent conversationnel",
     segments.length > 1 && "Découpage intelligent",
-    zoneComposition?.hasReworkedContent && "Zones retravaillées", // ✅ NOUVEAU
+    zoneComposition?.hasReworkedContent && "Zones retravaillées",
+    hasProsodieFeatures && "Prosodie avancée", // ✅ NOUVEAU
   ].filter(Boolean);
 
-  // ✅ Déterminer quel type de découpage afficher
+  // Déterminer quel type de découpage afficher (existant)
   const hasZoneComposition =
     zoneComposition && zoneComposition.segments.length > 0;
   const hasStandardSegments = segments.length > 1;
@@ -169,7 +180,7 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
         borderColor: "divider",
       }}
     >
-      {/* En-tête du studio */}
+      {/* En-tête du studio (existant) */}
       <Box sx={{ p: 2, pb: 0 }}>
         <Box
           sx={{
@@ -199,7 +210,7 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
           </IconButton>
         </Box>
 
-        {/* Aperçu des fonctionnalités actives */}
+        {/* Aperçu des fonctionnalités actives ✅ ENRICHI */}
         {activeFeatures.length > 0 && !isCollapsed && (
           <Box sx={{ mt: 1, display: "flex", gap: 0.5, flexWrap: "wrap" }}>
             {activeFeatures.map((feature, index) => (
@@ -208,7 +219,11 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
                 label={feature}
                 size="small"
                 color={
-                  feature === "Zones retravaillées" ? "secondary" : "primary"
+                  feature === "Zones retravaillées"
+                    ? "secondary"
+                    : feature === "Prosodie avancée"
+                      ? "warning" // ✅ NOUVEAU : Couleur spéciale pour prosodie
+                      : "primary"
                 }
                 variant="filled"
                 sx={{ fontSize: "11px" }}
@@ -219,7 +234,7 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
       </Box>
 
       <Collapse in={!isCollapsed}>
-        {/* Onglets de navigation */}
+        {/* Onglets de navigation ✅ ENRICHI avec Prosodie */}
         <Box sx={{ px: 2 }}>
           <Tabs
             value={activeTab}
@@ -238,6 +253,24 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
               label="Voix & Rôles"
               sx={{ minHeight: 40, py: 1 }}
             />
+            {/* ✅ NOUVEAU : Onglet Prosodie */}
+            <Tab
+              icon={<TheaterComedy />}
+              label={
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  Prosodie
+                  {hasProsodieFeatures && (
+                    <Chip
+                      label="ON"
+                      size="small"
+                      color="warning"
+                      sx={{ fontSize: "9px", height: "16px" }}
+                    />
+                  )}
+                </Box>
+              }
+              sx={{ minHeight: 40, py: 1 }}
+            />
             <Tab
               icon={<Psychology />}
               label="IA Conversationnelle"
@@ -253,9 +286,9 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
 
         <Divider />
 
-        {/* Contenu des onglets */}
+        {/* Contenu des onglets ✅ ENRICHI */}
         <Box sx={{ p: 2 }}>
-          {/* Onglet 1: Paramètres de base */}
+          {/* Onglet 1: Paramètres de base (existant) */}
           <TabPanel value={activeTab} index={0}>
             <TTSControls
               settings={basicSettings}
@@ -273,8 +306,11 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
                   onClick={() =>
                     onBasicSettingsChange({
                       ...basicSettings,
-                      voice: "alloy",
-                      speed: 0.9,
+                      voice: "shimmer",
+                      speed: 0.8,
+                      tone: "empathique",
+                      textEnhancement: "contextuel",
+                      autoDetectContext: false, // ✅ CORRECTION : ne pas forcer à true
                     })
                   }
                   style={{
@@ -287,7 +323,7 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
                   }}
                   disabled={disabled}
                 >
-                  🏢 Professionnel
+                  💝 Empathique
                 </button>
                 <button
                   onClick={() =>
@@ -295,6 +331,8 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
                       ...basicSettings,
                       voice: "nova",
                       speed: 1.1,
+                      tone: "enthousiaste", // ✅ AJOUTER
+                      textEnhancement: "emotionnel", // ✅ AJOUTER
                     })
                   }
                   style={{
@@ -315,6 +353,9 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
                       ...basicSettings,
                       voice: "shimmer",
                       speed: 0.8,
+                      tone: "empathique", // ✅ AJOUTER
+                      textEnhancement: "contextuel", // ✅ AJOUTER
+                      autoDetectContext: true, // ✅ AJOUTER
                     })
                   }
                   style={{
@@ -333,7 +374,7 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
             </Box>
           </TabPanel>
 
-          {/* Onglet 2: Voix par rôle */}
+          {/* Onglet 2: Voix par rôle (existant) */}
           <TabPanel value={activeTab} index={1}>
             <FormControlLabel
               control={
@@ -369,8 +410,18 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
             )}
           </TabPanel>
 
-          {/* Onglet 3: Agent conversationnel */}
+          {/* ✅ NOUVEAU : Onglet 3: Prosodie */}
           <TabPanel value={activeTab} index={2}>
+            <ProsodieControls
+              settings={basicSettings}
+              onChange={onBasicSettingsChange}
+              disabled={disabled}
+              selectedText={text} // Pour l'analyse contextuelle
+            />
+          </TabPanel>
+
+          {/* Onglet 4: Agent conversationnel (décalé) */}
+          <TabPanel value={activeTab} index={3}>
             <ConversationalAgentExtension
               settings={conversationalSettings}
               onChange={onConversationalChange}
@@ -378,10 +429,10 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
             />
           </TabPanel>
 
-          {/* Onglet 4: Découpage intelligent ✅ MODIFIÉ */}
-          <TabPanel value={activeTab} index={3}>
+          {/* Onglet 5: Découpage intelligent (décalé) */}
+          <TabPanel value={activeTab} index={4}>
             {hasZoneComposition ? (
-              // ✅ NOUVEAU : Affichage enrichi par zones
+              // Affichage enrichi par zones (existant)
               <>
                 <Box
                   sx={{
@@ -449,12 +500,17 @@ export const TTSStudioPanel: React.FC<TTSStudioPanelProps> = ({
           </TabPanel>
         </Box>
 
-        {/* Résumé de configuration ✅ ENRICHI */}
+        {/* Résumé de configuration ✅ ENRICHI avec prosodie */}
         <Divider />
         <Box sx={{ p: 2, bgcolor: "action.hover" }}>
           <Typography variant="caption" color="text.secondary">
             <strong>Configuration actuelle:</strong> Voix {basicSettings.voice}{" "}
             • Vitesse {basicSettings.speed}x • Qualité {basicSettings.model}
+            {basicSettings.tone &&
+              basicSettings.tone !== "professionnel" &&
+              ` • Ton ${basicSettings.tone}`}
+            {basicSettings.textEnhancement !== "aucun" &&
+              ` • Enhancement ${basicSettings.textEnhancement}`}
             {roleVoiceSettings.enabled && " • Voix différenciées"}
             {conversationalSettings.enabled &&
               ` • IA ${conversationalSettings.style}`}

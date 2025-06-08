@@ -1,4 +1,4 @@
-// utils/stepContentUtils.js - Version enrichie avec passage des props zones
+// utils/stepContentUtils.tsx - Version corrigée avec import de l'interface
 import React, { useEffect } from "react";
 import { useCallData } from "@/context/CallDataContext";
 import { Box, Typography, Paper, IconButton, Button } from "@mui/material";
@@ -8,58 +8,18 @@ import DynamicSpeechToTextForFourZones from "../components/DynamicSpeechToTextFo
 import { ZoneLegend } from "../components/ZoneLegend";
 import { ClientResponseSection } from "../components/ClientResponseSection";
 import FinalReviewStep from "../components/FinalReviewStep/FinalReviewStep";
-import { PostitType } from "../types/types";
+// ✅ IMPORT de l'interface depuis types.tsx
+import { PostitType, RenderStepContentParams } from "../types/types";
 import { ZONES } from "../constants/zone";
 import {
   generateFinalConseillerText,
   hasImprovedContent,
 } from "./generateFinalText";
 
-/**
- * Type pour les paramètres de renderStepContent ✅ ENRICHI
- */
-interface RenderStepContentParams {
-  activeStep: number;
-  selectionMode: string;
-  setSelectionMode: (mode: string) => void;
-  selectedClientText: string;
-  selectedConseillerText: string;
-  fontSize: number;
-  zoneColors: Record<string, string>;
-  hasOriginalPostits: boolean;
-  setSelectedClientText: (text: string) => void;
-  setSelectedConseillerText: (text: string) => void;
-  newPostitContent: string;
-  setNewPostitContent: (content: string) => void;
-  currentZone: string;
-  setCurrentZone: (zone: string) => void;
-  setTextToCategorizze: (text: string) => void;
-  setShowCategoryDialog: (show: boolean) => void;
-  audioSrc: string | null;
-  seekTo: (time: number) => void;
-  play: () => void;
-  pause?: () => void; // ✅ NOUVELLE PROP optionnelle
-  speechToTextVisible: boolean;
-  toggleSpeechToText: () => void;
-  addPostitsFromSpeech: (postits: PostitType[]) => void;
-  showNotification: (message: string, severity?: string) => void;
-  renderDropZones: (improvementMode?: boolean) => JSX.Element;
-  addSelectedTextAsPostit: (zone: string) => void;
-  mode: string;
-  handleOpenZoneMenu?: (
-    event: React.MouseEvent<HTMLElement>,
-    zone: string
-  ) => void;
-  postits: PostitType[];
-  setPostits: (postits: PostitType[]) => void;
-  // Props TTS existantes
-  ttsStudioVisible?: boolean;
-  toggleTTSStudio?: () => void;
-}
+// ✅ SUPPRESSION de l'interface locale - on utilise celle de types.tsx
 
 /**
  * Fonction utilitaire pour le rendu du contenu en fonction de l'étape active
- * ✅ Version enrichie avec support des zones
  */
 export const renderStepContent = ({
   activeStep,
@@ -81,7 +41,7 @@ export const renderStepContent = ({
   audioSrc,
   seekTo,
   play,
-  pause, // ✅ NOUVELLE PROP
+  pause,
   speechToTextVisible,
   toggleSpeechToText,
   addPostitsFromSpeech,
@@ -102,12 +62,12 @@ export const renderStepContent = ({
     conseillerSelection,
   } = useCallData();
 
-  // ✅ Calculer le texte retravaillé (logique existante)
+  // Calculer le texte retravaillé localement
   const improvedConseillerText = hasImprovedContent(postits)
     ? generateFinalConseillerText(postits)
     : null;
 
-  // Debug logs enrichis
+  // Debug logs
   useEffect(() => {
     console.log("📊 Debug renderStepContent - Step:", activeStep);
     console.log("- postits:", postits);
@@ -116,7 +76,7 @@ export const renderStepContent = ({
     console.log("- hasImprovedContent:", hasImprovedContent(postits));
   }, [activeStep, postits, zoneColors, improvedConseillerText]);
 
-  // Rendu de l'étape 0: Sélection du contexte (INCHANGÉ)
+  // Rendu de l'étape 0: Sélection du contexte
   const renderStep0 = () => (
     <>
       <ClientResponseSection
@@ -137,7 +97,7 @@ export const renderStepContent = ({
     </>
   );
 
-  // Rendu de l'étape 1: Jeu de rôle (INCHANGÉ)
+  // Rendu de l'étape 1: Jeu de rôle
   const renderStep1 = () => (
     <>
       <Box sx={{ mb: 1 }}>
@@ -183,7 +143,6 @@ export const renderStepContent = ({
               )}
             </Box>
 
-            {/* Bouton pour déclencher l'enregistrement vocal */}
             <IconButton
               color="primary"
               onClick={toggleSpeechToText}
@@ -202,7 +161,6 @@ export const renderStepContent = ({
             </IconButton>
           </Box>
 
-          {/* Composant de reconnaissance vocale contextuel */}
           {speechToTextVisible && (
             <Box
               sx={{
@@ -229,10 +187,9 @@ export const renderStepContent = ({
     </>
   );
 
-  // Rendu de l'étape 2: Suggestions d'amélioration AVEC TTS (INCHANGÉ)
+  // Rendu de l'étape 2: Suggestions d'amélioration
   const renderStep2 = () => (
     <>
-      {/* Section client qui reste visible */}
       <Paper
         elevation={3}
         sx={{
@@ -250,7 +207,6 @@ export const renderStepContent = ({
         </Typography>
       </Paper>
 
-      {/* Barre d'outils avec bouton TTS */}
       <Box
         sx={{
           display: "flex",
@@ -289,7 +245,6 @@ export const renderStepContent = ({
 
       <ZoneLegend />
 
-      {/* Zones d'amélioration avec hauteur adaptative */}
       <Box
         sx={{
           maxHeight: ttsStudioVisible ? "50vh" : "none",
@@ -301,9 +256,9 @@ export const renderStepContent = ({
     </>
   );
 
-  // Rendu de l'étape 3: Lecture finale ✅ ENRICHI avec passage des nouvelles props
+  // Rendu de l'étape 3: Lecture finale
   const renderStep3 = () => {
-    console.log("🎙️ Rendu FinalReviewStep enrichi avec:");
+    console.log("🎙️ Rendu FinalReviewStep avec:");
     console.log("- selectedConseillerText:", selectedConseillerText);
     console.log("- improvedConseillerText:", improvedConseillerText);
     console.log("- postits (count):", postits.length);
@@ -314,15 +269,13 @@ export const renderStepContent = ({
         mode={mode}
         selectedClientText={selectedClientText}
         selectedConseillerText={selectedConseillerText}
-        improvedConseillerText={improvedConseillerText}
-        // ✅ NOUVELLES PROPS nécessaires pour les zones
+        improvedConseillerText={improvedConseillerText || undefined}
         postits={postits}
         zoneColors={zoneColors}
-        // ✅ NOUVELLES PROPS pour l'audio original
         audioSrc={audioSrc}
-        clientSelection={clientSelection}
+        clientSelection={clientSelection || undefined}
         play={play}
-        pause={pause} // ✅ NOUVELLE PROP
+        pause={pause}
         seekTo={seekTo}
       />
     );
@@ -343,11 +296,7 @@ export const renderStepContent = ({
   }
 };
 
-// ✅ NOUVELLES FONCTIONS UTILITAIRES pour les zones (optionnelles)
-
-/**
- * Vérifie si les post-its contiennent des zones spécifiques
- */
+// Fonctions utilitaires pour les zones
 export const hasZoneContent = (
   postits: PostitType[],
   zone: string
@@ -360,9 +309,6 @@ export const hasZoneContent = (
   );
 };
 
-/**
- * Compte le nombre de zones actives avec du contenu retravaillé
- */
 export const countActiveZones = (postits: PostitType[]): number => {
   const activeZones = new Set();
 
@@ -385,9 +331,6 @@ export const countActiveZones = (postits: PostitType[]): number => {
   return activeZones.size;
 };
 
-/**
- * Génère un résumé des zones utilisées
- */
 export const getActiveZonesSummary = (
   postits: PostitType[],
   zoneColors: Record<string, string>

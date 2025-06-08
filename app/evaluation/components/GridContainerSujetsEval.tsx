@@ -34,8 +34,6 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
     handleSelectSujet,
     toggleSujet,
     sujetsForActivite, // ✅ Contient uniquement des `idsujet`
-    setSujetsForActivite,
-    initialSujetsForActivite,
   } = useAppContext();
 
   const { selectedPostit, setSelectedPostit } = useCallData();
@@ -48,10 +46,6 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
   const sujetsSet = useMemo(
     () => new Set(sujetsForActivite),
     [sujetsForActivite]
-  );
-  const initialSujetsSet = useMemo(
-    () => new Set(initialSujetsForActivite),
-    [initialSujetsForActivite]
   );
 
   if (!currentActivityId) {
@@ -155,14 +149,14 @@ const GridContainerSujetsEval: React.FC<GridContainerSujetsEvalProps> = ({
                         backgroundColor: isSelectedForPostit
                           ? "error.main"
                           : isAssociated
-                          ? "gray"
-                          : category.couleur,
+                            ? "gray"
+                            : category.couleur,
                         "&:hover": {
                           backgroundColor: isSelectedForPostit
                             ? "error.main"
                             : isAssociated
-                            ? "action.selected"
-                            : "action.hover",
+                              ? "action.selected"
+                              : "action.hover",
                         },
                         px: 1,
                         py: 0.5,

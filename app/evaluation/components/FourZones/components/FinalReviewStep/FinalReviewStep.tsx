@@ -50,6 +50,7 @@ import {
 // Import des composants existants
 import EnhancedClientSection from "./components/EnhancedClientSection";
 import EnrichedTextDisplay from "./components/EnrichedTextDisplay";
+import { ProsodieControls } from "./extensions/ProsodieControls";
 
 interface FinalReviewStepProps {
   mode: string;
@@ -138,13 +139,19 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
   // Utiliser le texte de la composition
   const finalConseillerText = zoneComposition.fullText;
 
-  // État des paramètres TTS (existant)
+  // Modifier l'état des paramètres TTS de base:
   const [basicSettings, setBasicSettings] = useState<TTSSettings>({
     voice: "alloy",
     speed: 1.0,
-    model: "tts-1",
+    model: "tts-1", // ✅ CORRECTION: modèle valide par défaut
     textEnhancement: "aucun",
+    tone: "professionnel",
+    autoDetectContext: false,
   });
+
+  useEffect(() => {
+    console.log("🔍 basicSettings mis à jour:", basicSettings);
+  }, [basicSettings]);
 
   const [roleVoiceSettings, setRoleVoiceSettings] = useState<RoleVoiceSettings>(
     {
@@ -176,6 +183,69 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
 
   const handleCloseEditor = () => {
     setIsEditModalOpen(false);
+  };
+
+  // ✅ NOUVELLE FONCTION: Lecture avec prosodie intelligente
+  const handlePlayRoleWithProsodie = async (role: "client" | "conseiller") => {
+    const baseText =
+      role === "client" ? selectedClientText : finalConseillerText;
+
+    console.log("🎭 handlePlayRoleWithProsodie appelé:", {
+      role,
+      textLength: baseText.length,
+      currentSettings: basicSettings,
+    });
+
+    if (activeSegment === role && tts.isPlaying) {
+      console.log("🛑 Arrêt lecture en cours");
+      tts.stopAudio();
+      setActiveSegment(null);
+      return;
+    }
+
+    // ✅ Configuration prosodie
+    let effectiveSettings = { ...basicSettings };
+
+    if (roleVoiceSettings.enabled) {
+      effectiveSettings = {
+        ...basicSettings,
+        voice: roleVoiceSettings[role].voice,
+        speed: roleVoiceSettings[role].speed,
+      };
+    }
+
+    // ✅ ENHANCEMENT POUR LE CONSEILLER
+    if (role === "conseiller") {
+      // ✅ CORRECTION: utiliser un modèle valide
+      if (basicSettings.tone && basicSettings.tone !== "professionnel") {
+        effectiveSettings.model = "gpt-4o-audio"; // ✅ Nom corrigé
+        effectiveSettings.textEnhancement = "contextuel";
+      }
+
+      // Auto-détection si activée
+      if (basicSettings.autoDetectContext) {
+        effectiveSettings.autoDetectContext = true;
+      }
+
+      console.log("🎭 Configuration prosodie conseiller:", {
+        tone: effectiveSettings.tone,
+        model: effectiveSettings.model,
+        textLength: baseText.length,
+        enhancement: effectiveSettings.textEnhancement,
+      });
+    }
+
+    try {
+      setActiveSegment(role);
+      await tts.speak(baseText, effectiveSettings);
+
+      if (!tts.isPlaying) {
+        setActiveSegment(null);
+      }
+    } catch (error) {
+      console.error("❌ Erreur lors de la lecture:", error);
+      setActiveSegment(null);
+    }
   };
 
   const handleSaveComposition = (newComposition: ZoneComposition) => {
@@ -572,7 +642,7 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
                         <PlayArrow />
                       )
                     }
-                    onClick={() => handlePlayRole("conseiller")}
+                    onClick={() => handlePlayRoleWithProsodie("conseiller")} // ✅ NOUVELLE FONCTION
                     disabled={tts.isLoading && activeSegment !== "conseiller"}
                     color={
                       activeSegment === "conseiller" && tts.isPlaying
@@ -582,9 +652,9 @@ export const FinalReviewStep: React.FC<FinalReviewStepProps> = ({
                   >
                     {activeSegment === "conseiller" && tts.isPlaying
                       ? "Arrêter"
-                      : "Lire"}
+                      : "🎭 Lire (Prosodie)"}{" "}
+                    {/* ✅ NOUVEAU LABEL */}
                   </Button>
-
                   <Button
                     size="small"
                     startIcon={<Download />}

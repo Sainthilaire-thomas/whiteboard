@@ -1,12 +1,19 @@
 import { useEffect, useState, useRef, memo } from "react";
 
 import { useCallData } from "@/context/CallDataContext";
-import { Box, Paper, Typography, Popover } from "@mui/material";
+import {
+  Box,
+  Paper,
+  Typography,
+  Popover,
+  FormControlLabel,
+  Switch,
+} from "@mui/material";
 
 import { Word } from "@/types/types";
 import { useAudio } from "@/context/AudioContext";
 import AudioPlayer from "./AudioPlayer";
-import Postit from "./Postit";
+import PostitComponent from "./Postit"; // Import renamed to avoid namespace conflict
 import {
   getSpeakerType,
   isSpeakerConseil,
@@ -16,17 +23,48 @@ import {
   getSpeakerSelectionStyle,
 } from "@/utils/SpeakerUtils";
 
+// Add local type definitions to avoid namespace issues
+interface PostitType {
+  id: number;
+  callid: number;
+  wordid: number;
+  word: string;
+  text: string;
+  iddomaine: number | null;
+  sujet: string;
+  idsujet: number | null;
+  pratique: string;
+  idpratique?: number | null;
+  timestamp: number;
+  idactivite?: number | null;
+}
+
+interface TextSelectionType {
+  text: string;
+  startTime: number;
+  endTime: number;
+  wordIndex: number;
+  speaker: "client" | "conseiller";
+}
+
+// Extended props for PostitComponent to include isSelected
+interface PostitComponentProps {
+  postit: PostitType;
+  isSelected?: boolean; // Add this prop
+  onDoubleClick?: () => void; // Make this prop optional for flexibility
+}
+
 interface TranscriptProps {
   callId: number;
-  hideHeader?: boolean; // Pour masquer le titre et toggle si contrôlés depuis l'en-tête
-  highlightTurnOne?: boolean; // Prop externe pour contrôler la coloration
-  transcriptSelectionMode?: string; // Mode de sélection depuis l'extérieur
+  hideHeader?: boolean;
+  highlightTurnOne?: boolean;
+  transcriptSelectionMode?: string;
 }
 
 const Transcript = ({
   callId,
   hideHeader = false,
-  highlightTurnOne = false, // Utiliser la prop externe au lieu de l'état local
+  highlightTurnOne = false,
   transcriptSelectionMode,
 }: TranscriptProps) => {
   const {
@@ -40,7 +78,7 @@ const Transcript = ({
     updatePostit,
     appelPostits,
     currentWord,
-    transcriptSelectionMode: contextSelectionMode, // Renommer pour éviter conflit
+    transcriptSelectionMode: contextSelectionMode,
     setClientSelection,
     setConseillerSelection,
   } = useCallData();
@@ -63,16 +101,13 @@ const Transcript = ({
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const [isProcessingAudioAction, setIsProcessingAudioAction] = useState(false);
 
-  // SUPPRESSION DE L'ÉTAT LOCAL - maintenant contrôlé depuis l'en-tête
-  // const [highlightTurnOne, setHighlightTurnOne] = useState(false);
-
   // ✅ Gestion du Popover (affichage du Post-it)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedPostit, setSelectedPostit] = useState<Postit | null>(null);
+  const [selectedPostit, setSelectedPostit] = useState<PostitType | null>(null);
 
   const handlePostitClick = (
     event: React.MouseEvent<HTMLElement>,
-    postit: Postit
+    postit: PostitType
   ) => {
     setSelectedPostit(postit);
     setAnchorEl(event.currentTarget);
@@ -120,14 +155,14 @@ const Transcript = ({
       const firstIdx = selectedIndices[0];
       const lastIdx = selectedIndices[selectedIndices.length - 1];
 
-      const selectionData: TextSelection = {
+      const selectionData: TextSelectionType = {
         text: selectionText,
         startTime: transcription.words[firstIdx].startTime,
         endTime:
           transcription.words[lastIdx].endTime ||
           transcription.words[lastIdx].startTime + 1,
         wordIndex: firstIdx,
-        speaker: activeSelectionMode,
+        speaker: activeSelectionMode as "client" | "conseiller",
       };
 
       if (activeSelectionMode === "client") {
@@ -164,11 +199,14 @@ const Transcript = ({
   useEffect(() => {
     if (selectedCall?.filepath) {
       setAudioSrc(null);
-      createAudioUrlWithToken(selectedCall.filepath).then((url) => {
-        if (url) {
-          setAudioSrc(url);
+      // Fix: Type the url parameter and handle promise properly
+      Promise.resolve(createAudioUrlWithToken(selectedCall.filepath)).then(
+        (url: string | null) => {
+          if (url) {
+            setAudioSrc(url);
+          }
         }
-      });
+      );
     }
   }, [selectedCall, setAudioSrc]);
 
@@ -220,12 +258,12 @@ const Transcript = ({
 
   // Styles conditionnels pour les tours de parole
   const getWordStyle = (index: number, word: Word) => {
-    const speakerType = getSpeakerType(word.turn);
+    const speakerType = getSpeakerType(word.turn ?? "turn1");
 
     return {
       fontWeight: index === currentWordIndex ? "bold" : "normal",
       color: index === currentWordIndex ? "red" : "inherit",
-      backgroundColor: highlightTurnOne // Utilise la prop externe
+      backgroundColor: highlightTurnOne
         ? getSpeakerStyle(speakerType, true).backgroundColor
         : "transparent",
       padding: "2px 4px",
@@ -254,7 +292,6 @@ const Transcript = ({
               <Switch
                 checked={highlightTurnOne}
                 onChange={() => {
-                  // Cette fonction ne sera plus utilisée si contrôlé depuis l'en-tête
                   console.warn(
                     "Toggle local utilisé - devrait être contrôlé depuis l'en-tête"
                   );
@@ -295,7 +332,7 @@ const Transcript = ({
               if (postit) {
                 const event = {
                   currentTarget:
-                    document.getElementById(`marker-${id}`) || null,
+                    document.getElementById(`marker-${id}`) || document.body,
                 };
                 handlePostitClick(
                   event as React.MouseEvent<HTMLElement>,
@@ -326,10 +363,9 @@ const Transcript = ({
         }}
       >
         {selectedPostit && (
-          <Postit
+          <PostitComponent
             postit={selectedPostit}
-            isSelected={true}
-            onDoubleClick={handleClosePopover}
+            // onDoubleClick={handleClosePopover}
           />
         )}
       </Popover>
@@ -348,14 +384,17 @@ const Transcript = ({
             transcription.words.map((word: Word, index: number) => (
               <span
                 key={index}
-                ref={(el) => (wordRefs.current[index] = el)}
+                ref={(el: HTMLSpanElement | null) => {
+                  wordRefs.current[index] = el;
+                }}
                 style={{
                   ...getWordStyle(index, word),
                   cursor: activeSelectionMode ? "text" : "pointer",
                   userSelect: activeSelectionMode ? "text" : "none",
                   backgroundColor: activeSelectionMode
-                    ? getSpeakerSelectionStyle(getSpeakerType(word.turn))
-                        .backgroundColor
+                    ? getSpeakerSelectionStyle(
+                        getSpeakerType(word.turn ?? "turn1")
+                      ).backgroundColor
                     : getWordStyle(index, word).backgroundColor,
                 }}
                 onClick={() =>

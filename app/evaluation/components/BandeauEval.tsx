@@ -17,7 +17,7 @@ import { useState, useMemo } from "react";
 import { columnConfigPratiques, columnConfigSujets } from "@/config/gridConfig";
 
 // Chargement dynamique de SyntheseEvaluation
-const SyntheseEvaluation = dynamic(() => import("./SyntheseEvaluation.old"), {
+const SyntheseEvaluation = dynamic(() => import("./SyntheseEvaluation"), {
   loading: () => <p>Chargement de la synthèse...</p>,
 });
 
@@ -44,6 +44,12 @@ const BandeauEval = ({
   const handleOpen = () => setOpenModal(true);
   const handleClose = () => setOpenModal(false);
 
+  // ✅ AJOUT : Handler pour les clics sur les sujets
+  const handleSujetClick = (sujet: any) => {
+    console.log("Sujet cliqué:", sujet);
+    // Implémentez votre logique ici
+  };
+
   if (isLoadingDomains) return <div>Loading...</div>;
 
   // Optimisation du Modal avec useMemo
@@ -58,6 +64,33 @@ const BandeauEval = ({
     ),
     [openModal]
   );
+
+  // ✅ CORRECTION 1 : Convertir SujetSimple[] vers Item[] si nécessaire
+  const convertedSujetsData = useMemo(() => {
+    return (
+      sujetsData?.map((sujet: any) => ({
+        ...sujet,
+        // Ajouter les propriétés manquantes si elles n'existent pas
+        valeurnumérique: sujet.valeurnumérique ?? 0,
+        idpratique: sujet.idpratique ?? null,
+        nompratique: sujet.nompratique ?? "",
+        idcategoriepratique: sujet.idcategoriepratique ?? null,
+        categoriespratiques: sujet.categoriespratiques ?? "",
+      })) || []
+    );
+  }, [sujetsData]);
+
+  // ✅ CORRECTION 3 : S'assurer que nudges est du bon type
+  const convertedNudges = useMemo(() => {
+    // Conversion explicite pour résoudre le conflit de types
+    return (nudges || []).map((nudge: any) => ({
+      ...nudge,
+      // Assurez-vous que le nudge a toutes les propriétés requises
+      id: nudge.id || nudge.idnudge,
+      text: nudge.text || nudge.texte,
+      // Ajoutez d'autres mappings si nécessaire
+    }));
+  }, [nudges]);
 
   return (
     <Box sx={{ width: "100%", p: 2 }}>
@@ -109,8 +142,10 @@ const BandeauEval = ({
           {selectedDomain && (
             <GridContainerSujetsEval
               categories={categoriesSujets}
-              items={sujetsData}
+              items={convertedSujetsData}
               columnConfig={columnConfigSujets}
+              handleSujetClick={handleSujetClick}
+              sujetsDeLActivite={[]}
             />
           )}
         </Grid>
@@ -126,6 +161,7 @@ const BandeauEval = ({
               items={pratiques}
               columnConfig={columnConfigPratiques}
               onPratiqueClick={handlePratiqueClick}
+              pratiquesDeLActivite={[]}
             />
           </Box>
         </Grid>
@@ -136,7 +172,7 @@ const BandeauEval = ({
             ENTRAÎNEMENT
           </Typography>
           <Box sx={{ mt: 1 }}>
-            {selectedPratique && <Exercices externalNudges={nudges} />}
+            {selectedPratique && <Exercices externalNudges={convertedNudges} />}
           </Box>
         </Grid>
       </Grid>

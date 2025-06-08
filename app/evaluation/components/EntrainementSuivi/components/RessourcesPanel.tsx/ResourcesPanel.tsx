@@ -2,18 +2,11 @@ import React from "react";
 import { Box, Chip } from "@mui/material";
 import FicheConseiller from "./FicheConseiller";
 import FicheCoach from "./FicheCoach";
-
-interface ResourcesPanelProps {
-  pratique: {
-    nompratique: string;
-    fiche_conseiller_json?: any;
-    fiche_coach_json?: any;
-    geste?: string;
-    categoryColor?: string;
-  } | null;
-  selectedView: "coach" | "conseiller" | null;
-  onViewChange: (view: "coach" | "conseiller" | null) => void;
-}
+import {
+  ResourcesPanelProps,
+  FicheCoachPratique,
+  FicheConseillerPratique,
+} from "../../types";
 
 const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
   pratique,
@@ -31,6 +24,30 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
     return null;
   }
 
+  // Fonction helper pour créer une pratique avec fiche coach
+  const createCoachPratique = (): FicheCoachPratique | null => {
+    if (!pratique.fiche_coach_json) return null;
+    return {
+      nompratique: pratique.nompratique,
+      fiche_coach_json: pratique.fiche_coach_json,
+      geste: pratique.geste,
+      categoryColor: pratique.categoryColor,
+    };
+  };
+
+  // Fonction helper pour créer une pratique avec fiche conseiller
+  const createConseillerPratique = (): FicheConseillerPratique | null => {
+    if (!pratique.fiche_conseiller_json) return null;
+    return {
+      nompratique: pratique.nompratique,
+      fiche_conseiller_json: pratique.fiche_conseiller_json,
+      categoryColor: pratique.categoryColor,
+    };
+  };
+
+  const coachPratique = createCoachPratique();
+  const conseillerPratique = createConseillerPratique();
+
   return (
     <Box>
       {/* Boutons de sélection des fiches */}
@@ -43,10 +60,10 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
             size="small"
             clickable
             onClick={() =>
-              onViewChange(selectedView === "coach" ? null : "coach")
+              onViewChange?.(selectedView === "coach" ? null : "coach")
             }
             onDelete={
-              selectedView === "coach" ? () => onViewChange(null) : undefined
+              selectedView === "coach" ? () => onViewChange?.(null) : undefined
             }
           />
         )}
@@ -58,11 +75,13 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
             size="small"
             clickable
             onClick={() =>
-              onViewChange(selectedView === "conseiller" ? null : "conseiller")
+              onViewChange?.(
+                selectedView === "conseiller" ? null : "conseiller"
+              )
             }
             onDelete={
               selectedView === "conseiller"
-                ? () => onViewChange(null)
+                ? () => onViewChange?.(null)
                 : undefined
             }
           />
@@ -70,14 +89,17 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
       </Box>
 
       {/* Affichage de la fiche sélectionnée */}
-      {selectedView === "coach" && hasCoachFiche && (
-        <FicheCoach pratique={pratique} onClose={() => onViewChange(null)} />
+      {selectedView === "coach" && coachPratique && (
+        <FicheCoach
+          pratique={coachPratique}
+          onClose={() => onViewChange?.(null)}
+        />
       )}
 
-      {selectedView === "conseiller" && hasConseillerFiche && (
+      {selectedView === "conseiller" && conseillerPratique && (
         <FicheConseiller
-          pratique={pratique}
-          onClose={() => onViewChange(null)}
+          pratique={conseillerPratique}
+          onClose={() => onViewChange?.(null)}
         />
       )}
     </Box>

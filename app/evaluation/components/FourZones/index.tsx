@@ -553,16 +553,18 @@ const FourZones: React.FC<FourZonesProps> = ({
           seekTo,
           play,
           speechToTextVisible,
-          toggleSpeechToText,
+          toggleSpeechToText: toggleSpeechToText || (() => {}),
           addPostitsFromSpeech,
-          showNotification,
+          showNotification: (message: string, severity?: string) => {
+            const alertSeverity = (severity as AlertColor) || "info";
+            showNotification(message, alertSeverity);
+          },
           renderDropZones,
           addSelectedTextAsPostit,
           mode,
           handleOpenZoneMenu,
           postits,
           setPostits,
-          improvedConseillerText,
         })}
       </Box>
 

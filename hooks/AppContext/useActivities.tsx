@@ -47,7 +47,7 @@ export function useActivities(): UseActivitiesResult {
       const { data, error } = await supabaseClient
         .from("pratiques")
         .select(
-          `idpratique, nompratique, description, jeuderole, idcategoriepratique,geste`
+          `idpratique, nompratique, description, jeuderole, idcategoriepratique, geste`
         )
         .order("idpratique", { ascending: true });
 
@@ -59,12 +59,26 @@ export function useActivities(): UseActivitiesResult {
         throw new Error(error.message);
       }
 
+      // ✅ Fix: Create proper Pratique objects with all required properties from Item interface
       return (data ?? []).map((pratique) => ({
+        // Properties from Item interface (required by Pratique extends Item)
+        idsujet: 0, // Default value - adjust based on your business logic
+        valeurnumérique: 0, // Default value - adjust based on your business logic
         idpratique: pratique.idpratique,
         nompratique: pratique.nompratique,
+        nomsujet: "", // Default value - adjust based on your business logic
+        iddomaine: 0, // Default value - adjust based on your business logic
+        idcategoriesujet: 0, // Default value - adjust based on your business logic
+        idcategoriepratique: pratique.idcategoriepratique,
+        categoriespratiques: {
+          id: pratique.idcategoriepratique,
+          name: "", // You might want to join with categories table to get this
+          couleur: "",
+        },
+
+        // Pratique-specific properties
         description: pratique.description,
         jeuderole: pratique.jeuderole,
-        idcategoriepratique: pratique.idcategoriepratique,
         geste: pratique.geste,
       })) as Pratique[];
     },
@@ -95,8 +109,7 @@ export function useActivities(): UseActivitiesResult {
   return {
     pratiques,
     isLoadingPratiques,
-    categoriesPratiques, // ✅ Retourne bien les catégories conformes à `CategoriePratique`
-    isLoadingCategories,
+    categoriesPratiques,
     fetchReviewsForPractice,
     reviews,
     averageRating,

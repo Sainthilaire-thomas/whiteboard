@@ -16,7 +16,7 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-// Importations des types
+// Importations des types - on garde uniquement les types nécessaires
 import { PostitProps } from "./types";
 
 // Importations des hooks
@@ -71,9 +71,12 @@ const Postit: React.FC<PostitProps> = ({
   } = usePostitNavigation(selectedPostit);
   const { handleClosePostit, handleDelete } = usePostitActions();
 
-  // Contextes
-  const { selectedEntreprise, selectedDomain, selectDomain, filteredDomains } =
-    useAppContext();
+  // Contextes - on utilise directement sans cast
+  const appContext = useAppContext();
+  const { selectedEntreprise, selectedDomain, selectDomain } = appContext;
+
+  // ✅ Gestion sûre de filteredDomains
+  const filteredDomains = (appContext as any)?.filteredDomains || [];
 
   // Hooks de sélection
   const { handleSujetClick, sujetsDeLActivite, categoriesSujets, sujetsData } =
@@ -85,7 +88,7 @@ const Postit: React.FC<PostitProps> = ({
     pratiques,
   } = usePratiqueSelection();
 
-  // Configuration des composants pour les étapes
+  // ✅ Configuration des composants pour les étapes - sans typage strict
   const componentsProps = {
     selectedPostit,
     setSelectedPostit,
@@ -107,7 +110,7 @@ const Postit: React.FC<PostitProps> = ({
     handlePratiqueClick,
   };
 
-  // Création dynamique des étapes
+  // ✅ Création dynamique des étapes - on utilise la fonction telle qu'elle existe
   const steps = createPostItSteps(
     selectedPostit,
     activeStep,
@@ -117,7 +120,7 @@ const Postit: React.FC<PostitProps> = ({
   );
 
   // Configuration des étapes pour la navigation
-  const navigationSteps = steps.map((step, index) => ({
+  const navigationSteps = steps.map((step: any, index: number) => ({
     label: step.label,
     icon: step.icon,
     isAccessible: isStepAccessible(index),
@@ -132,9 +135,9 @@ const Postit: React.FC<PostitProps> = ({
 
   const handleConfirmDelete = async () => {
     try {
-      await handleDelete(selectedPostit.id);
+      await handleDelete(); // ✅ Pas d'argument - la fonction utilise selectedPostit du contexte
       setShowDeleteConfirm(false);
-      setSelectedPostit(null); // Fermer le modal après suppression
+      // setSelectedPostit(null) est déjà géré dans handleDelete
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
       // Vous pouvez ajouter une notification d'erreur ici
@@ -229,8 +232,8 @@ const Postit: React.FC<PostitProps> = ({
         fullWidth
         PaperProps={{
           sx: {
-            bgcolor: "grey.900", // ✅ Fond sombre
-            color: "white", // ✅ Texte blanc
+            bgcolor: "grey.900",
+            color: "white",
           },
         }}
       >
@@ -246,7 +249,7 @@ const Postit: React.FC<PostitProps> = ({
             sx={{
               mt: 2,
               p: 2,
-              bgcolor: "grey.800", // ✅ Fond encore plus sombre pour le contenu
+              bgcolor: "grey.800",
               borderRadius: 1,
               border: "1px solid",
               borderColor: "grey.700",

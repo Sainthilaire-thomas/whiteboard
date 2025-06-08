@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ZohoAuthToken } from "./types/zoho";
+import { ZohoAuthToken } from "./types"; // ✅ Import depuis les types locaux
 import WorkdriveExplorer from "./components/WorkdriveExplorer";
 import EnterpriseCallsList from "./components/EnterpriseCallsList";
 import { useAppContext } from "@/context/AppContext";
@@ -20,11 +20,13 @@ import {
   Tabs,
   Tab,
   Paper,
+  SelectChangeEvent,
 } from "@mui/material";
+import { SyntheticEvent } from "react";
 
 export default function ZohoWorkdrivePage() {
   const [token, setToken] = useState<ZohoAuthToken | null>(null);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState<number>(0);
   const searchParams = useSearchParams();
 
   // Utilisation du contexte pour les entreprises
@@ -54,14 +56,16 @@ export default function ZohoWorkdrivePage() {
     }
   }, [searchParams]);
 
-  // Gestionnaire pour le changement d'entreprise
-  const handleEntrepriseChange = (event) => {
-    const entrepriseId = event.target.value;
+  // ✅ Gestionnaire pour le changement d'entreprise avec types corrects
+  const handleEntrepriseChange = (
+    event: SelectChangeEvent<string | number>
+  ): void => {
+    const entrepriseId = Number(event.target.value);
     setSelectedEntreprise(entrepriseId);
   };
 
-  // Gestionnaire pour le changement d'onglet
-  const handleTabChange = (event, newValue) => {
+  // ✅ Gestionnaire pour le changement d'onglet avec types corrects
+  const handleTabChange = (event: SyntheticEvent, newValue: number): void => {
     setActiveTab(newValue);
   };
 

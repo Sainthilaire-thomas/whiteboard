@@ -7,30 +7,7 @@ import TitleSection from "./shared/TitleSection";
 import DomainSelector from "./shared/DomainSelector";
 import ContextualActions from "./shared/ContextualActions";
 import DisplayActions from "./shared/DisplayActions";
-
-interface ContextualHeaderProps {
-  displayMode: "normal" | "transcript-fullwidth" | "context-fullwidth";
-  view: string | null;
-  filteredDomains: any[];
-  selectedDomain: string;
-  contextPanels: Record<string, { width: number | string }>;
-  onDomainChange: (event: any) => void;
-  onSave: () => void;
-  onSetContextFullWidth: () => void;
-  onClosePanel: () => void;
-
-  // Nouvelles props pour FourZones
-  fontSize?: number;
-  increaseFontSize?: () => void;
-  decreaseFontSize?: () => void;
-  speechToTextVisible?: boolean;
-  toggleSpeechToText?: () => void;
-  isLoadingRolePlay?: boolean;
-  selectedPostitForRolePlay?: any;
-
-  // ✅ NOUVELLE PROP pour déclencher la synthèse
-  onNavigateToSynthese?: () => void;
-}
+import { ContextualHeaderProps } from "./unifiedHeader.types";
 
 export default function ContextualHeader({
   displayMode,

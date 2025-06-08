@@ -1,7 +1,12 @@
-// utils/removeCallUpload.js
+// lib/removeCallUpload.ts
 import { supabaseClient } from "@/lib/supabaseClient";
+import type { RemoveCallUploadResult, Transcript } from "../types";
 
-export const removeCallUpload = async (callid, filepath) => {
+// ✅ Fonction avec types corrects importés depuis les types locaux
+export const removeCallUpload = async (
+  callid: number,
+  filepath: string | null
+): Promise<RemoveCallUploadResult> => {
   try {
     // Step 1: Remove the audio file from storage if the filepath exists
     if (filepath) {
@@ -22,14 +27,21 @@ export const removeCallUpload = async (callid, filepath) => {
       throw new Error("Error fetching transcript IDs");
     }
 
-    const transcriptIds = transcripts.map((t) => t.transcriptid);
+    // ✅ Assertion de type pour les données Supabase
+    const transcriptData = transcripts as Transcript[] | null;
+    const transcriptIds = transcriptData?.map((t) => t.transcriptid) || [];
 
     // Step 3: Remove words associated with the transcripts
     if (transcriptIds.length > 0) {
-      await supabaseClient
+      const { error: wordDeleteError } = await supabaseClient
         .from("word")
         .delete()
         .in("transcriptid", transcriptIds);
+
+      if (wordDeleteError) {
+        console.error("Error deleting words:", wordDeleteError);
+        throw new Error("Error deleting words");
+      }
     }
 
     // Step 4: Remove the transcript entries

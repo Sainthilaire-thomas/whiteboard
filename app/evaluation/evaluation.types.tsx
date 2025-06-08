@@ -380,6 +380,14 @@ export const EvaluationHelpers = {
     );
   },
 
+  isValidContextView: (view: string | null): view is ContextView => {
+    return (
+      view !== null &&
+      ["selection", "synthese", "postit", "roleplay", "entrainement"].includes(
+        view
+      )
+    );
+  },
   /**
    * Assure que selectedDomain est un string
    */
@@ -411,6 +419,16 @@ export const EvaluationHelpers = {
       description: externalCall.description,
       filepath: externalCall.filepath,
       callactivityrelation: externalCall.callactivityrelation || [],
+    };
+  },
+
+  convertCallForUnifiedHeader: (
+    call: Call | null
+  ): { callid: string; description: string } | null => {
+    if (!call) return null;
+    return {
+      callid: String(call.callid),
+      description: call.description || call.filename || `Appel ${call.callid}`,
     };
   },
 

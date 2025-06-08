@@ -54,6 +54,7 @@ export interface ExtendedRolePlayData extends RolePlayData {
 
 /**
  * Type pour le contexte des données d'appel
+ * CORRECTION: Ajout de setTranscriptSelectionMode
  */
 export interface CallDataContextType {
   selectedCall: CallData | null;
@@ -64,6 +65,8 @@ export interface CallDataContextType {
     postitId: string
   ) => Promise<any>;
   isLoadingRolePlay: boolean;
+  // AJOUT: Propriété manquante pour setTranscriptSelectionMode
+  setTranscriptSelectionMode: (mode: "client" | "conseiller" | null) => void;
 }
 
 /**
@@ -153,6 +156,14 @@ export interface EditPostitDialogProps {
   onSave: () => void;
 }
 
+export interface EditDialogProps {
+  open: boolean;
+  content: string;
+  onContentChange: (content: string) => void;
+  onClose: () => void;
+  onSave: () => void;
+}
+
 /**
  * Interface pour les propriétés de la boîte de dialogue de catégorie
  */
@@ -188,11 +199,15 @@ export interface ToolBarProps {
 
 /**
  * Interface pour les propriétés de l'en-tête des étapes
+ * CORRECTION: Ajout des props manquantes
  */
 export interface StepperHeaderProps {
   steps: string[];
   activeStep: number;
   mode: string;
+  // AJOUT: Propriétés manquantes pour la navigation
+  onStepClick: (stepIndex: number) => void;
+  canNavigateToStep: (stepIndex: number) => boolean;
 }
 
 /**
@@ -257,11 +272,56 @@ export interface StepNavigationState {
 
 /**
  * Interface pour l'état et les fonctions retournées par le hook useNotifications
+ * CORRECTION: Changement du type severity pour être compatible
  */
 export interface NotificationState {
   snackbarOpen: boolean;
   snackbarMessage: string;
   snackbarSeverity: AlertColor;
+  // CORRECTION: Changement du type de severity de string à AlertColor pour la compatibilité
   showNotification: (message: string, severity?: AlertColor) => void;
   handleSnackbarClose: () => void;
+}
+
+/**
+ * AJOUT: Interface pour les paramètres de renderStepContent
+ * Cette interface définit les propriétés attendues par la fonction renderStepContent
+ * SIMPLIFIÉE pour éviter les erreurs TypeScript
+ */
+export interface RenderStepContentParams {
+  activeStep: number;
+  selectionMode: string;
+  setSelectionMode: (mode: string) => void;
+  selectedClientText: string;
+  selectedConseillerText: string;
+  fontSize: number;
+  zoneColors: Record<string, string>;
+  hasOriginalPostits: boolean;
+  setSelectedClientText: (text: string) => void;
+  setSelectedConseillerText: (text: string) => void;
+  newPostitContent: string;
+  setNewPostitContent: (content: string) => void;
+  currentZone: string;
+  setCurrentZone: (zone: string) => void;
+  setTextToCategorizze: (text: string) => void;
+  setShowCategoryDialog: (show: boolean) => void;
+  audioSrc: string | null;
+  seekTo: (time: number) => void;
+  play: () => void;
+  pause?: () => void;
+  speechToTextVisible: boolean;
+  toggleSpeechToText: () => void;
+  addPostitsFromSpeech: (postits: PostitType[]) => void;
+  showNotification: (message: string, severity?: string) => void;
+  renderDropZones: (improvementMode?: boolean) => React.ReactNode; // React.ReactNode au lieu de JSX.Element
+  addSelectedTextAsPostit: (zone: string) => void;
+  mode: string;
+  handleOpenZoneMenu?: (
+    event: React.MouseEvent<HTMLElement>,
+    zone: string
+  ) => void;
+  postits: PostitType[];
+  setPostits: (postits: PostitType[]) => void;
+  ttsStudioVisible?: boolean;
+  toggleTTSStudio?: () => void;
 }

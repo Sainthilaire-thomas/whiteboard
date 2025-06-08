@@ -1,9 +1,5 @@
 // lib/zohoworkdrive/api.ts
-import {
-  ZohoAuthToken,
-  ZohoFile,
-  ZohoWorkdriveResponse,
-} from "../../types/zoho";
+import { ZohoAuthToken, ZohoFile, ZohoWorkdriveResponse } from "../../types"; // ✅ Import depuis les types locaux autonomes
 import { refreshToken } from "./auth";
 import { isTokenExpiredServer } from "../serverUtils";
 
@@ -28,7 +24,7 @@ export const getFiles = async (
   const accessToken = await getValidToken(token);
   console.log("Got valid access token, length:", accessToken.length);
 
-  // Utiliser le domaine API fourni par le token
+  // ✅ Utiliser le domaine API fourni par le token (propriété maintenant définie)
   const baseUrl = token.api_domain || "https://www.zohoapis.com";
   const WORKDRIVE_API_URL = `${baseUrl}/workdrive/api/v1`;
 
@@ -78,7 +74,7 @@ export const getFiles = async (
         item.attributes?.type?.toLowerCase() === "folder" ? "folder" : "file",
       createdTime: item.attributes?.created_time_i18 || "",
       modifiedTime: item.attributes?.modified_time_i18 || "",
-      size: item.attributes?.storage_info?.size || "0 bytes",
+      size: item.attributes?.storage_info?.size || "0 bytes", // ✅ Maintenant string
       mimeType: item.attributes?.type || "unknown",
       parentId: item.attributes?.parent_id || "",
       thumbnailUrl: item.attributes?.thumbnail_url || "",
@@ -101,7 +97,7 @@ export const getFileDetails = async (
 ): Promise<ZohoFile> => {
   const accessToken = await getValidToken(token);
 
-  // Utiliser le domaine API fourni par le token
+  // ✅ Utiliser le domaine API fourni par le token (propriété maintenant définie)
   const baseUrl = token.api_domain || "https://www.zohoapis.com";
   const WORKDRIVE_API_URL = `${baseUrl}/workdrive/api/v1`;
 
@@ -132,7 +128,7 @@ export const getFileDetails = async (
     type: item.attributes?.type?.toLowerCase() === "folder" ? "folder" : "file",
     createdTime: item.attributes?.created_time_i18 || "",
     modifiedTime: item.attributes?.modified_time_i18 || "",
-    size: item.attributes?.storage_info?.size || "0 bytes",
+    size: item.attributes?.storage_info?.size || "0 bytes", // ✅ Maintenant string
     mimeType: item.attributes?.type || "unknown",
     parentId: item.attributes?.parent_id || "",
     thumbnailUrl: item.attributes?.thumbnail_url || "",
@@ -145,7 +141,7 @@ export const getDownloadUrl = async (
 ): Promise<string> => {
   const accessToken = await getValidToken(token);
 
-  // Utiliser le domaine API fourni par le token
+  // ✅ Utiliser le domaine API fourni par le token (propriété maintenant définie)
   const baseUrl = token.api_domain || "https://www.zohoapis.com";
   const WORKDRIVE_API_URL = `${baseUrl}/workdrive/api/v1`;
 

@@ -157,16 +157,15 @@ const Exercices: React.FC<ExercicesProps> = ({ externalNudges }) => {
     >
       <div>
         {review.avis} - {review.userlike} étoiles
-        <Tooltip title={review.comment ? review.comment : "Pas de commentaire"}>
-          <div>
-            <Rating
-              name={`rating-${index}`}
-              value={review.userlike}
-              readOnly
-              size="small"
-            />
-          </div>
-        </Tooltip>
+        {/* ✅ Suppression du Tooltip avec comment */}
+        <div>
+          <Rating
+            name={`rating-${index}`}
+            value={review.userlike}
+            readOnly
+            size="small"
+          />
+        </div>
       </div>
     </div>
   ));

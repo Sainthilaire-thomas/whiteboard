@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Box, Drawer, Tabs, Tab } from "@mui/material";
 import HistoriqueEvaluation from "./HistoriqueEvaluation";
-import SyntheseEvaluation from "./SyntheseEvaluation.old";
+import SyntheseEvaluation from "./SyntheseEvaluation";
 import { EvaluationDrawerProps } from "@/types/types";
 
 export default function EvaluationDrawer({
@@ -29,9 +29,7 @@ export default function EvaluationDrawer({
           <Tab label="Synthèse" />
           <Tab label="Historique" />
         </Tabs>
-        {tabIndex === 0 && (
-          <SyntheseEvaluation darkMode={darkMode} setDarkMode={setDarkMode} />
-        )}
+        {tabIndex === 0 && <SyntheseEvaluation />}
         {tabIndex === 1 && <HistoriqueEvaluation />}
       </Box>
     </Drawer>

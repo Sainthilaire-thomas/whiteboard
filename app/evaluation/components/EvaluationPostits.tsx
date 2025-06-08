@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Box, IconButton, Typography } from "@mui/material";
 import { useCallData } from "@/context/CallDataContext";
-import { useAudio } from "@/hooks/useAudionew";
+import { useAudio } from "@/hooks/CallDataContext/useAudio"; // Corrigé le chemin (vérifiez le bon chemin)
 import { useAppContext } from "@/context/AppContext";
 import NoteAddIcon from "@mui/icons-material/NoteAdd";
 import Postit from "./Postit";
@@ -11,7 +11,7 @@ import {
   Sujet,
   Pratique,
   Domaine,
-} from "@/types/types"; // Importation du type pour les post-its
+} from "@/types/types";
 
 export default function EvaluationPostits() {
   const { appelPostits, addPostit, updatePostit, transcription, currentWord } =
@@ -25,18 +25,17 @@ export default function EvaluationPostits() {
     domains,
   } = useAppContext();
 
-  // Fonction pour créer un nouveau post-it avec des valeurs par défaut si `currentWord` n'est pas défini
   const handleAddPostit = () => {
     if (!currentWord) {
       console.warn("Pas de mot sélectionné, impossible de créer un post-it.");
       return;
     }
 
-    const wordid = currentWord.wordid ?? 0; // Utilise 0 comme valeur par défaut
-    const word = currentWord.text ?? "Post-it"; // Utilise "Post-it" comme valeur par défaut
-    const timestamp = currentWord.timestamp ?? 0; // Utilise 0 comme valeur par défaut si timestamp est undefined
+    const wordid = currentWord.wordid ?? 0;
+    const word = currentWord.text ?? "Post-it";
+    const timestamp = currentWord.timestamp ?? 0;
 
-    addPostit(wordid, word, timestamp); // Appel de addPostit avec des valeurs garanties
+    addPostit(wordid, word, timestamp);
   };
 
   useEffect(() => {
@@ -45,37 +44,31 @@ export default function EvaluationPostits() {
 
   // Gérer la sélection avec double-clic, réinitialiser les champs
   const handleDoubleClick = (postitId: number) => {
-    setSelectedPostitIds([postitId]); // Sélectionne uniquement ce post-it
-    updatePostit(postitId, "sujet", "Non assigné"); // Passer le champ et la valeur
-    updatePostit(postitId, "pratique", "Non assigné");
-    updatePostit(postitId, "iddomaine", "Non assigné");
+    setSelectedPostitIds([postitId]);
+    // ✅ Corrigé : updatePostit prend (id, updatedFields)
+    updatePostit(postitId, {
+      sujet: "Non assigné",
+      pratique: "Non assigné",
+      iddomaine: null,
+      idsujet: null,
+      idpratique: null,
+    });
   };
 
-  // Mettre à jour les champs `sujet`, `pratique` et `domaine` des post-its sélectionnés
+  // Mettre à jour les champs des post-its sélectionnés
   useEffect(() => {
     if (selectedPostitIds.length > 0) {
       selectedPostitIds.forEach((postitId) => {
-        // Mise à jour du champ `sujet`
-        updatePostit(
-          postitId,
-          "sujet",
-          selectedSujet ? selectedSujet.nomsujet : "Non assigné"
-        );
-        // Mise à jour du champ `pratique`
-        updatePostit(
-          postitId,
-          "pratique",
-          selectedPratique ? selectedPratique.nompratique : "Non assigné"
-        );
-        // Mise à jour du champ `domaine`
-        updatePostit(
-          postitId,
-          "iddomaine",
-          selectedSujet
-            ? domains.find((d) => d.iddomaine === selectedSujet.iddomaine)
-                ?.nomdomaine || "Non assigné"
-            : "Non assigné"
-        );
+        // ✅ Corrigé : un seul appel updatePostit avec un objet
+        updatePostit(postitId, {
+          sujet: selectedSujet ? selectedSujet.nomsujet : "Non assigné",
+          idsujet: selectedSujet ? selectedSujet.idsujet : null,
+          pratique: selectedPratique
+            ? selectedPratique.nompratique
+            : "Non assigné",
+          idpratique: selectedPratique ? selectedPratique.idpratique : null,
+          iddomaine: selectedSujet ? selectedSujet.iddomaine : null,
+        });
       });
     }
   }, [
@@ -98,12 +91,7 @@ export default function EvaluationPostits() {
         </IconButton>
       </Box>
       {appelPostits.map((postit: PostitType) => (
-        <Postit
-          key={postit.id}
-          postit={postit}
-          isSelected={selectedPostitIds.includes(postit.id)}
-          onDoubleClick={() => handleDoubleClick(postit.id)}
-        />
+        <Postit key={postit.id} postit={postit} />
       ))}
     </Box>
   );

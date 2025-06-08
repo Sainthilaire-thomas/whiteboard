@@ -16,8 +16,12 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useAppContext } from "@/context/AppContext";
 
 export default function EvaluationSidebar() {
-  const { étatGlobal } = useAppContext();
-  const { selectedEntreprise, setSelectedEntreprise } = étatGlobal;
+  const {
+    selectedEntreprise,
+    setSelectedEntreprise,
+    entreprises,
+    isLoadingEntreprises,
+  } = useAppContext();
 
   return (
     <Box sx={{ flexGrow: 1, p: 2 }}>

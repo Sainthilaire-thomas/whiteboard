@@ -29,6 +29,7 @@ import {
   UseNudgesResult,
   Postit as PostitType,
   Domaine,
+  NudgeDates,
 } from "@/types/types";
 
 // 📌 Création du contexte

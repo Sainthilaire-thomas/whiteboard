@@ -17,6 +17,10 @@ export interface AudioContextType {
   currentTime: number;
   duration: number;
   currentWordIndex: number;
+  volume: number;
+  muted: boolean;
+  setTime: (time: number) => void;
+  toggleMute: () => void;
 
   // Méthodes de contrôle
   play: () => void;
@@ -29,7 +33,7 @@ export interface AudioContextType {
   executeWithLock: (operation: () => Promise<void> | void) => Promise<void>;
 
   // Référence à l'élément audio
-  audioRef: React.RefObject<HTMLAudioElement>;
+  audioRef: React.RefObject<HTMLAudioElement | null>;
 }
 
 // Création du contexte
@@ -59,6 +63,8 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [currentWordIndex, setCurrentWordIndex] = useState<number>(-1);
+  const [volume, setVolumeState] = useState<number>(1);
+  const [muted, setMuted] = useState<boolean>(false);
   const isAudioOperationInProgress = useRef(false);
 
   // ✅ AJOUT : État pour gérer les segments en cours
@@ -240,12 +246,18 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       }
     };
 
+    const handleVolumeChange = () => {
+      setVolumeState(audio.volume);
+      setMuted(audio.muted);
+    };
+
     // Ajout des écouteurs d'événements
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("durationchange", handleDurationChange);
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("pause", handlePause);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("volumechange", handleVolumeChange);
 
     // Gestion de la visibilité de la page
     const handleVisibilityChange = () => {
@@ -264,6 +276,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("ended", handleEnded);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      audio.removeEventListener("volumechange", handleVolumeChange);
     };
   }, [currentSegment]); // ✅ Dépendance sur currentSegment
 
@@ -338,6 +351,24 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
 
     const validVolume = Math.max(0, Math.min(volume, 1));
     audio.volume = validVolume;
+    setVolumeState(validVolume); // ✅ AJOUT : Cette ligne
+  }, []);
+
+  // ✅ AJOUT : Alias pour seekTo (compatibilité AudioControl)
+  const setTime = useCallback(
+    (time: number) => {
+      seekTo(time);
+    },
+    [seekTo]
+  );
+
+  // ✅ AJOUT : Fonction toggleMute
+  const toggleMute = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.muted = !audio.muted;
+    setMuted(audio.muted);
   }, []);
 
   const playAudioAtTimestamp = useCallback(
@@ -374,6 +405,10 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
     currentTime,
     duration,
     currentWordIndex,
+    volume, // ✅ AJOUT
+    muted, // ✅ AJOUT
+    setTime, // ✅ AJOUT
+    toggleMute, // ✅ AJOUT
     play,
     pause,
     seekTo,
@@ -391,4 +426,8 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       <audio ref={audioRef} />
     </AudioContext.Provider>
   );
+};
+
+export const useAudioPlayer = (): AudioContextType => {
+  return useAudio();
 };

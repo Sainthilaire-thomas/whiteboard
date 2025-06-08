@@ -4,27 +4,31 @@ import { Theme, alpha } from "@mui/material/styles";
 import { Postit } from "@/types/types";
 import { useCallData } from "@/context/CallDataContext";
 
+// Interface corrigée pour correspondre à l'utilisation réelle
 interface ContexteStepProps {
   selectedPostit: Postit;
   setSelectedPostit: (postit: Postit) => void;
   selectedDomain: string | null;
   filteredDomains: any[];
+  selectDomain: (domainId: string) => void; // Ajouté
   theme: Theme;
   stepBoxStyle: any;
-  styles: any;
+  styles?: any; // Optionnel
+  showTabs?: boolean; // Ajouté comme optionnel
+  setShowTabs?: (show: boolean) => void; // Ajouté comme optionnel
 }
 
 export const ContexteStep: React.FC<ContexteStepProps> = ({
   selectedPostit,
   setSelectedPostit,
   selectedDomain,
-  showTabs,
-  setShowTabs,
   filteredDomains = [], // Valeur par défaut pour éviter undefined
   selectDomain,
   theme,
   stepBoxStyle,
   styles,
+  showTabs,
+  setShowTabs,
 }) => {
   // Accéder à la fonction updatePostit depuis le contexte
   const { updatePostit } = useCallData();

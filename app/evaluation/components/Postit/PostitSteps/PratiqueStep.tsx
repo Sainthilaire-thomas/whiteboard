@@ -5,6 +5,7 @@ import { Postit } from "@/types/types";
 import { hasValidPractice } from "@/hooks/Postit/utils";
 import GridContainerPratiquesEval from "../../GridContainerPratiquesEval";
 
+// Interface corrigée pour correspondre à l'utilisation réelle
 interface PratiqueStepProps {
   selectedPostit: Postit;
   categoriesPratiques: any[];
@@ -13,6 +14,7 @@ interface PratiqueStepProps {
   pratiquesDeLActivite: number[]; // MODIFIÉ : maintenant des IDs
   handlePratiqueClick: (practice: any) => void;
   stepBoxStyle: any;
+  theme?: any; // Ajouté comme optionnel
   onBack?: () => void; // Optionnel
   onSave?: () => void; // Optionnel
 }
@@ -25,6 +27,7 @@ export const PratiqueStep: React.FC<PratiqueStepProps> = ({
   pratiquesDeLActivite,
   handlePratiqueClick,
   stepBoxStyle,
+  theme,
   onBack,
   onSave,
 }) => {

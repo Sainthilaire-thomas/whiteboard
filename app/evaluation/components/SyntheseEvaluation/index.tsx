@@ -14,14 +14,12 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import {
-  Save,
   BarChart,
   AssessmentOutlined,
   PsychologyOutlined,
 } from "@mui/icons-material";
 import { useCallData } from "@/context/CallDataContext";
 import { useAppContext } from "@/context/AppContext";
-import { useSupabase } from "@/context/SupabaseContext";
 
 // Import des onglets
 import SyntheseTab from "./SyntheseTab";
@@ -30,6 +28,14 @@ import SimulationCoachingTab from "./SimulationCoachingTab";
 
 // Import des utilitaires
 import { getPostitStatistics } from "./utils/filters";
+
+// Import des nouveaux types spécifiques
+import {
+  MotifAfpaForm,
+  SelectedMotifType,
+  SyntheseEvaluationProps,
+  convertMotifToString,
+} from "./syntheseEvaluation.types";
 
 // Import des types depuis evaluation.tsx
 import {
@@ -45,11 +51,6 @@ import {
   CategoriePratique as AppCategoriePratique,
 } from "@/types/types";
 
-// AJOUT DE L'INTERFACE AVEC HIDEHEADER
-interface SyntheseEvaluationProps {
-  hideHeader?: boolean;
-}
-
 const SyntheseEvaluation: React.FC<SyntheseEvaluationProps> = ({
   hideHeader = false,
 }) => {
@@ -58,7 +59,6 @@ const SyntheseEvaluation: React.FC<SyntheseEvaluationProps> = ({
   const isNarrow = useMediaQuery("(max-width:900px)");
 
   const { selectedCall, appelPostits } = useCallData();
-  const { supabase } = useSupabase();
   const {
     categoriesPratiques,
     pratiques,
@@ -70,8 +70,10 @@ const SyntheseEvaluation: React.FC<SyntheseEvaluationProps> = ({
   const [activeTab, setActiveTab] = useState(0);
   const [selectedSujet, setSelectedSujet] = useState<string>("");
   const [selectedPratique, setSelectedPratique] = useState<string>("");
-  const [selectedMotif, setSelectedMotif] = useState<string | null>(null);
-  const [formState, setFormState] = useState({
+  // Utilisation du nouveau type pour selectedMotif
+  const [selectedMotif, setSelectedMotif] = useState<SelectedMotifType>(null);
+  // Utilisation du nouveau type pour formState
+  const [formState, setFormState] = useState<MotifAfpaForm>({
     avancement_formation: false,
     avancement_lieu: false,
     avancement_date: false,
@@ -124,38 +126,9 @@ const SyntheseEvaluation: React.FC<SyntheseEvaluationProps> = ({
     }));
   };
 
-  // Sauvegarde des données en base
-  const handleSave = async () => {
-    if (!selectedCall) {
-      alert("Aucun appel sélectionné");
-      return;
-    }
-
-    try {
-      let motifValue: string | null = null;
-
-      if (selectedMotif) {
-        motifValue = Array.isArray(selectedMotif)
-          ? selectedMotif.join(",")
-          : selectedMotif;
-      }
-
-      const { error } = await supabase.from("motifs_afpa").upsert(
-        [
-          {
-            ...formState,
-            callid: selectedCall.callid,
-            motifs: motifValue,
-          },
-        ],
-        { onConflict: ["callid"] }
-      );
-
-      if (error) throw error;
-      alert("Motif mis à jour avec succès !");
-    } catch (error) {
-      console.error("Erreur lors de la sauvegarde :", error);
-    }
+  // Fonction wrapper pour convertir le type pour SyntheseTab
+  const handleSetSelectedMotif = (motif: string | null) => {
+    setSelectedMotif(motif);
   };
 
   // Fonction pour effacer les sélections
@@ -211,6 +184,9 @@ const SyntheseEvaluation: React.FC<SyntheseEvaluationProps> = ({
       ? parseInt(selectedDomain, 10)
       : selectedDomain;
 
+  // Conversion du motif pour SyntheseTab
+  const selectedMotifForTab = convertMotifToString(selectedMotif);
+
   // Effet pour s'assurer qu'une seule sélection soit active à la fois
   useEffect(() => {
     // Si on sélectionne un nouveau sujet, effacer la pratique
@@ -231,7 +207,6 @@ const SyntheseEvaluation: React.FC<SyntheseEvaluationProps> = ({
     return (
       <Box sx={{ p: { xs: 1, md: 2 } }}>
         {/* VERSION SANS EN-TÊTE - Juste les onglets et le contenu */}
-        {/* Navigation par onglets */}
         <Tabs
           value={activeTab}
           onChange={(e, newValue) => setActiveTab(newValue)}
@@ -274,8 +249,8 @@ const SyntheseEvaluation: React.FC<SyntheseEvaluationProps> = ({
           <SyntheseTab
             selectedCall={convertedCall}
             stats={stats}
-            selectedMotif={selectedMotif}
-            setSelectedMotif={setSelectedMotif}
+            selectedMotif={selectedMotifForTab}
+            setSelectedMotif={handleSetSelectedMotif}
             formState={formState}
             handleInputChange={handleInputChange}
             setActiveTab={setActiveTab}
@@ -313,7 +288,7 @@ const SyntheseEvaluation: React.FC<SyntheseEvaluationProps> = ({
   // VERSION ORIGINALE AVEC EN-TÊTE (pour rétrocompatibilité)
   return (
     <Box sx={{ p: { xs: 1, md: 2 } }}>
-      {/* En-tête */}
+      {/* En-tête simplifié sans bouton Save */}
       <Paper
         sx={{
           p: { xs: 1.5, md: 2 },
@@ -322,35 +297,12 @@ const SyntheseEvaluation: React.FC<SyntheseEvaluationProps> = ({
           position: "relative",
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 1,
-          }}
+        <Typography
+          variant={isMobile ? "h6" : "h5"}
+          sx={{ fontWeight: "bold", color: "primary.main", mb: 2 }}
         >
-          <Typography
-            variant={isMobile ? "h6" : "h5"}
-            sx={{ fontWeight: "bold", color: "primary.main" }}
-          >
-            Synthèse d'évaluation
-          </Typography>
-          <Tooltip title="Sauvegarder les informations">
-            <IconButton
-              color="primary"
-              onClick={handleSave}
-              size={isMobile ? "small" : "medium"}
-              sx={{
-                bgcolor: "primary.light",
-                color: "white",
-                "&:hover": { bgcolor: "primary.main" },
-              }}
-            >
-              <Save fontSize={isMobile ? "small" : "medium"} />
-            </IconButton>
-          </Tooltip>
-        </Box>
+          Synthèse d'évaluation
+        </Typography>
 
         <Typography variant="body2" sx={{ mb: 2, display: "block" }}>
           Appel #{selectedCall.callid} :{" "}
@@ -419,8 +371,8 @@ const SyntheseEvaluation: React.FC<SyntheseEvaluationProps> = ({
         <SyntheseTab
           selectedCall={convertedCall}
           stats={stats}
-          selectedMotif={selectedMotif}
-          setSelectedMotif={setSelectedMotif}
+          selectedMotif={selectedMotifForTab}
+          setSelectedMotif={handleSetSelectedMotif}
           formState={formState}
           handleInputChange={handleInputChange}
           setActiveTab={setActiveTab}

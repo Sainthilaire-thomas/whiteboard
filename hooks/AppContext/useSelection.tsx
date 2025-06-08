@@ -266,21 +266,20 @@ export function useSelection(
   );
 
   const syncPratiquesForActiviteFromMap = async (
-    postitToPratiqueMap: Record<number, string | null>,
+    postitToPratiqueMap: Record<number, number | null>, // ✅ Changé de string vers number
     idActivite: number,
-    allPratiques: Pratique[]
+    allPratiques: Pratique[] // Ce paramètre n'est plus utilisé mais gardé pour compatibilité
   ) => {
-    const pratiques = [
+    // ✅ Extraction directe des IDs de pratiques (plus besoin de conversion nom → ID)
+    const idsPratiques = [
       ...new Set(
-        Object.values(postitToPratiqueMap).filter((p): p is string => !!p)
+        Object.values(postitToPratiqueMap).filter(
+          (id): id is number => id !== null
+        )
       ),
     ];
 
-    const idsPratiques = pratiques
-      .map((nom) => allPratiques.find((p) => p.nompratique === nom)?.idpratique)
-      .filter((id): id is number => !!id);
-
-    console.log("🔁 Pratiques à synchroniser :", idsPratiques);
+    console.log("🔁 Pratiques à synchroniser (IDs):", idsPratiques);
 
     try {
       // 🧹 Supprimer les pratiques existantes

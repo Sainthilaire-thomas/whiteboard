@@ -1,5 +1,8 @@
 // src/utils/speakerUtils.ts
 
+// ✅ Add the missing import for Word type
+import { Word } from "@/types/types";
+
 /**
  * Types de locuteurs dans une transcription
  */
@@ -135,6 +138,7 @@ export interface SpeakerParagraph {
   startTime: number; // Temps de début du premier mot
   endTime: number; // Temps de fin du dernier mot
   text: string; // Texte concaténé
+  startWordIndex: number; // 🔧 AJOUT : Index du premier mot dans transcription.words
 }
 
 /**
@@ -147,9 +151,12 @@ export function groupWordsBySpeaker(words: Word[]): SpeakerParagraph[] {
 
   const paragraphs: SpeakerParagraph[] = [];
   let currentParagraph: SpeakerParagraph | null = null;
+  let currentStartWordIndex = 0; // 🔧 AJOUT : Tracker l'index de début du paragraphe courant
 
   words.forEach((word, index) => {
-    const speakerType = getSpeakerType(word.turn);
+    // ✅ Fix: Handle undefined turn value
+    const turnValue = word.turn || "unknown";
+    const speakerType = getSpeakerType(turnValue);
 
     // Si c'est le premier mot ou si le locuteur a changé
     if (!currentParagraph || currentParagraph.speakerType !== speakerType) {
@@ -158,14 +165,18 @@ export function groupWordsBySpeaker(words: Word[]): SpeakerParagraph[] {
         paragraphs.push(currentParagraph);
       }
 
+      // 🔧 AJOUT : Mettre à jour l'index de début pour le nouveau paragraphe
+      currentStartWordIndex = index;
+
       // On crée un nouveau paragraphe
       currentParagraph = {
         speakerType,
-        turn: word.turn,
+        turn: turnValue, // ✅ Fix: Use turnValue instead of word.turn
         words: [word],
         startTime: word.startTime,
         endTime: word.endTime || word.startTime + 1,
         text: word.text,
+        startWordIndex: currentStartWordIndex, // 🔧 AJOUT
       };
     } else {
       // On ajoute le mot au paragraphe courant

@@ -7,13 +7,7 @@ import { Refresh as RefreshIcon } from "@mui/icons-material";
 import { useAudio } from "@/context/AudioContext";
 // IMPORT DU COMPOSANT EXISTANT
 import AddPostitButton from "../../AddPostitButton";
-
-interface TranscriptionActionsProps {
-  currentWord: any;
-  selectedCall: any;
-  onAddPostit: () => void; // On garde pour la compatibilité mais on ne l'utilise plus
-  onRefresh: () => void;
-}
+import { TranscriptionActionsProps } from "../unifiedHeader.types";
 
 export default function TranscriptionActions({
   currentWord,

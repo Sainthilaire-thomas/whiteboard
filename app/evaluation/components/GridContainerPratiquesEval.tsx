@@ -88,19 +88,24 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
 
     // 🔄 Mise à jour locale du post-it (ancien comportement)
     const updatedPostit = isSelectedForPostit
-      ? { ...selectedPostit, pratique: "Non Assigné" }
-      : { ...selectedPostit, pratique: selectedItem.nompratique };
+      ? { ...selectedPostit, pratique: "Non Assigné", idpratique: null }
+      : {
+          ...selectedPostit,
+          pratique: selectedItem.nompratique,
+          idpratique: selectedItem.idpratique,
+        };
 
-    // ✅ Met à jour l'état local et le mapping (ancien comportement)
+    // ✅ CORRECTION: Utiliser l'ID de la pratique au lieu du nom
     setSelectedPostit(updatedPostit);
     updatePostitToPratiqueMap(
       updatedPostit.id,
-      isSelectedForPostit ? null : updatedPostit.pratique
+      isSelectedForPostit ? null : selectedItem.idpratique // ✅ FIXÉ: Utiliser l'ID au lieu du nom
     );
 
     // ✅ Met à jour le post-it dans Supabase (ancien comportement)
     await updatePostit(updatedPostit.id, {
       pratique: updatedPostit.pratique,
+      idpratique: updatedPostit.idpratique, // ✅ Aussi mettre à jour l'ID si nécessaire
     });
 
     console.log("✅ Post-it mis à jour (mode rétrocompatibilité) !");
@@ -218,8 +223,8 @@ const GridContainerPratiquesEval: React.FC<GridContainerPratiquesEvalProps> = ({
                         backgroundColor: isSelectedForPostit
                           ? "red" // 🟥 Pratique active sur le post-it
                           : isAssociated
-                          ? "gray" // 🟫 Pratique encore associée à l'activité
-                          : category.couleur, // 🎨 Couleur d'origine si elle n'est plus associée
+                            ? "gray" // 🟫 Pratique encore associée à l'activité
+                            : category.couleur, // 🎨 Couleur d'origine si elle n'est plus associée
                         border: isHighlighted ? "2px dashed #FFA500" : "none", // ✅ Highlight du hook spécialisé
                         padding: "10px",
                         textAlign: "center",

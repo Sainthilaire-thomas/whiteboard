@@ -34,6 +34,21 @@ interface TranscriptAlternativeProps {
   transcriptSelectionMode?: string; // ✅ AJOUTER cette prop
 }
 
+interface PostitType {
+  id: number;
+  callid: number;
+  wordid: number;
+  word: string;
+  text: string;
+  iddomaine: number | null;
+  sujet: string;
+  idsujet: number | null;
+  pratique: string;
+  idpratique?: number | null;
+  timestamp: number;
+  idactivite?: number | null;
+}
+
 const TranscriptAlternative = ({
   callId,
   hideHeader = false,
@@ -93,43 +108,55 @@ const TranscriptAlternative = ({
     const selectionText = selection.toString().trim();
     if (!selectionText) return;
 
-    // ✅ NOUVELLE APPROCHE : Utiliser la position des paragraphes dans le DOM
     const range = selection.getRangeAt(0);
     const selectedWordIndices: number[] = [];
 
-    // Trouver quels paragraphes sont sélectionnés
-    const selectedParagraphs: number[] = [];
-
+    // 🔧 NOUVELLE APPROCHE : Utiliser les refs des paragraphes avec un mapping précis
     paragraphRefs.current.forEach((paragraphRef, paragraphIndex) => {
       if (paragraphRef && range.intersectsNode(paragraphRef)) {
-        selectedParagraphs.push(paragraphIndex);
-      }
-    });
+        const paragraph = paragraphs[paragraphIndex];
+        if (paragraph) {
+          // Vérifier le type de locuteur du paragraphe
+          const isClientParagraph = isSpeakerClient(paragraph.turn);
+          const isConseillerParagraph = isSpeakerConseil(paragraph.turn);
 
-    console.log("📝 Paragraphes sélectionnés:", selectedParagraphs);
+          // Seulement si le paragraphe correspond au mode de sélection
+          if (
+            (activeSelectionMode === "client" && isClientParagraph) ||
+            (activeSelectionMode === "conseiller" && isConseillerParagraph)
+          ) {
+            // 🔧 CORRECTION PRINCIPALE : Utiliser l'index original du mot
+            paragraph.words.forEach(
+              (word: Word, wordIndexInParagraph: number) => {
+                // Calculer l'index absolu du mot dans transcription.words
+                // en utilisant la position dans le paragraphe + l'offset du début du paragraphe
 
-    // Pour chaque paragraphe sélectionné, ajouter ses mots
-    selectedParagraphs.forEach((paragraphIndex) => {
-      const paragraph = paragraphs[paragraphIndex];
-      if (paragraph) {
-        // Vérifier le type de locuteur du paragraphe
-        const isClientParagraph = isSpeakerClient(paragraph.turn);
-        const isConseillerParagraph = isSpeakerConseil(paragraph.turn);
+                // Méthode 1 : Utiliser startWordIndex si disponible dans SpeakerParagraph
+                if (paragraph.startWordIndex !== undefined) {
+                  const absoluteWordIndex =
+                    paragraph.startWordIndex + wordIndexInParagraph;
+                  if (absoluteWordIndex < transcription.words.length) {
+                    selectedWordIndices.push(absoluteWordIndex);
+                  }
+                } else {
+                  // Méthode 2 : Fallback avec recherche plus précise
+                  // Chercher le mot en utilisant plusieurs critères pour éviter les doublons
+                  const wordIndex = transcription.words.findIndex(
+                    (w: Word, idx: number) =>
+                      w.startTime === word.startTime &&
+                      w.text === word.text &&
+                      w.turn === word.turn &&
+                      // Vérifier que nous n'avons pas déjà trouvé ce mot
+                      !selectedWordIndices.includes(idx)
+                  );
 
-        // Seulement si le paragraphe correspond au mode de sélection
-        if (
-          (activeSelectionMode === "client" && isClientParagraph) ||
-          (activeSelectionMode === "conseiller" && isConseillerParagraph)
-        ) {
-          // Ajouter tous les indices de mots de ce paragraphe
-          paragraph.words.forEach((word) => {
-            const wordIndex = transcription.words.findIndex(
-              (w) => w.startTime === word.startTime && w.text === word.text
+                  if (wordIndex !== -1) {
+                    selectedWordIndices.push(wordIndex);
+                  }
+                }
+              }
             );
-            if (wordIndex !== -1) {
-              selectedWordIndices.push(wordIndex);
-            }
-          });
+          }
         }
       }
     });
@@ -148,7 +175,7 @@ const TranscriptAlternative = ({
           transcription.words[lastIdx].endTime ||
           transcription.words[lastIdx].startTime + 1,
         wordIndex: firstIdx,
-        speaker: activeSelectionMode,
+        speaker: activeSelectionMode as "client" | "conseiller",
       };
 
       console.log(
@@ -170,11 +197,11 @@ const TranscriptAlternative = ({
 
   // ✅ Gestion du Popover (affichage du Post-it)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedPostit, setSelectedPostit] = useState<Postit | null>(null);
+  const [selectedPostit, setSelectedPostit] = useState<PostitType | null>(null);
 
   const handlePostitClick = (
     event: React.MouseEvent<HTMLElement>,
-    postit: Postit
+    postit: PostitType
   ) => {
     setSelectedPostit(postit);
     setAnchorEl(event.currentTarget);
@@ -197,7 +224,8 @@ const TranscriptAlternative = ({
     if (selectedCall?.filepath) {
       setAudioSrc(null); // Réinitialiser l'audio avant d'en charger un nouveau
 
-      createAudioUrlWithToken(selectedCall.filepath).then((url) => {
+      const result = createAudioUrlWithToken(selectedCall.filepath);
+      Promise.resolve(result).then((url: string | null) => {
         if (url) {
           setAudioSrc(url);
         }
@@ -367,7 +395,9 @@ const TranscriptAlternative = ({
       return (
         <Box
           key={index}
-          ref={(el) => (paragraphRefs.current[index] = el)}
+          ref={(el: HTMLDivElement | null) => {
+            paragraphRefs.current[index] = el;
+          }}
           onClick={() => handleParagraphClick(paragraph, index)}
           sx={{
             display: "flex",
@@ -545,13 +575,7 @@ const TranscriptAlternative = ({
           horizontal: "center",
         }}
       >
-        {selectedPostit && (
-          <Postit
-            postit={selectedPostit}
-            isSelected={true}
-            onDoubleClick={handleClosePopover}
-          />
-        )}
+        {selectedPostit && <Postit postit={selectedPostit} />}
       </Popover>
 
       {/* Transcription compact style - Dark Mode with alternating backgrounds */}

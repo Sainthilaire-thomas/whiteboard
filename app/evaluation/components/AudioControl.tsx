@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Box, IconButton, Slider, Typography, Stack } from "@mui/material";
-import { useAudioPlayer } from "../../../context/AudioProvider";
+import { useAudioPlayer } from "../../../context/AudioContext";
 
 interface AudioControlProps {
   showTimeline?: boolean;

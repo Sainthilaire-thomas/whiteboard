@@ -5,10 +5,10 @@ export interface Pratique {
   description: string;
   valeurnumérique: number;
   idcategoriepratique: number;
-  fiche_conseiller_json: any;
-  fiche_coach_json: any;
-  jeuderole: any;
-  geste: string;
+  fiche_conseiller_json?: any;
+  fiche_coach_json?: any;
+  jeuderole?: any;
+  geste?: string;
   // Propriétés enrichies par le hook
   categoryColor?: string;
   categoryName?: string;
@@ -19,7 +19,7 @@ export interface Exercice {
   idpratique: number;
   nomexercice: string;
   description: string;
-  nudges: any;
+  nudges?: any; // Rendre optionnel car peut être undefined
 }
 
 // Nouveau type pour les nudges personnalisés
@@ -62,7 +62,8 @@ export type ThemeType =
   | "mountain"
   | "train"
   | "roadtrip"
-  | "orienteering";
+  | "orienteering"
+  | "desert"; // Ajouter le type "desert" qui manquait
 
 export interface ThemeConfig {
   name: string;
@@ -78,8 +79,35 @@ export interface TrainingPathProps {
   trainingPlan: TrainingPlan;
   categoryColor?: string;
   theme?: ThemeType;
-  onThemeChange?: (theme: ThemeType) => void;
+  onThemeChange?: (theme: ThemeType) => void; // Signature correcte
   showThemeSelector?: boolean;
+}
+
+// Types spécifiques pour les fiches
+export interface FicheCoachPratique {
+  nompratique: string;
+  fiche_coach_json: any; // Obligatoire pour FicheCoach
+  geste?: string;
+  categoryColor?: string;
+}
+
+export interface FicheConseillerPratique {
+  nompratique: string;
+  fiche_conseiller_json: any; // Obligatoire pour FicheConseiller
+  categoryColor?: string;
+}
+
+// Types pour les ressources
+export interface ResourcesPanelProps {
+  pratique: Pratique | null; // Accepter null au lieu de undefined
+  selectedView?: "coach" | "conseiller" | null;
+  onViewChange?: (view: "coach" | "conseiller" | null) => void;
+}
+
+// Types pour les nudges avec gestion stricte des undefined
+export interface NudgeData {
+  index: number;
+  content: string; // Non-optional car filtré dans getCurrentNudges
 }
 
 // Types pour l'interface utilisateur
@@ -95,3 +123,18 @@ export interface Step {
 export interface EntrainementSuiviProps {
   hideHeader?: boolean;
 }
+
+// Types pour les nudges avec gestion stricte des undefined
+export interface NudgeData {
+  index: number;
+  content: string; // Non-optional car filtré dans getCurrentNudges
+}
+
+// Type helper pour les arrays de nudges
+export type NudgeArray = string[]; // Garantir que c'est un array de strings
+
+// Type pour les fonctions de génération de planning
+export type GenerateTrainingPlanFunction = (
+  nudges: string[], // Array strict de strings
+  duration: number
+) => void;

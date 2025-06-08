@@ -27,15 +27,20 @@ import {
   VisibilityOff,
   Visibility,
 } from "@mui/icons-material";
-import { SimulationCoachingTabProps, Postit } from "@/types/evaluation";
+// Import uniquement les types nécessaires depuis les types externes
+import { SimulationCoachingTabProps } from "@/types/evaluation";
 import { useRouter } from "next/navigation";
 import { sortPostits, SortCriteria } from "./utils/filters";
 import { formatTimecode, truncateText } from "./utils/formatters";
 import { useCallData } from "@/context/CallDataContext";
 
-// Interface mise à jour avec les nouvelles props
-interface SimulationCoachingTabPropsExtended
-  extends SimulationCoachingTabProps {
+// Interface mise à jour avec les nouvelles props - en utilisant any pour éviter les conflits
+interface SimulationCoachingTabPropsExtended {
+  filteredPostits: any[]; // Type flexible pour éviter les conflits
+  sujetsData: any[];
+  categoriesSujets: any[];
+  pratiques: any[];
+  categoriesPratiques: any[];
   selectedSujet?: string;
   selectedPratique?: string;
   onClearSelection?: () => void;
@@ -67,10 +72,10 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabPropsExtended> = ({
 
   // Extraire les sujets et pratiques uniques pour les filtres
   const uniqueSujets = [
-    ...new Set(filteredPostits.map((p) => p.sujet).filter(Boolean)),
+    ...new Set(filteredPostits.map((p: any) => p.sujet).filter(Boolean)),
   ] as string[];
   const uniquePratiques = [
-    ...new Set(filteredPostits.map((p) => p.pratique).filter(Boolean)),
+    ...new Set(filteredPostits.map((p: any) => p.pratique).filter(Boolean)),
   ] as string[];
 
   // Gérer la sélection automatique quand on arrive depuis la synthèse
@@ -117,7 +122,7 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabPropsExtended> = ({
   };
 
   // Filtrer les passages en fonction des sélections
-  const getFilteredPostits = (): Postit[] => {
+  const getFilteredPostits = (): any[] => {
     let filtered = [...filteredPostits];
 
     // Debug logs
@@ -131,24 +136,26 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabPropsExtended> = ({
     if (!showAllPassages) {
       if (selectedSujet) {
         console.log("🎯 Filtrage par sujet:", selectedSujet);
-        filtered = filtered.filter((p) => p.sujet === selectedSujet);
+        filtered = filtered.filter((p: any) => p.sujet === selectedSujet);
         console.log("Résultats après filtrage sujet:", filtered.length);
       } else if (selectedPratique) {
         console.log("🎯 Filtrage par pratique:", selectedPratique);
         console.log(
           "Pratiques disponibles:",
-          filteredPostits.map((p) => p.pratique)
+          filteredPostits.map((p: any) => p.pratique)
         );
-        filtered = filtered.filter((p) => p.pratique === selectedPratique);
+        filtered = filtered.filter((p: any) => p.pratique === selectedPratique);
         console.log("Résultats après filtrage pratique:", filtered.length);
       }
     } else {
       // Sinon, utiliser les filtres internes
       if (filterView === "bySubject" && internalSelectedSujet) {
-        filtered = filtered.filter((p) => p.sujet === internalSelectedSujet);
+        filtered = filtered.filter(
+          (p: any) => p.sujet === internalSelectedSujet
+        );
       } else if (filterView === "byPractice" && internalSelectedPratique) {
         filtered = filtered.filter(
-          (p) => p.pratique === internalSelectedPratique
+          (p: any) => p.pratique === internalSelectedPratique
         );
       }
     }
@@ -173,11 +180,21 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabPropsExtended> = ({
   const filterStats = getFilterStats();
 
   // Fonction pour simuler le coaching sur un passage
-  const handleSimulateCoaching = (postit: Postit) => {
-    // Stocker le postit sélectionné dans le contexte global
-    setSelectedPostitForRolePlay(postit);
+  const handleSimulateCoaching = (postit: any) => {
+    // Créer un objet compatible avec tous les contextes
+    const adaptedPostit = {
+      ...postit,
+      // S'assurer que les propriétés requises existent
+      id: postit.id || postit.idpostit || String(Date.now()),
+      callid: postit.callid || 0,
+      wordid: postit.wordid || 0,
+      word: postit.word || "",
+      iddomaine: postit.iddomaine || 0,
+      sujet: postit.sujet || "",
+      pratique: postit.pratique || "",
+    };
 
-    // Rediriger vers la vue de jeu de rôle
+    setSelectedPostitForRolePlay(adaptedPostit);
     router.push("/evaluation?view=roleplay");
   };
 
@@ -361,23 +378,25 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabPropsExtended> = ({
 
         <div className="slack-message-list">
           {displayedPostits.length > 0 ? (
-            displayedPostits.map((postit) => {
+            displayedPostits.map((postit: any) => {
               // Trouver la couleur du sujet
               const sujet = sujetsData.find(
-                (s) => s.idsujet === postit.idsujet
+                (s: any) => s.idsujet === postit.idsujet
               );
               const couleurSujet =
                 categoriesSujets.find(
-                  (cat) => cat.idcategoriesujet === sujet?.idcategoriesujet
+                  (cat: any) => cat.idcategoriesujet === sujet?.idcategoriesujet
                 )?.couleur || "#607d8b";
 
               // Trouver la couleur de la pratique
               const pratique = pratiques.find(
-                (p) => p.nompratique === postit.pratique
+                (p: any) => p.nompratique === postit.pratique
               );
               const couleurPratique =
                 categoriesPratiques.find(
-                  (cat) => cat.id === pratique?.idcategoriepratique
+                  (cat: any) =>
+                    cat.id === pratique?.idcategoriepratique ||
+                    cat.idcategoriepratique === pratique?.idcategoriepratique
                 )?.couleur || "#9e9e9e";
 
               return (
@@ -523,7 +542,7 @@ const SimulationCoachingTab: React.FC<SimulationCoachingTabPropsExtended> = ({
                                 <strong>Conseil pour cette pratique :</strong>{" "}
                                 {/* Récupérer le geste de la pratique */}
                                 {pratiques.find(
-                                  (p) => p.nompratique === postit.pratique
+                                  (p: any) => p.nompratique === postit.pratique
                                 )?.geste ||
                                   "Appliquez les techniques professionnelles adaptées à cette situation."}
                               </span>

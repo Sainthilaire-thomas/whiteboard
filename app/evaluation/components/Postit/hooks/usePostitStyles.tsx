@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useTheme, alpha } from "@mui/material/styles";
+import { useTheme, alpha, Theme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
 
 export const usePostitStyles = () => {
@@ -82,8 +82,12 @@ export const usePostitStyles = () => {
   };
 };
 
-// Style des étapes de navigation
-export const getStepStyles = (theme, isActive, isCompleted) => ({
+// Style des étapes de navigation - avec types TypeScript corrigés
+export const getStepStyles = (
+  theme: Theme,
+  isActive: boolean,
+  isCompleted: boolean
+) => ({
   stepIcon: {
     width: 30,
     height: 30,
@@ -95,14 +99,14 @@ export const getStepStyles = (theme, isActive, isCompleted) => ({
       isCompleted
         ? theme.palette.success.main
         : isActive
-        ? theme.palette.primary.main
-        : theme.palette.grey[400]
+          ? theme.palette.primary.main
+          : theme.palette.grey[400]
     }`,
     color: isCompleted
       ? theme.palette.success.main
       : isActive
-      ? theme.palette.primary.main
-      : theme.palette.grey[600],
+        ? theme.palette.primary.main
+        : theme.palette.grey[600],
     backgroundColor: "transparent",
     transition: "all 0.2s ease",
   },

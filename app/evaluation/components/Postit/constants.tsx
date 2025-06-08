@@ -42,7 +42,7 @@ export const createPostItSteps = (
 ): Step[] => {
   const {
     selectedPostit: postit,
-    selectedDomain, // ✅ Récupérer selectedDomain
+    selectedDomain,
     categoriesSujets,
     sujetsData,
     columnConfigSujets,
@@ -66,13 +66,10 @@ export const createPostItSteps = (
           selectedPostit={postit}
           setSelectedPostit={componentsProps.setSelectedPostit}
           selectedDomain={selectedDomain}
-          showTabs={componentsProps.showTabs}
-          setShowTabs={componentsProps.setShowTabs}
           filteredDomains={componentsProps.filteredDomains}
           selectDomain={componentsProps.selectDomain}
           theme={theme}
           stepBoxStyle={stepBoxStyle}
-          styles={componentsProps.styles}
         />
       ),
       completed: activeStep > 0,
@@ -84,15 +81,14 @@ export const createPostItSteps = (
       content: (
         <SujetStep
           selectedPostit={postit}
-          selectedDomain={selectedDomain} // ✅ Passer selectedDomain
+          selectedDomain={selectedDomain}
           categoriesSujets={categoriesSujets}
           sujetsData={sujetsData}
           columnConfigSujets={columnConfigSujets}
           sujetsDeLActivite={sujetsDeLActivite}
           handleSujetClick={handleSujetClick}
           stepBoxStyle={stepBoxStyle}
-          onBack={() => {}}
-          onNext={() => {}}
+          // Removed unsupported props onBack and onNext
         />
       ),
       completed: activeStep > 1 && hasValidSubject(postit),
@@ -106,15 +102,14 @@ export const createPostItSteps = (
       content: (
         <PratiqueStep
           selectedPostit={postit}
-          selectedDomain={selectedDomain} // ✅ Passer selectedDomain si nécessaire
+          // Removed selectedDomain as it's not in PratiqueStepProps
           categoriesPratiques={categoriesPratiques}
           pratiques={pratiques}
           columnConfigPratiques={columnConfigPratiques}
           pratiquesDeLActivite={pratiquesDeLActivite}
           handlePratiqueClick={handlePratiqueClick}
           stepBoxStyle={stepBoxStyle}
-          onBack={() => {}}
-          onSave={() => {}}
+          // Removed unsupported props onBack and onSave
         />
       ),
       completed: hasValidSubject(postit),
@@ -130,8 +125,7 @@ export const createPostItSteps = (
           selectedPostit={postit}
           theme={theme}
           stepBoxStyle={stepBoxStyle}
-          onClose={() => {}}
-          onEdit={() => {}}
+          // Removed unsupported props onClose and onEdit
         />
       ),
       completed: isCompleted,

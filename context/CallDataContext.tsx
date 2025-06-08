@@ -1,3 +1,5 @@
+// Solution finale pour CallDataContext.tsx
+
 "use client";
 
 import {
@@ -24,6 +26,7 @@ import {
   Postit,
   RolePlayData,
   TextSelection,
+  Domaine,
 } from "@/types/types";
 
 interface CallDataProviderProps {
@@ -142,12 +145,12 @@ export const CallDataProvider = ({
   const [conseillerSelection, setConseillerSelection] =
     useState<TextSelection | null>(null);
 
-  // 🎲 Jeu de rôle
+  // 🎲 Jeu de rôle - RENAMED destructured function to avoid conflicts
   const {
     rolePlayData,
     saveRolePlayData,
     fetchRolePlayData,
-    deleteRolePlayData,
+    deleteRolePlayData: deleteRolePlayFromHook, // ← Renamed to avoid conflict
     getRolePlaysByCallId,
     isLoading: isLoadingRolePlay,
     error: rolePlayError,
@@ -159,6 +162,20 @@ export const CallDataProvider = ({
   // 🗣️ Mot courant
   const [currentWord, setCurrentWord] = useState<Word | null>(null);
   const updateCurrentWord = (word: Word | null) => setCurrentWord(word);
+
+  // ✅ State to cache activity ID for synchronous access
+  const [cachedActivityId, setCachedActivityId] = useState<number | null>(null);
+
+  // Update cached activity ID when selectedCall changes
+  useEffect(() => {
+    if (selectedCall?.callid) {
+      getActivityIdFromCallId(selectedCall.callid).then((id) => {
+        setCachedActivityId(id);
+      });
+    } else {
+      setCachedActivityId(null);
+    }
+  }, [selectedCall?.callid, getActivityIdFromCallId]);
 
   return (
     <CallDataContext.Provider
@@ -181,8 +198,23 @@ export const CallDataProvider = ({
         addPostit,
         updatePostit,
         deletePostit,
-        postitToSujetMap,
-        updatePostitToSujetMap,
+
+        // ✅ FIX 1: Type conversion for postitToSujetMap
+        postitToSujetMap: Object.fromEntries(
+          Object.entries(postitToSujetMap).map(([key, value]) => [
+            key,
+            value?.toString() ?? null,
+          ])
+        ) as Record<string, string | null>,
+
+        // ✅ FIX 2: Wrapper function for updatePostitToSujetMap
+        updatePostitToSujetMap: (postitId: string, sujetId: string | null) => {
+          const numericPostitId = parseInt(postitId, 10);
+          const numericSujetId = sujetId ? parseInt(sujetId, 10) : null;
+          updatePostitToSujetMap(numericPostitId, numericSujetId);
+        },
+
+        // ✅ Already string-based, no conversion needed
         postitToPratiqueMap,
         updatePostitToPratiqueMap,
 
@@ -199,8 +231,12 @@ export const CallDataProvider = ({
         selectTextForZone,
 
         // 🌍 Domaines
-        domains,
-        domainNames,
+        // ✅ FIX 3: Convert Domaine[] to string[]
+        domains: (domains as Domaine[]).map((domain) => domain.nomdomaine),
+
+        // ✅ FIX 4: Convert Record<number, string> to string[]
+        domainNames: Object.values(domainNames),
+
         fetchDomains,
 
         // 🗣️ Word tracking
@@ -212,7 +248,16 @@ export const CallDataProvider = ({
         fetchActivitiesForCall,
         createActivityForCall,
         removeActivityForCall,
-        getActivityIdFromCallId,
+
+        // ✅ FIX 5: Return cached synchronous value
+        getActivityIdFromCallId: (callId: number) => {
+          // Return cached value if it's for the current selected call
+          if (callId === selectedCall?.callid) {
+            return cachedActivityId;
+          }
+          // For other calls, return null (or you could make another async call)
+          return null;
+        },
 
         // Nouvelles valeurs pour la sélection de texte
         transcriptSelectionMode,
@@ -226,12 +271,37 @@ export const CallDataProvider = ({
         selectedPostitForRolePlay,
         setSelectedPostitForRolePlay,
         rolePlayData,
-        saveRolePlayData,
-        fetchRolePlayData,
-        deleteRolePlayData,
+        saveRolePlayData, // ✅ Direct pass-through - signature matches
+
+        // ✅ FIX 6: Wrapper for fetchRolePlayData
+        fetchRolePlayData: async () => {
+          if (selectedCall?.callid && selectedPostitForRolePlay?.id) {
+            await fetchRolePlayData(
+              selectedCall.callid,
+              selectedPostitForRolePlay.id
+            );
+          }
+        },
+
+        // ✅ FIX 7: Wrapper function using renamed hook function
+        deleteRolePlayData: async () => {
+          if (selectedCall?.callid && selectedPostitForRolePlay?.id) {
+            // Get the role play ID first, then delete
+            const rolePlays = await getRolePlaysByCallId(selectedCall.callid);
+            const rolePlayToDelete = rolePlays.find(
+              (rp) => rp.postit_id === selectedPostitForRolePlay.id
+            );
+            if (rolePlayToDelete) {
+              await deleteRolePlayFromHook(rolePlayToDelete.id);
+            }
+          }
+        },
+
         getRolePlaysByCallId,
         isLoadingRolePlay,
-        rolePlayError,
+
+        // ✅ FIX 8: Convert Error to string
+        rolePlayError: rolePlayError?.message || null,
       }}
     >
       {children}

@@ -14,16 +14,20 @@ import {
 import NoteAddIcon from "@mui/icons-material/NoteAdd";
 import { useCallData } from "@/context/CallDataContext";
 
-const AddPostitButton = ({ timestamp }) => {
+interface AddPostitButtonProps {
+  timestamp: number;
+}
+
+const AddPostitButton = ({ timestamp }: AddPostitButtonProps) => {
   const { currentWord, addPostit } = useCallData();
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [comment, setComment] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [createdPostitId, setCreatedPostitId] = useState<number | null>(null);
   const textFieldRef = useRef<HTMLInputElement>(null);
 
   // Ouvrir le popover pour la prise de note rapide
-  const handleOpenPopover = (event) => {
+  const handleOpenPopover = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
     // Reset du commentaire à chaque nouvelle ouverture
     setComment("");
@@ -77,7 +81,7 @@ const AddPostitButton = ({ timestamp }) => {
   }, [snackbarOpen]);
 
   // Gérer la soumission avec Entrée
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleAddPostit();

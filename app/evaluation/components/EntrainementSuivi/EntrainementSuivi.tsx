@@ -32,7 +32,12 @@ import {
 } from "@mui/icons-material";
 import { useEntrainementData } from "./hooks";
 import { STEPS } from "./utils";
-import { EntrainementSuiviProps, CustomNudges, ThemeType } from "./types";
+import {
+  EntrainementSuiviProps,
+  CustomNudges,
+  ThemeType,
+  NudgeData,
+} from "./types";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -323,16 +328,23 @@ const EntrainementSuivi = ({ hideHeader = false }: EntrainementSuiviProps) => {
             customNudges.custom_nudge4,
             customNudges.custom_nudge5,
             customNudges.custom_nudge6,
-          ].filter(Boolean)
+          ].filter(
+            (nudge): nudge is string =>
+              typeof nudge === "string" && nudge.trim() !== ""
+          )
         : [];
 
       if (nudgesArray.length === 0 && exercices.length > 0) {
         const defaultExercice = exercices[0];
         if (defaultExercice.nudges) {
           const defaultNudges = Object.values(defaultExercice.nudges).filter(
-            Boolean
-          ) as string[];
-          generateTrainingPlan(defaultNudges, trainingDuration);
+            (nudge): nudge is string =>
+              typeof nudge === "string" && nudge.trim() !== ""
+          );
+
+          if (defaultNudges.length > 0) {
+            generateTrainingPlan(defaultNudges, trainingDuration);
+          }
         }
       } else if (nudgesArray.length > 0) {
         generateTrainingPlan(nudgesArray, trainingDuration);
@@ -377,19 +389,19 @@ const EntrainementSuivi = ({ hideHeader = false }: EntrainementSuiviProps) => {
       const nudgeKey = `custom_nudge${i}` as keyof CustomNudges;
 
       if (i === nudgeIndex) {
-        // 📝 Le nudge actuellement modifié
-        completeNudgesData[nudgeKey] = newValue;
+        // Le nudge actuellement modifié
+        completeNudgesData[nudgeKey] = newValue as any;
       } else if (customNudges && customNudges[nudgeKey]) {
-        // 💾 Nudge déjà personnalisé existant
-        completeNudgesData[nudgeKey] = customNudges[nudgeKey];
+        // Nudge déjà personnalisé existant
+        completeNudgesData[nudgeKey] = customNudges[nudgeKey] as any;
       } else if (editingNudges[i]) {
-        // ✏️ Nudge en cours d'édition (pas encore sauvegardé)
-        completeNudgesData[nudgeKey] = editingNudges[i];
+        // Nudge en cours d'édition (pas encore sauvegardé)
+        completeNudgesData[nudgeKey] = editingNudges[i] as any;
       } else if (originalNudges[i - 1]) {
-        // 🎯 Nudge original (recommandation initiale)
-        completeNudgesData[nudgeKey] = originalNudges[i - 1];
+        // Nudge original (recommandation initiale)
+        completeNudgesData[nudgeKey] = originalNudges[i - 1] as any;
       }
-      // Si aucune de ces conditions, le nudge reste undefined (pas de valeur)
+      // Si aucune de ces conditions, le nudge reste undefined
     }
 
     // 📅 Optionnel : Ajouter les dates si nécessaire
@@ -442,7 +454,7 @@ const EntrainementSuivi = ({ hideHeader = false }: EntrainementSuiviProps) => {
   };
 
   // Obtenir les nudges actuels (personnalisés ou par défaut)
-  const getCurrentNudges = () => {
+  const getCurrentNudges = (): NudgeData[] => {
     if (customNudges) {
       return [
         customNudges.custom_nudge1,
@@ -452,14 +464,19 @@ const EntrainementSuivi = ({ hideHeader = false }: EntrainementSuiviProps) => {
         customNudges.custom_nudge5,
         customNudges.custom_nudge6,
       ]
-        .map((nudge, index) => ({ index: index + 1, content: nudge || "" }))
-        .filter((nudge) => nudge.content);
+        .map((nudge, index) => ({
+          index: index + 1,
+          content: nudge || "",
+        }))
+        .filter((nudge): nudge is NudgeData => nudge.content.trim() !== ""); // Type guard
     }
 
     if (exercices.length > 0 && exercices[0].nudges) {
       const defaultNudges = Object.values(exercices[0].nudges).filter(
-        Boolean
-      ) as string[];
+        (nudge): nudge is string =>
+          typeof nudge === "string" && nudge.trim() !== ""
+      );
+
       return defaultNudges.map((nudge, index) => ({
         index: index + 1,
         content: nudge,
@@ -588,7 +605,7 @@ const EntrainementSuivi = ({ hideHeader = false }: EntrainementSuiviProps) => {
 
             {/* Panel des ressources */}
             <ResourcesPanel
-              pratique={selectedPratiqueData}
+              pratique={selectedPratiqueData || null}
               selectedView={selectedResourceView}
               onViewChange={setSelectedResourceView}
             />
@@ -734,6 +751,9 @@ const EntrainementSuivi = ({ hideHeader = false }: EntrainementSuiviProps) => {
   // Rendu de l'étape Déroulé
   const renderDeroulementStep = () => {
     const selectedPratiqueData = getPratiqueById(selectedPratique || 0);
+    const handleThemeChange = (theme: ThemeType) => {
+      setSelectedTheme(theme);
+    };
 
     return (
       <Box sx={{ p: 2, height: "calc(100vh - 280px)", overflow: "auto" }}>
@@ -745,7 +765,7 @@ const EntrainementSuivi = ({ hideHeader = false }: EntrainementSuiviProps) => {
                 trainingPlan={trainingPlan}
                 categoryColor={selectedPratiqueData?.categoryColor || "#3f51b5"}
                 theme={selectedTheme}
-                onThemeChange={setSelectedTheme}
+                onThemeChange={handleThemeChange} // Utiliser la fonction wrapper
                 showThemeSelector={true}
               />
             </div>

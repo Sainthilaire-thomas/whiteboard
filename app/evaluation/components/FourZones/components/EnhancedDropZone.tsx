@@ -23,7 +23,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import { PostitType } from "../types/types";
-
+import { ZONES } from "../constants/zone";
 interface EnhancedDropZoneProps {
   id: string;
   title: string;
@@ -319,10 +319,10 @@ export const EnhancedDropZone: React.FC<EnhancedDropZoneProps> = ({
               id === ZONES.JE_FAIS
                 ? "vous faites"
                 : id === ZONES.VOUS_AVEZ_FAIT
-                ? "le client a fait"
-                : id === ZONES.ENTREPRISE_FAIT
-                ? "l'entreprise fait"
-                : "le client fera"
+                  ? "le client a fait"
+                  : id === ZONES.ENTREPRISE_FAIT
+                    ? "l'entreprise fait"
+                    : "le client fera"
             }`}
           />
         </DialogContent>

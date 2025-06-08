@@ -1,11 +1,24 @@
-// hooks/useTTS.ts
+// hooks/useTTS.ts - VERSION CORRIGÉE
+
 import { useState, useCallback, useRef, useEffect } from "react";
 
 export interface TTSSettings {
   voice: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
   speed: number;
-  model: "tts-1" | "tts-1-hd";
+  model: "tts-1" | "tts-1-hd" | "gpt-4o-audio"; // ✅ CORRECTION: nom de modèle valide
   textEnhancement?: "aucun" | "contextuel" | "emotionnel";
+  tone?:
+    | "professionnel"
+    | "chaleureux"
+    | "enthousiaste"
+    | "calme"
+    | "confiant"
+    | "explication"
+    | "empathique"
+    | "resolution_probleme"
+    | "instructions"
+    | "urgence_controlee";
+  autoDetectContext?: boolean;
 }
 
 export interface TTSState {
@@ -26,12 +39,19 @@ export const useTTS = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Génération audio
+  // ✅ GÉNÉRATION AUDIO CORRIGÉE
   const generateSpeech = useCallback(
     async (text: string, settings: TTSSettings): Promise<string | null> => {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
       try {
+        console.log("🎙️ generateSpeech appelé avec:", {
+          textLength: text.length,
+          model: settings.model,
+          tone: settings.tone,
+          voice: settings.voice,
+        });
+
         const response = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -41,6 +61,8 @@ export const useTTS = () => {
             speed: settings.speed,
             model: settings.model,
             textEnhancement: settings.textEnhancement,
+            tone: settings.tone,
+            autoDetectContext: settings.autoDetectContext,
           }),
         });
 
@@ -52,10 +74,12 @@ export const useTTS = () => {
         const audioBlob = await response.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
 
+        console.log("✅ Audio généré avec succès");
         return audioUrl;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Erreur inconnue";
+        console.error("❌ Erreur generateSpeech:", errorMessage);
         setState((prev) => ({ ...prev, error: errorMessage }));
         return null;
       } finally {
@@ -65,8 +89,10 @@ export const useTTS = () => {
     []
   );
 
-  // Lecture audio
+  // ✅ LECTURE AUDIO CORRIGÉE
   const playAudio = useCallback((audioUrl: string) => {
+    console.log("🔊 Début lecture audio");
+
     // Nettoyer l'audio précédent
     if (audioRef.current) {
       audioRef.current.pause();
@@ -81,6 +107,7 @@ export const useTTS = () => {
     audioRef.current = audio;
 
     audio.onloadstart = () => {
+      console.log("📡 Chargement audio...");
       setState((prev) => ({ ...prev, isPlaying: true, progress: 0 }));
     };
 
@@ -92,6 +119,7 @@ export const useTTS = () => {
     };
 
     audio.onended = () => {
+      console.log("✅ Lecture terminée");
       setState((prev) => ({ ...prev, isPlaying: false, progress: 100 }));
       setTimeout(() => {
         setState((prev) => ({ ...prev, progress: 0 }));
@@ -99,7 +127,8 @@ export const useTTS = () => {
       }, 1000);
     };
 
-    audio.onerror = () => {
+    audio.onerror = (e) => {
+      console.error("❌ Erreur lecture audio:", e);
       setState((prev) => ({
         ...prev,
         isPlaying: false,
@@ -110,6 +139,7 @@ export const useTTS = () => {
     };
 
     audio.play().catch((err) => {
+      console.error("❌ Impossible de jouer l'audio:", err);
       setState((prev) => ({
         ...prev,
         error: "Impossible de jouer l'audio: " + err.message,
@@ -119,7 +149,7 @@ export const useTTS = () => {
     });
   }, []);
 
-  // Arrêt audio
+  // Arrêt audio (existant)
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -131,10 +161,17 @@ export const useTTS = () => {
     setState((prev) => ({ ...prev, isPlaying: false, progress: 0 }));
   }, []);
 
-  // Parler (génération + lecture)
+  // ✅ PARLER CORRIGÉ avec logs
   const speak = useCallback(
     async (text: string, settings: TTSSettings) => {
+      console.log("🗣️ speak() appelé:", {
+        textLength: text.length,
+        isCurrentlyPlaying: state.isPlaying,
+        settings: settings,
+      });
+
       if (state.isPlaying) {
+        console.log("🛑 Arrêt de la lecture en cours");
         stopAudio();
         return;
       }

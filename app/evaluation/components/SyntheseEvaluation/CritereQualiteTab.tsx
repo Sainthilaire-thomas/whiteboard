@@ -12,10 +12,17 @@ import {
   Divider,
   Chip,
 } from "@mui/material";
-import { CritereQualiteTabProps } from "@/types/evaluation";
 import { columnConfigSujets } from "@/config/gridConfig";
 import SimplifiedGridContainerSujets from "../SimplifiedGridContainerSujets";
 import SimplifiedGridContainerPratiques from "../SimplifiedGridContainerPratiques";
+
+// Import des types locaux simplifiés
+import {
+  CritereQualiteTabProps,
+  convertSujetsToItems,
+  convertPratiquesToItems,
+  convertToCategories,
+} from "./syntheseEvaluation.types";
 
 const CritereQualiteTab: React.FC<CritereQualiteTabProps> = ({
   selectedDomain,
@@ -24,6 +31,21 @@ const CritereQualiteTab: React.FC<CritereQualiteTabProps> = ({
   categoriesPratiques,
   pratiques,
 }) => {
+  // Normalisation simple des données
+  const normalizedSujetsAsItems = convertSujetsToItems(sujetsData || []);
+  const normalizedPratiques = convertPratiquesToItems(pratiques || []);
+  const normalizedCategoriesSujets = convertToCategories(
+    categoriesSujets || []
+  );
+  const normalizedCategoriesPratiques = convertToCategories(
+    categoriesPratiques || []
+  );
+
+  // Fonction handler simple
+  const handlePratiqueClick = (pratique: any) => {
+    console.log("Pratique sélectionnée:", pratique);
+  };
+
   return (
     <Box sx={{ p: 1 }}>
       <Paper sx={{ p: 2, mb: 2, borderRadius: 1 }}>
@@ -37,8 +59,8 @@ const CritereQualiteTab: React.FC<CritereQualiteTabProps> = ({
 
         {selectedDomain ? (
           <SimplifiedGridContainerSujets
-            categories={categoriesSujets || []}
-            items={sujetsData}
+            categories={normalizedCategoriesSujets}
+            items={normalizedSujetsAsItems}
             columnConfig={columnConfigSujets}
           />
         ) : (
@@ -58,8 +80,9 @@ const CritereQualiteTab: React.FC<CritereQualiteTabProps> = ({
         <Divider sx={{ mb: 2 }} />
 
         <SimplifiedGridContainerPratiques
-          categories={categoriesPratiques || []}
-          items={pratiques || []}
+          categories={normalizedCategoriesPratiques}
+          items={normalizedPratiques}
+          onPratiqueClick={handlePratiqueClick}
           columnConfig={{
             categoryIdKey: "idcategoriepratique",
             categoryNameKey: "nomcategorie",
@@ -80,8 +103,8 @@ const CritereQualiteTab: React.FC<CritereQualiteTabProps> = ({
         <Divider sx={{ mb: 2 }} />
 
         <Grid container spacing={2}>
-          {categoriesSujets.map((categorie) => (
-            <Grid item xs={12} md={6} key={categorie.idcategoriesujet}>
+          {normalizedCategoriesSujets?.map((categorie) => (
+            <Grid item xs={12} md={6} key={categorie.id}>
               <Card
                 sx={{
                   mb: 2,
@@ -100,8 +123,9 @@ const CritereQualiteTab: React.FC<CritereQualiteTabProps> = ({
 
                   <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                     {sujetsData
-                      .filter(
+                      ?.filter(
                         (sujet) =>
+                          sujet.idcategoriesujet === categorie.id ||
                           sujet.idcategoriesujet === categorie.idcategoriesujet
                       )
                       .map((sujet) => (

@@ -17,30 +17,35 @@ import {
   Alert,
   Paper,
 } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AudioFileIcon from "@mui/icons-material/AudioFile";
 import { removeCallUpload } from "../lib/removeCallUpload";
 
-interface EnterpriseCallsListProps {
-  entrepriseId: number | null;
-}
+// ✅ Import des types locaux autonomes
+import type {
+  Call,
+  ConfirmDeleteState,
+  ApiError,
+  EnterpriseCallsListProps,
+} from "../types";
 
 export default function EnterpriseCallsList({
   entrepriseId,
 }: EnterpriseCallsListProps) {
   const { calls, fetchCalls, isLoadingCalls, selectCall } = useCallData();
-  const [confirmDelete, setConfirmDelete] = useState({
+
+  const [confirmDelete, setConfirmDelete] = useState<ConfirmDeleteState>({
     open: false,
     callId: null,
     filePath: null,
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Gestionnaire pour sélectionner un appel
-  const handleSelectCall = (callId) => {
+  const handleSelectCall = (callId: number): void => {
     const call = calls.find((c) => c.callid === callId);
     if (call) {
       selectCall(call);
@@ -48,7 +53,7 @@ export default function EnterpriseCallsList({
   };
 
   // Gestionnaire pour supprimer un appel
-  const handleDeleteCall = async () => {
+  const handleDeleteCall = async (): Promise<void> => {
     if (!confirmDelete.callId) return;
 
     try {
@@ -61,8 +66,9 @@ export default function EnterpriseCallsList({
       }
 
       setSuccessMessage("Appel supprimé avec succès");
-    } catch (error) {
-      setError(`Erreur lors de la suppression: ${error.message}`);
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      setError(`Erreur lors de la suppression: ${apiError.message}`);
     } finally {
       setIsSubmitting(false);
       setConfirmDelete({ open: false, callId: null, filePath: null });
@@ -70,36 +76,37 @@ export default function EnterpriseCallsList({
   };
 
   // Fermer le message de succès
-  const handleCloseSuccess = () => {
+  const handleCloseSuccess = (): void => {
     setSuccessMessage(null);
   };
 
   // Fermer le message d'erreur
-  const handleCloseError = () => {
+  const handleCloseError = (): void => {
     setError(null);
   };
 
   // Définir les colonnes de la grille
-  const columns = [
-    { field: "filename", headerName: "Nom", flex: 1 },
-    { field: "description", headerName: "Description", flex: 2 },
+  const columns: GridColDef<Call>[] = [
     {
-      field: "upload",
-      headerName: "Audio",
-      renderCell: (params) => (params.value ? "✓" : "✗"),
-      width: 80,
+      field: "filename",
+      headerName: "Nom",
+      flex: 1,
     },
     {
-      field: "preparedfortranscript",
-      headerName: "Transcription",
-      renderCell: (params) => (params.value ? "✓" : "✗"),
-      width: 120,
+      field: "description",
+      headerName: "Description",
+      flex: 2,
+      // ✅ Gestion du cas où description est undefined
+      renderCell: (params: GridRenderCellParams<Call, string>) =>
+        params.value || "Pas de description",
     },
     {
       field: "action",
       headerName: "Actions",
       width: 120,
-      renderCell: (params) => (
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<Call>) => (
         <Box>
           <IconButton
             color="primary"
@@ -114,7 +121,7 @@ export default function EnterpriseCallsList({
               setConfirmDelete({
                 open: true,
                 callId: params.row.callid,
-                filePath: params.row.filepath,
+                filePath: params.row.filepath || null,
               })
             }
             title="Supprimer"
@@ -141,10 +148,14 @@ export default function EnterpriseCallsList({
           <DataGrid
             rows={calls}
             columns={columns}
-            getRowId={(row) => row.callid}
-            pageSize={5}
-            rowsPerPageOptions={[5, 10, 25]}
-            disableSelectionOnClick
+            getRowId={(row: Call) => row.callid}
+            initialState={{
+              pagination: {
+                paginationModel: { page: 0, pageSize: 5 },
+              },
+            }}
+            pageSizeOptions={[5, 10, 25]}
+            disableRowSelectionOnClick
           />
         </div>
       ) : (

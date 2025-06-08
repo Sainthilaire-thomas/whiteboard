@@ -116,16 +116,16 @@ export interface NudgeDates {
 
 export interface UseNudgesResult {
   nudges: Nudge[];
-  fetchNudgesForPractice: (idpratique: number) => Promise<Nudge[]>;
+  fetchNudgesForPractice: (idpratique: number) => Promise<Nudge[]>; // ✅ Returns Nudge[]
   fetchNudgesForActivity: (idactivite: number) => Promise<void>;
-  refreshNudgesFunction: () => void;
-  refreshNudges: () => void;
-  updateNudgeDates: (newDates: NudgeDates) => void;
+  refreshNudgesFunction: () => void; // ✅ Function that returns void
+  refreshNudges: () => void; // ✅ FIXED: This is a function, not a boolean
+  updateNudgeDates: (newDates: NudgeDates) => void; // ✅ Takes NudgeDates object
   nudgeDates: NudgeDates;
   nudgesUpdated: boolean;
   markNudgesAsUpdated: () => void;
   resetNudgesUpdated: () => void;
-  isLoading: boolean; // ✅ Ajouté pour correspondre au hook useNudges
+  isLoading: boolean; // ✅ Added for react-query loading state
 }
 
 // 🔹 Activités & Pratiques
@@ -328,6 +328,8 @@ export interface TextSelection {
 }
 
 // ✅ Types unifiés pour le contexte d'application
+// Updated types.ts - Fixing type mismatches
+
 export interface CallDataContextType {
   // 📞 Appels
   calls: Call[];
@@ -337,7 +339,7 @@ export interface CallDataContextType {
   setSelectedCall: (call: Call | null) => void;
   archiveCall: (callId: number) => Promise<void>;
   deleteCall: (callId: number) => Promise<void>;
-  createAudioUrlWithToken: (audioUrl: string) => string;
+  createAudioUrlWithToken: (filepath: string) => Promise<string | null>;
   isLoadingCalls: boolean;
 
   // 🗒️ Post-its
@@ -355,15 +357,17 @@ export interface CallDataContextType {
     updatedFields: Record<string, any>
   ) => Promise<void>;
   deletePostit: (postitId: number) => Promise<void>;
-  postitToSujetMap: Record<number, number | null>;
-  updatePostitToSujetMap: (postitId: number, sujetId: number | null) => void;
-  postitToPratiqueMap: Record<number, number | null>;
+
+  // ✅ FIXED: Consistent string-based mapping
+  postitToSujetMap: Record<string, string | null>;
+  updatePostitToSujetMap: (postitId: string, sujetId: string | null) => void;
+  postitToPratiqueMap: Record<string, string | null>;
   updatePostitToPratiqueMap: (
-    postitId: number,
-    pratiqueId: number | null
+    postitId: string,
+    pratiqueId: string | null
   ) => void;
 
-  // 🟡 NOUVEAU : Postit sélectionné (déplacé depuis AppContext)
+  // 🟡 Postit sélectionné
   selectedPostit: Postit | null;
   setSelectedPostit: (postit: Postit | null) => void;
 
@@ -376,7 +380,8 @@ export interface CallDataContextType {
   selectTextForZone: (zone: string, text: string) => void;
 
   // 🌍 Domaines
-  domains: any[];
+  // ✅ FIXED: Changed to string arrays to match the conversion
+  domains: string[];
   domainNames: string[];
   fetchDomains: () => Promise<void>;
 
@@ -387,8 +392,14 @@ export interface CallDataContextType {
   // 🔄 Activité liée à l'appel
   idCallActivite: number | null;
   fetchActivitiesForCall: (callId: number) => Promise<void>;
-  createActivityForCall: (callId: number) => Promise<void>;
+  createActivityForCall: (
+    callId: number,
+    activityType: "evaluation" | "coaching",
+    idConseiller: number
+  ) => Promise<void>;
   removeActivityForCall: (callId: number) => Promise<void>;
+
+  // ✅ FIXED: Synchronous return (using cached value)
   getActivityIdFromCallId: (callId: number) => number | null;
 
   // Sélections de texte
@@ -403,11 +414,27 @@ export interface CallDataContextType {
   selectedPostitForRolePlay: Postit | null;
   setSelectedPostitForRolePlay: (postit: Postit | null) => void;
   rolePlayData: RolePlayData | null;
-  saveRolePlayData: (data: RolePlayData) => Promise<void>;
+
+  // ✅ FIXED: Exact signature from your useRolePlay hook
+  saveRolePlayData: (data: RolePlayData, postitId: number) => Promise<void>;
+
+  // ✅ FIXED: No parameters (wrapper function)
   fetchRolePlayData: () => Promise<void>;
+
+  // ✅ FIXED: No parameters (wrapper function)
   deleteRolePlayData: () => Promise<void>;
-  getRolePlaysByCallId: (callId: number) => Promise<RolePlayData[]>;
+
+  getRolePlaysByCallId: (callId: number) => Promise<
+    {
+      id: number;
+      postit_id: number;
+      note: RolePlayData;
+    }[]
+  >;
+
   isLoadingRolePlay: boolean;
+
+  // ✅ FIXED: Changed to string | null
   rolePlayError: string | null;
 }
 
@@ -515,11 +542,11 @@ export interface UseUIResult {
   closeDrawer: () => void;
   toggleDrawer: () => void;
   setDrawerContent: (content: DrawerContent | null) => void;
-  handleOpenDrawerWithContent: (content: DrawerContent) => void; // ✅ Ajouté
+  handleOpenDrawerWithContent: (content: DrawerContent) => void;
   handleOpenDrawerWithData: (
     idPratique: number,
     initialType: string
-  ) => Promise<void>; // ✅ Ajouté
+  ) => Promise<void>;
 
   // ⭐ Gestion des avis
   reviews: Review[];
@@ -530,6 +557,8 @@ export interface UseUIResult {
 
   // 👥 Gestion des avatars
   avatarTexts: AvatarText;
+
+  // ✅ Fix: Change from (index: number, text: string) to (participantId: string, text: string)
   updateAvatarText: (participantId: string, text: string) => void;
 }
 
@@ -543,25 +572,26 @@ export interface AppContextType {
   averageRating: number;
   categoriesPratiques: CategoriePratique[];
 
-  // Domaines et Sujets - ✅ FIX: Utiliser Domain maintenant défini
-  domains: Domain[];
-  selectedDomain: Domain | null;
-  selectDomain: (domain: Domain) => void;
-  sujetsData: SujetSimple[]; // ✅ FIX: Utiliser SujetSimple pour éviter les conflits
+  // Domaines et Sujets - ✅ CORRIGÉ pour correspondre à l'usage réel
+  domains: Domaine[]; // Utilise Domaine (avec 'e') comme dans votre import
+  filteredDomains: Domaine[]; // ✅ AJOUTÉ - nécessaire pour votre hook
+  selectedDomain: string | null; // ✅ CORRIGÉ - c'est une string, pas un Domain
+  selectDomain: (domainId: string) => void; // ✅ CORRIGÉ - prend une string
+  sujetsData: SujetSimple[];
   categoriesSujets: CategorieSujet[];
   isLoadingDomains: boolean;
   isLoadingSujets: boolean;
   isLoadingCategoriesSujets: boolean;
 
-  // Nudges - ✅ FIX: Utiliser SetStateAction maintenant importé
+  // Nudges
   nudges: Nudge[];
   setNudges: (value: SetStateAction<Nudge[]>) => void;
-  fetchNudgesForPractice: (pratiqueId: number) => Promise<void>;
-  fetchNudgesForActivity: (activityId: number) => Promise<void>;
-  refreshNudgesFunction: () => Promise<void>;
-  refreshNudges: boolean;
-  updateNudgeDates: (nudgeId: number, dates: any) => Promise<void>;
-  nudgeDates: Record<number, any>;
+  fetchNudgesForPractice: (idpratique: number) => Promise<Nudge[]>; // ✅ CHANGE: Retourne Promise<Nudge[]>
+  fetchNudgesForActivity: (idactivite: number) => Promise<void>;
+  refreshNudgesFunction: () => void; // ✅ CHANGE: Retourne void, pas Promise<void>
+  refreshNudges: () => void; // ✅ CHANGE: Function, pas boolean
+  updateNudgeDates: (newDates: NudgeDates) => void; // ✅ CHANGE: Prend NudgeDates, pas (nudgeId, dates)
+  nudgeDates: NudgeDates; // ✅ CHANGE: Type NudgeDates au lieu de Record<number, any>
   nudgesUpdated: boolean;
   markNudgesAsUpdated: () => void;
   resetNudgesUpdated: () => void;
@@ -595,16 +625,26 @@ export interface AppContextType {
   sujetsForActivite: any[];
   fetchSujetsForActivite: (activityId: number) => Promise<void>;
   subjectPracticeRelations: any[];
-  toggleSujet: (sujetId: number) => void;
+  toggleSujet: (idActivite: number, item: Item) => Promise<void>; // ✅ FIXED: Updated to match actual implementation
   selectedPratique: any;
   handleSelectPratique: (pratique: any) => void;
   highlightedPractices: number[];
-  calculateHighlightedPractices: () => void;
+  calculateHighlightedPractices: (disabledSubjects: number[]) => void;
   resetSelectedState: () => void;
   avatarTexts: Record<string, string>;
-  updateAvatarText: (key: string, text: string) => void;
+  updateAvatarText: (index: number, text: string) => void;
   selectedPostitIds: number[];
   setSelectedPostitIds: (ids: number[]) => void;
+  syncSujetsForActiviteFromMap: (
+    postitToSujetMap: Record<number, number | null>,
+    idActivite: number
+  ) => Promise<void>;
+
+  syncPratiquesForActiviteFromMap: (
+    postitToPratiqueMap: Record<number, number | null>,
+    idActivite: number,
+    allPratiques: Pratique[]
+  ) => Promise<void>;
 
   // Authentification
   user: any;

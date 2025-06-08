@@ -1,10 +1,12 @@
-// postit/types.tsx - Types complètement autonomes pour le composant Postit
+// postit/types.tsx - Types centralisés pour tous les composants du répertoire Postit
 import React from "react";
 import { Theme } from "@mui/material/styles";
 
 // ===== TYPES DE BASE =====
 
-// Type principal pour un Postit dans ce contexte (aligné avec votre structure globale)
+/**
+ * Type principal pour un Postit
+ */
 export interface Postit {
   id: number;
   callid: number;
@@ -12,14 +14,14 @@ export interface Postit {
   word: string;
   text: string;
   iddomaine: number | null;
-  sujet: string; // Sujet en texte
-  idsujet: number | null; // ID du sujet
-  pratique: string | null; // ✅ CORRIGÉ : Nullable dès la base pour permettre l'état de saisie
-  idpratique?: number | null; // ID de la pratique utilisé dans le code
+  sujet: string;
+  idsujet: number | null;
+  pratique: string | null;
+  idpratique?: number | null;
   timestamp: number;
   idactivite?: number | null;
 
-  // Propriétés UI optionnelles pour le composant
+  // Propriétés UI optionnelles
   x?: number;
   y?: number;
   width?: number;
@@ -36,7 +38,9 @@ export interface Postit {
   tags?: string[];
 }
 
-// Version étendue avec propriétés pour la navigation/interface
+/**
+ * Version étendue avec propriétés pour la navigation/interface
+ */
 export interface PostitExtended extends Postit {
   initialStep?: number;
   currentStep?: number;
@@ -52,7 +56,9 @@ export interface PostitExtended extends Postit {
 
 // ===== TYPES MÉTIER =====
 
-// Domaine d'activité (aligné avec votre structure)
+/**
+ * Domaine d'activité
+ */
 export interface Domain {
   iddomaine: number;
   nomdomaine: string;
@@ -62,7 +68,9 @@ export interface Domain {
   order?: number;
 }
 
-// Sujet (aligné avec votre structure)
+/**
+ * Sujet
+ */
 export interface Subject {
   idsujet: number;
   nomsujet: string;
@@ -73,7 +81,9 @@ export interface Subject {
   order?: number;
 }
 
-// Pratique (aligné avec votre structure)
+/**
+ * Pratique
+ */
 export interface Practice {
   idpratique: number;
   nompratique: string;
@@ -85,7 +95,9 @@ export interface Practice {
   difficulty?: "beginner" | "intermediate" | "advanced";
 }
 
-// Catégorie pour sujets (aligné avec votre structure)
+/**
+ * Catégorie pour sujets
+ */
 export interface CategorySubject {
   idcategoriesujet: number;
   nomcategorie: string;
@@ -94,7 +106,9 @@ export interface CategorySubject {
   order?: number;
 }
 
-// Catégorie pour pratiques (aligné avec votre structure)
+/**
+ * Catégorie pour pratiques
+ */
 export interface CategoryPractice {
   idcategoriepratique: number;
   nomcategorie: string;
@@ -105,7 +119,9 @@ export interface CategoryPractice {
 
 // ===== TYPES DE CONFIGURATION =====
 
-// Configuration des colonnes pour l'affichage
+/**
+ * Configuration des colonnes pour l'affichage
+ */
 export interface ColumnConfig {
   field: string;
   headerName: string;
@@ -116,7 +132,21 @@ export interface ColumnConfig {
   renderCell?: (params: any) => React.ReactNode;
 }
 
-// Configuration de navigation par étapes
+/**
+ * Configuration de navigation par étapes - interface Step manquante
+ */
+export interface Step {
+  label: string;
+  icon: string;
+  content: React.ReactNode;
+  completed: boolean;
+  additionalInfo?: string | null;
+  optional: boolean;
+}
+
+/**
+ * Configuration de navigation par étapes
+ */
 export interface NavigationStep {
   id: number;
   label: string;
@@ -126,11 +156,18 @@ export interface NavigationStep {
   isCompleted?: boolean;
   isAccessible?: boolean;
   content?: React.ReactNode;
+  additionalInfo?: string;
 }
+
+// ===== TYPES POUR LES CONTEXTES =====
+// Note: Ces types sont définis ici pour référence, mais utilisez les types
+// officiels de vos contextes pour éviter les conflits
 
 // ===== PROPS DES COMPOSANTS =====
 
-// Props du composant principal Postit
+/**
+ * Props du composant principal Postit
+ */
 export interface PostitComponentProps {
   postit?: Postit;
   inline?: boolean;
@@ -143,7 +180,9 @@ export interface PostitComponentProps {
   style?: React.CSSProperties;
 }
 
-// Props de base partagées par toutes les étapes
+/**
+ * Props de base partagées par toutes les étapes
+ */
 export interface PostitBaseStepProps {
   selectedPostit: PostitExtended;
   theme?: Theme;
@@ -152,42 +191,163 @@ export interface PostitBaseStepProps {
   readOnly?: boolean;
 }
 
-// Props pour l'étape de contexte (aligné avec vos domaines)
-export interface PostitContexteStepProps extends PostitBaseStepProps {
+/**
+ * Props pour l'étape de contexte - CORRECTED
+ */
+export interface ContexteStepProps extends PostitBaseStepProps {
   setSelectedPostit: (postit: PostitExtended) => void;
   selectedDomain: string | null;
-  filteredDomains: Domain[]; // Utilise le type Domain aligné
-  showTabs?: boolean;
-  setShowTabs?: (show: boolean) => void;
-  selectDomain?: (domainId: string) => void;
+  filteredDomains: Domain[];
+  selectDomain: (domainId: string) => void; // Made required since it's being used
   onDomainChange?: (domain: Domain | null) => void;
 }
 
-// Props pour l'étape de sélection de sujet (aligné avec vos sujets)
-export interface PostitSujetStepProps extends PostitBaseStepProps {
-  categoriesSujets: CategorySubject[]; // Utilise le bon type de catégorie
-  sujetsData: Subject[]; // Utilise le type Subject aligné
+/**
+ * Props pour l'étape de sélection de sujet - CORRECTED
+ */
+export interface SujetStepProps extends PostitBaseStepProps {
+  selectedDomain?: string | null; // Made optional since it might not always be needed
+  categoriesSujets: CategorySubject[];
+  sujetsData: Subject[];
   columnConfigSujets: ColumnConfig[];
   sujetsDeLActivite: number[];
   handleSujetClick: (subject: Subject) => void;
   selectedSubjectId?: number | null;
   onSubjectSelect?: (subject: Subject) => void;
+  // Removed onBack and onNext as they were causing errors
 }
 
-// Props pour l'étape de sélection de pratique (aligné avec vos pratiques)
-export interface PostitPratiqueStepProps extends PostitBaseStepProps {
-  categoriesPratiques: CategoryPractice[]; // Utilise le bon type de catégorie
-  pratiques: Practice[]; // Utilise le type Practice aligné
+/**
+ * Props pour l'étape de sélection de pratique - CORRECTED
+ */
+export interface PratiqueStepProps extends PostitBaseStepProps {
+  categoriesPratiques: CategoryPractice[];
+  pratiques: Practice[];
   columnConfigPratiques: ColumnConfig[];
   pratiquesDeLActivite: number[];
   handlePratiqueClick: (practice: Practice) => void;
   selectedPracticeId?: number | null;
   onPracticeSelect?: (practice: Practice) => void;
+  // Removed selectedDomain, onBack and onSave as they were causing errors
+}
+
+/**
+ * Props pour le composant StatusBadge
+ */
+export interface StatusBadgeProps {
+  isCompleted: boolean;
+  hasSubject: boolean;
+  size?: "small" | "medium" | "large";
+  showText?: boolean;
+}
+
+/**
+ * Props pour le composant StepNavigation
+ */
+export interface StepNavigationProps {
+  steps: Array<{
+    label: string;
+    icon: string;
+    isAccessible: boolean;
+    isCompleted: boolean;
+    additionalInfo?: string;
+  }>;
+  activeStep: number;
+  isCompleted: boolean;
+  hasRealSubject: boolean;
+  navigateToStep: (stepIndex: number) => void;
+  handleNext: () => void;
+  handleBack: () => void;
+  temporaryEditMode: boolean;
+  onDelete: () => void;
+}
+
+/**
+ * Props pour le composant SummaryPanel - CORRECTED
+ */
+export interface SummaryPanelProps extends PostitBaseStepProps {
+  onEdit?: () => void;
+  onClose?: () => void; // Added back as it might be needed
+  // Removed duplicate theme and stepBoxStyle as they're in base props
+}
+
+// ===== TYPES POUR LES HOOKS =====
+
+/**
+ * Valeur de retour du hook usePostitStyles
+ */
+export interface UsePostitStylesReturn {
+  theme: Theme;
+  styles: {
+    modalBackground: React.CSSProperties;
+    modalWrapper: React.CSSProperties;
+    modalContainer: React.CSSProperties;
+    stepBox: React.CSSProperties;
+    stepper: React.CSSProperties;
+    stepperMobile: React.CSSProperties;
+    content: React.CSSProperties;
+    header: React.CSSProperties;
+    footer: React.CSSProperties;
+  };
+  stepBoxStyle: React.CSSProperties;
+  isMobile: boolean;
+}
+
+/**
+ * Valeur de retour du hook usePostitNavigation
+ */
+export interface UsePostitNavigationReturn {
+  activeStep: number;
+  setActiveStep: (step: number) => void;
+  temporaryEditMode: boolean;
+  setTemporaryEditMode: (mode: boolean) => void;
+  isCompleted: boolean;
+  handleNext: () => void;
+  handleBack: () => void;
+  handleStepClick: (stepIndex: number) => void;
+  isStepAccessible: (stepIndex: number) => boolean;
+}
+
+/**
+ * Valeur de retour du hook usePostitActions
+ */
+export interface UsePostitActionsReturn {
+  handleClosePostit: () => void;
+  handleDelete: (postitId: number) => Promise<void>;
+  handleSave: (postit: Postit) => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
+}
+
+/**
+ * Valeur de retour du hook useSujetSelection
+ */
+export interface UseSujetSelectionReturn {
+  handleSujetClick: (subject: Subject) => void;
+  sujetsDeLActivite: number[];
+  categoriesSujets: CategorySubject[];
+  sujetsData: Subject[];
+  selectedSubjectId: number | null;
+  isLoading: boolean;
+}
+
+/**
+ * Valeur de retour du hook usePratiqueSelection
+ */
+export interface UsePratiqueSelectionReturn {
+  handlePratiqueClick: (practice: Practice) => void;
+  pratiquesDeLActivite: number[];
+  categoriesPratiques: CategoryPractice[];
+  pratiques: Practice[];
+  selectedPracticeId: number | null;
+  isLoading: boolean;
 }
 
 // ===== TYPES DE VALIDATION ET ÉTAT =====
 
-// Résultat de validation
+/**
+ * Résultat de validation
+ */
 export interface PostitValidationResult {
   isValid: boolean;
   errors: string[];
@@ -195,7 +355,9 @@ export interface PostitValidationResult {
   fieldErrors: Record<string, string[]>;
 }
 
-// Statut de complétion
+/**
+ * Statut de complétion
+ */
 export interface PostitCompletionStatus {
   hasValidSubject: boolean;
   hasValidPractice: boolean;
@@ -205,7 +367,9 @@ export interface PostitCompletionStatus {
   missingFields: string[];
 }
 
-// Configuration de navigation
+/**
+ * Configuration de navigation
+ */
 export interface PostitNavigationConfig {
   activeStep: number;
   totalSteps: number;
@@ -215,7 +379,9 @@ export interface PostitNavigationConfig {
   isCompleted: boolean;
 }
 
-// Options de navigation
+/**
+ * Options de navigation
+ */
 export interface PostitNavigationOptions {
   skipValidation?: boolean;
   forceNavigation?: boolean;
@@ -223,9 +389,49 @@ export interface PostitNavigationOptions {
   showConfirmDialog?: boolean;
 }
 
+/**
+ * État de chargement
+ */
+export interface LoadingState {
+  isLoading: boolean;
+  loadingMessage?: string;
+  progress?: number;
+}
+
+/**
+ * État d'erreur
+ */
+export interface ErrorState {
+  hasError: boolean;
+  error?: Error | string;
+  errorCode?: string;
+  retryable?: boolean;
+}
+
+/**
+ * État complet du composant
+ */
+export interface PostitState {
+  postit: PostitExtended;
+  navigation: PostitNavigationConfig;
+  validation: PostitValidationResult;
+  completion: PostitCompletionStatus;
+  loading: LoadingState;
+  error: ErrorState;
+
+  // Données de support
+  domains: Domain[];
+  subjects: Subject[];
+  practices: Practice[];
+  categoriesSubjects: CategorySubject[];
+  categoriesPractices: CategoryPractice[];
+}
+
 // ===== TYPES D'ÉVÉNEMENTS =====
 
-// Événements du cycle de vie du Postit
+/**
+ * Événements du cycle de vie du Postit
+ */
 export type PostitEvent =
   | { type: "POSTIT_CREATED"; payload: { postit: Postit } }
   | {
@@ -241,12 +447,16 @@ export type PostitEvent =
   | { type: "VALIDATION_FAILED"; payload: { errors: string[] } }
   | { type: "SAVE_REQUESTED"; payload: { postit: Postit } };
 
-// Callback pour les événements
+/**
+ * Callback pour les événements
+ */
 export type PostitEventHandler = (event: PostitEvent) => void;
 
 // ===== TYPES DE CONFIGURATION DES STYLES =====
 
-// Configuration des styles
+/**
+ * Configuration des styles
+ */
 export interface PostitStyles {
   theme: Theme;
   isMobile: boolean;
@@ -264,7 +474,9 @@ export interface PostitStyles {
   stepBoxStyle: React.CSSProperties;
 }
 
-// Configuration des couleurs
+/**
+ * Configuration des couleurs
+ */
 export interface PostitColorConfig {
   primary: string;
   secondary: string;
@@ -281,55 +493,43 @@ export interface PostitColorConfig {
   };
 }
 
-// ===== TYPES UTILITAIRES =====
-
-// État de chargement
-export interface LoadingState {
-  isLoading: boolean;
-  loadingMessage?: string;
-  progress?: number;
-}
-
-// État d'erreur
-export interface ErrorState {
-  hasError: boolean;
-  error?: Error | string;
-  errorCode?: string;
-  retryable?: boolean;
-}
-
-// État complet du composant
-export interface PostitState {
-  postit: PostitExtended;
-  navigation: PostitNavigationConfig;
-  validation: PostitValidationResult;
-  completion: PostitCompletionStatus;
-  loading: LoadingState;
-  error: ErrorState;
-
-  // Données de support (alignées avec votre structure)
-  domains: Domain[];
-  subjects: Subject[];
-  practices: Practice[];
-  categoriesSubjects: CategorySubject[];
-  categoriesPractices: CategoryPractice[];
-}
-
 // ===== TYPES HELPERS POUR LA VALIDATION =====
 
-// Type helper pour un Postit avec pratique obligatoire (pour validation finale)
+/**
+ * Type helper pour un Postit avec pratique obligatoire (pour validation finale)
+ */
 export interface PostitComplete extends Omit<Postit, "pratique"> {
   pratique: string; // Pratique obligatoire pour un postit complet
 }
 
-// Type guard pour vérifier si un postit est complet
+/**
+ * Type guard pour vérifier si un postit est complet
+ */
 export function isPostitComplete(postit: Postit): postit is PostitComplete {
+  return postit.pratique !== null && postit.pratique.trim() !== "";
+}
+
+/**
+ * Type guard pour vérifier si un postit a un sujet valide
+ */
+export function hasValidSubject(postit: PostitExtended): boolean {
+  return (
+    postit.sujet !== null &&
+    postit.sujet.trim() !== "" &&
+    postit.sujet !== "Pas de sujet"
+  );
+}
+
+/**
+ * Type guard pour vérifier si un postit a une pratique valide
+ */
+export function hasValidPractice(postit: PostitExtended): boolean {
   return postit.pratique !== null && postit.pratique.trim() !== "";
 }
 
 // ===== EXPORTS PRINCIPAUX =====
 
-// Types les plus utilisés
+// Aliases pour les types les plus utilisés
 export type {
   Postit as PostitType,
   PostitExtended as ExtendedPostit,
@@ -340,7 +540,11 @@ export type {
   PostitState as State,
 };
 
-// Constantes utiles
+// ===== CONSTANTES =====
+
+/**
+ * Couleurs par défaut pour les post-its
+ */
 export const POSTIT_COLORS = [
   "#FFE066", // Jaune
   "#FF9999", // Rose
@@ -352,14 +556,48 @@ export const POSTIT_COLORS = [
   "#FF99CC", // Rose bonbon
 ] as const;
 
+/**
+ * Taille par défaut d'un post-it
+ */
 export const DEFAULT_POSTIT_SIZE = {
   width: 200,
   height: 200,
 } as const;
 
+/**
+ * Indices des étapes de navigation
+ */
 export const NAVIGATION_STEPS = {
   CONTEXT: 0,
   SUBJECT: 1,
   PRACTICE: 2,
   REVIEW: 3,
+} as const;
+
+/**
+ * États de validation
+ */
+export const VALIDATION_STATES = {
+  VALID: "valid",
+  INVALID: "invalid",
+  PENDING: "pending",
+  WARNING: "warning",
+} as const;
+
+/**
+ * Types de priorité
+ */
+export const PRIORITY_LEVELS = {
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+} as const;
+
+/**
+ * Niveaux de difficulté
+ */
+export const DIFFICULTY_LEVELS = {
+  BEGINNER: "beginner",
+  INTERMEDIATE: "intermediate",
+  ADVANCED: "advanced",
 } as const;
