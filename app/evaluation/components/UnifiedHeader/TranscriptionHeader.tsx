@@ -7,6 +7,7 @@ import CallInfo from "./shared/CallInfo";
 import ViewModeToggle from "./shared/ViewModeToggle";
 import ColorationToggle from "./shared/ColorationToggle";
 import TranscriptionActions from "./shared/TranscriptionActions";
+import { ShareEvaluationButton } from "../ShareEvaluationButton";
 import DisplayActions from "./shared/DisplayActions";
 import { Divider } from "@mui/material";
 
@@ -52,6 +53,18 @@ export default function TranscriptionHeader({
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("lg")); // < 1200px
   const isVerySmallScreen = useMediaQuery(theme.breakpoints.down("md")); // < 900px
+
+  // 🔧 Gestion sécurisée du callId
+  const callId =
+    selectedCall?.callid || selectedCall?.id || selectedCall?.call_id;
+
+  // Debug log pour comprendre la structure de selectedCall
+  console.log("🔍 DEBUG TranscriptionHeader:", {
+    selectedCall: selectedCall,
+    callId: callId,
+    hasSelectedCall: !!selectedCall,
+    selectedCallKeys: selectedCall ? Object.keys(selectedCall) : [],
+  });
 
   return (
     <Box
@@ -139,6 +152,11 @@ export default function TranscriptionHeader({
               onRefresh={onRefreshTranscription}
               size={shouldShowContext ? "small" : "medium"}
             />
+
+            {/* 🔧 N'afficher le bouton de partage que si callId est disponible */}
+            {callId && (
+              <ShareEvaluationButton callId={callId} sx={{ ml: "auto" }} />
+            )}
 
             <Divider
               orientation="vertical"

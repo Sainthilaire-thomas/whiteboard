@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RawAppProvider } from "./AppContext";
 import { CallDataProvider } from "./CallDataContext";
 import { AudioProvider } from "./AudioContext";
+import { SharedEvaluationProvider } from "./SharedEvaluationContext";
 
 // Composant pour gérer les erreurs au niveau de l'application
 class ErrorBoundary extends React.Component<
@@ -62,12 +63,14 @@ export default function RootProvider({ children }: RootProviderProps) {
       <QueryClientProvider client={queryClient}>
         <AudioProvider>
           <CallDataProvider selectedEntreprise={selectedEntreprise}>
-            <RawAppProvider
-              selectedEntreprise={selectedEntreprise}
-              setSelectedEntreprise={setSelectedEntreprise}
-            >
-              {children}
-            </RawAppProvider>
+            <SharedEvaluationProvider>
+              <RawAppProvider
+                selectedEntreprise={selectedEntreprise}
+                setSelectedEntreprise={setSelectedEntreprise}
+              >
+                {children}
+              </RawAppProvider>
+            </SharedEvaluationProvider>
           </CallDataProvider>
         </AudioProvider>
       </QueryClientProvider>
