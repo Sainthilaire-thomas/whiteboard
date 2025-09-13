@@ -1,0 +1,100 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Générer arborescence",
+      "type": "shell",
+      "command": "node",
+      "args": ["scripts/generate-tree.mjs"],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Génère l'arborescence complète du projet dans docs/arborescence.md",
+      "icon": {
+        "id": "file-directory",
+        "color": "terminal.ansiGreen"
+      }
+    },
+    {
+      "label": "Générer documentation des types",
+      "type": "shell",
+      "command": "node",
+      "args": ["scripts/generate-types-doc.mjs"],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Analyse et documente tous les types TypeScript du projet",
+      "icon": {
+        "id": "symbol-interface",
+        "color": "terminal.ansiBlue"
+      }
+    },
+    {
+      "label": "Générer toute la documentation",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Générer arborescence", "Générer documentation des types"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Génère l'arborescence ET la documentation des types",
+      "icon": {
+        "id": "book",
+        "color": "terminal.ansiYellow"
+      }
+    },
+    {
+      "label": "Générer arborescence (avec ouverture)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Générer arborescence", "Ouvrir arborescence"],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "detail": "Génère l'arborescence et ouvre le fichier résultat",
+      "icon": {
+        "id": "file-directory-create",
+        "color": "terminal.ansiBlue"
+      }
+    },
+    {
+      "label": "Ouvrir arborescence",
+      "type": "shell",
+      "command": "code",
+      "args": ["docs/arborescence.md"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "never"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

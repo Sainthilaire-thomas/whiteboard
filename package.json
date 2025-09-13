@@ -6,7 +6,9 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-tree": "node scripts/generate-tree.js",
+    "docs": "node scripts/generate-tree.js"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
@@ -51,5 +53,71 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
-  }
+  },
+  "tasks": [
+    {
+      "label": "Générer arborescence",
+      "type": "shell",
+      "command": "node",
+      "args": [
+        "scripts/generate-tree.mjs"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Génère l'arborescence complète du projet dans docs/arborescence.md",
+      "icon": {
+        "id": "file-directory",
+        "color": "terminal.ansiGreen"
+      }
+    },
+    {
+      "label": "Générer arborescence (avec ouverture)",
+      "type": "shell",
+      "command": "node",
+      "args": [
+        "scripts/generate-tree.js"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "dependsOrder": "sequence",
+      "dependsOn": [],
+      "postCommandAction": {
+        "command": "vscode.open",
+        "args": [
+          "${workspaceFolder}/docs/arborescence.md"
+        ]
+      },
+      "detail": "Génère l'arborescence et ouvre le fichier résultat",
+      "icon": {
+        "id": "file-directory-create",
+        "color": "terminal.ansiBlue"
+      }
+    }
+  ]
 }
