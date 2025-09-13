@@ -4,6 +4,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { useEvaluationSharingState } from "@/context/SharedEvaluationContext";
+import { useRealtimeEvaluationSharing } from "../../hooks/useRealtimeEvaluationSharing";
 import type {
   SharedEvaluationSession,
   UseEvaluationSharingReturn,
@@ -115,6 +116,15 @@ export const useEvaluationSharing = (
     syncSessionStopped,
     syncSessionUpdated,
   } = useEvaluationSharingState();
+
+  const {
+    broadcastPosition,
+    broadcastViewMode,
+    broadcastHighlighting,
+    broadcastSessionMode,
+    isRealtimeConnected,
+    realtimeError,
+  } = useRealtimeEvaluationSharing(currentSession?.id);
 
   // Convertir callId en string pour la cohérence
   const callIdString = useMemo(() => {
@@ -553,6 +563,103 @@ export const useEvaluationSharing = (
     return false;
   }, [contextIsSharing, currentSession, callIdString]);
 
+  // Méthode de synchronisation position transcription
+  const updateTranscriptPosition = useCallback(
+    async (wordIndex: number, paragraphIndex: number) => {
+      if (!currentSession?.id) {
+        console.warn("⚠️ No active session for position update");
+        return;
+      }
+
+      console.log("📡 Coach: Broadcasting position:", {
+        wordIndex,
+        paragraphIndex,
+      });
+
+      // 1. Broadcast instantané via Realtime
+      broadcastPosition(wordIndex, paragraphIndex);
+
+      // 2. Optionnel : Persistance API pour les nouveaux participants
+      try {
+        await callServerAPI("update-position", "POST", {
+          sessionId: currentSession.id,
+          wordIndex,
+          paragraphIndex,
+        });
+      } catch (error) {
+        console.warn("Failed to persist position:", error);
+        // Non-bloquant : Realtime fonctionne quand même
+      }
+    },
+    [currentSession?.id, broadcastPosition]
+  );
+
+  // Méthode de synchronisation mode d'affichage
+  const updateViewMode = useCallback(
+    async (mode: "word" | "paragraph") => {
+      if (!currentSession?.id) return;
+
+      console.log("📡 Coach: Broadcasting view mode:", mode);
+
+      // 1. Broadcast instantané via Realtime
+      broadcastViewMode(mode);
+
+      // 2. Persistance API
+      try {
+        await callServerAPI("update-view-mode", "POST", {
+          sessionId: currentSession.id,
+          viewMode: mode,
+        });
+      } catch (error) {
+        console.warn("Failed to persist view mode:", error);
+      }
+    },
+    [currentSession?.id, broadcastViewMode]
+  );
+
+  // Méthode de synchronisation highlighting
+  const updateHighlighting = useCallback(
+    async (highlightTurnOne: boolean, highlightSpeakers: boolean) => {
+      if (!currentSession?.id) return;
+
+      console.log("📡 Coach: Broadcasting highlighting:", {
+        highlightTurnOne,
+        highlightSpeakers,
+      });
+
+      // 1. Broadcast instantané via Realtime
+      broadcastHighlighting(highlightTurnOne, highlightSpeakers);
+
+      // 2. Persistance API
+      try {
+        await callServerAPI("update-highlighting", "POST", {
+          sessionId: currentSession.id,
+          highlightTurnOne,
+          highlightSpeakers,
+        });
+      } catch (error) {
+        console.warn("Failed to persist highlighting:", error);
+      }
+    },
+    [currentSession?.id, broadcastHighlighting]
+  );
+
+  // Méthode de synchronisation état session
+  const updateSessionModeRealtime = useCallback(
+    async (mode: "live" | "paused" | "ended") => {
+      if (!currentSession?.id) return;
+
+      console.log("📡 Coach: Broadcasting session mode:", mode);
+
+      // 1. Broadcast instantané via Realtime
+      broadcastSessionMode(mode);
+
+      // 2. Utiliser la méthode existante pour persistance
+      await updateSessionMode(mode);
+    },
+    [currentSession?.id, broadcastSessionMode, updateSessionMode]
+  );
+
   console.log("🔍 DEBUG Hook Render:", {
     callId: callId,
     callIdString: callIdString,
@@ -585,5 +692,13 @@ export const useEvaluationSharing = (
     updateObjectivityControls,
     clearError,
     checkActiveSessionsForCoach,
+
+    updateTranscriptPosition,
+    updateViewMode,
+    updateHighlighting,
+    updateSessionModeRealtime,
+
+    isRealtimeConnected,
+    realtimeError,
   };
 };

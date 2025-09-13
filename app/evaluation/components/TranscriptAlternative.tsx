@@ -9,8 +9,9 @@ import {
   Switch,
   Popover,
   useTheme,
+  Alert,
 } from "@mui/material";
-import { Word } from "@/types/types";
+import { Word, Transcription } from "@/types/types";
 import { useAudio } from "@/context/AudioContext";
 import {
   SpeakerType,
@@ -32,6 +33,13 @@ interface TranscriptAlternativeProps {
   hideHeader?: boolean;
   highlightSpeakers?: boolean;
   transcriptSelectionMode?: string; // ✅ AJOUTER cette prop
+
+  isSpectatorMode?: boolean;
+  highlightedWordIndex?: number;
+  highlightedParagraphIndex?: number;
+  highlightTurnOne?: boolean;
+  viewMode?: "word" | "paragraph";
+  transcription?: Transcription | null;
 }
 
 interface PostitType {
@@ -54,12 +62,19 @@ const TranscriptAlternative = ({
   hideHeader = false,
   highlightSpeakers: externalHighlightSpeakers = true,
   transcriptSelectionMode,
+
+  isSpectatorMode = false,
+  highlightedWordIndex,
+  highlightedParagraphIndex,
+  highlightTurnOne = false,
+  viewMode = "paragraph",
+  transcription: propTranscription,
 }: TranscriptAlternativeProps) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === "dark";
 
   const {
-    transcription,
+    transcription: contextTranscription,
     fetchTranscription,
     selectedCall,
     createAudioUrlWithToken,
@@ -71,6 +86,11 @@ const TranscriptAlternative = ({
     setClientSelection, // ✅ AJOUTER
     setConseillerSelection, // ✅ AJOUTER
   } = useCallData();
+
+  const transcription =
+    isSpectatorMode && propTranscription
+      ? propTranscription
+      : contextTranscription;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const paragraphRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -213,11 +233,16 @@ const TranscriptAlternative = ({
   };
 
   // ✅ 1️⃣ Charger la transcription - EXACTEMENT comme Transcript
+
   useEffect(() => {
-    if (callId && (!transcription || transcription.callid !== callId)) {
+    if (
+      callId &&
+      !isSpectatorMode &&
+      (!contextTranscription || contextTranscription.callid !== callId)
+    ) {
       fetchTranscription(callId);
     }
-  }, [callId]); // Supprimer fetchTranscription et transcription des dépendances
+  }, [callId, isSpectatorMode]);
 
   // ✅ 2️⃣ Générer l'URL audio - EXACTEMENT comme Transcript
   useEffect(() => {
@@ -269,6 +294,10 @@ const TranscriptAlternative = ({
 
   // ✅ CORRECTION: Utiliser executeWithLock comme dans Transcript
   const handleParagraphClick = (paragraph: SpeakerParagraph, index: number) => {
+    if (isSpectatorMode) {
+      console.log("Mode spectateur - interactions désactivées");
+      return; // Pas d'interaction en mode spectateur
+    }
     executeWithLock(async () => {
       console.log("État isPlaying avant clic:", isPlaying);
 
@@ -338,6 +367,18 @@ const TranscriptAlternative = ({
     }
   }, [currentParagraphIndex]);
 
+  useEffect(() => {
+    if (isSpectatorMode && highlightedParagraphIndex !== undefined) {
+      const targetRef = paragraphRefs.current[highlightedParagraphIndex];
+      if (targetRef) {
+        targetRef.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+    }
+  }, [isSpectatorMode, highlightedParagraphIndex]);
+
   // ✅ Filtrer les post-its pour ne garder que ceux liés à `callId` - EXACTEMENT comme Transcript
   const postitMarkers = appelPostits.map((postit) => ({
     id: postit.id,
@@ -376,21 +417,30 @@ const TranscriptAlternative = ({
 
     return paragraphs.map((paragraph, index) => {
       const speakerType = getSpeakerType(paragraph.turn);
-      const isCurrentParagraph = index === currentParagraphIndex;
+
+      // ✅ MODIFIER la logique isCurrentParagraph pour mode spectateur
+      const isCurrentParagraph = isSpectatorMode
+        ? viewMode === "paragraph" && index === highlightedParagraphIndex
+        : index === currentParagraphIndex;
+
       const isConseiller = speakerType === SpeakerType.CONSEILLER;
 
-      // Couleurs adaptées au dark mode
+      // Couleurs adaptées au dark mode (votre code existant)
       const clientColor = isDarkMode ? "#4BAFD8" : "#069ED0";
       const conseillerColor = isDarkMode ? "#D9BE28" : "#A58D04";
 
-      // Alternance des fonds par locuteur
+      // ✅ MODIFIER altBgColor pour prendre en compte highlightTurnOne synchronisé
+      const shouldHighlightSpeakers = isSpectatorMode
+        ? highlightTurnOne
+        : highlightSpeakers;
+
       const altBgColor = isDarkMode
         ? isConseiller
-          ? "rgba(255, 204, 0, 0.15)" // Fond jaune plus visible en dark mode
-          : "rgba(75, 175, 216, 0.15)" // Fond bleu plus visible en dark mode
+          ? "rgba(255, 204, 0, 0.15)"
+          : "rgba(75, 175, 216, 0.15)"
         : isConseiller
-          ? "rgba(204, 136, 0, 0.1)" // Fond orange plus visible en light mode
-          : "rgba(0, 120, 179, 0.07)"; // Fond bleu plus visible en light mode
+          ? "rgba(204, 136, 0, 0.1)"
+          : "rgba(0, 120, 179, 0.07)";
 
       return (
         <Box
@@ -402,34 +452,43 @@ const TranscriptAlternative = ({
           sx={{
             display: "flex",
             borderBottom: `1px solid ${theme.palette.divider}`,
-            py: 0.8, // Légèrement plus d'espace vertical
-            cursor: "pointer",
+            py: 0.8,
+            cursor: isSpectatorMode ? "default" : "pointer", // ✅ Cursor conditionnel
             backgroundColor: isCurrentParagraph
               ? isDarkMode
-                ? "rgba(255, 50, 50, 0.2)" // Fond rouge plus visible en dark mode
-                : "rgba(255, 0, 0, 0.1)" // Fond rouge plus visible en light mode
-              : highlightSpeakers
+                ? isSpectatorMode
+                  ? "rgba(37, 99, 235, 0.3)" // Bleu pour mode spectateur
+                  : "rgba(255, 50, 50, 0.2)" // Rouge pour mode normal
+                : isSpectatorMode
+                  ? "rgba(37, 99, 235, 0.2)" // Bleu pour mode spectateur
+                  : "rgba(255, 0, 0, 0.1)" // Rouge pour mode normal
+              : shouldHighlightSpeakers
                 ? altBgColor
                 : "transparent",
-            borderLeft: isCurrentParagraph // Ajouter une bordure à gauche pour le paragraphe actif
-              ? `4px solid ${isDarkMode ? "#ff5252" : "#ff0000"}`
+            borderLeft: isCurrentParagraph
+              ? `4px solid ${isSpectatorMode ? "#2563eb" : isDarkMode ? "#ff5252" : "#ff0000"}`
               : "4px solid transparent",
-            transition: "all 0.3s ease", // Animation fluide pour les changements
-            "&:hover": {
-              backgroundColor: isDarkMode
-                ? "rgba(255, 255, 255, 0.1)"
-                : "rgba(0, 0, 0, 0.07)",
-            },
+            transition: "all 0.3s ease",
+            "&:hover": isSpectatorMode
+              ? {}
+              : {
+                  // ✅ Pas de hover en mode spectateur
+                  backgroundColor: isDarkMode
+                    ? "rgba(255, 255, 255, 0.1)"
+                    : "rgba(0, 0, 0, 0.07)",
+                },
           }}
         >
-          {/* Timestamp - format différent pour le paragraphe actif */}
+          {/* Votre code timestamp existant inchangé */}
           <Box
             sx={{
               minWidth: "55px",
               color: isCurrentParagraph
-                ? isDarkMode
-                  ? "#ff7070"
-                  : "#dd0000" // Timestamp rouge pour le paragraphe actif
+                ? isSpectatorMode
+                  ? "#2563eb" // Bleu pour mode spectateur
+                  : isDarkMode
+                    ? "#ff7070"
+                    : "#dd0000" // Rouge pour mode normal
                 : "text.secondary",
               fontSize: "0.75rem",
               fontWeight: isCurrentParagraph ? "bold" : "normal",
@@ -440,7 +499,7 @@ const TranscriptAlternative = ({
             {formatTime(paragraph.startTime)}
           </Box>
 
-          {/* Speaker indicator */}
+          {/* Votre code speaker indicator existant inchangé */}
           <Box
             sx={{
               width: "80px",
@@ -453,7 +512,7 @@ const TranscriptAlternative = ({
             {isConseiller ? "Conseiller:" : "Client:"}
           </Box>
 
-          {/* Paragraph text with enhanced current paragraph styling */}
+          {/* ✅ MODIFIER Paragraph text pour mode spectateur */}
           <Box
             sx={{
               flex: 1,
@@ -463,15 +522,25 @@ const TranscriptAlternative = ({
               pr: 2,
               pb: 0.5,
               color: isCurrentParagraph
-                ? isDarkMode
-                  ? "#ff7070"
-                  : "#dd0000"
+                ? isSpectatorMode
+                  ? "#2563eb" // Bleu pour mode spectateur
+                  : isDarkMode
+                    ? "#ff7070"
+                    : "#dd0000" // Rouge pour mode normal
                 : "text.primary",
               textAlign: "justify",
-              // ✅ AJOUTER : Curseur et sélection améliorés
-              cursor: activeSelectionMode ? "text" : "pointer",
-              userSelect: activeSelectionMode ? "text" : "none",
-              // ✅ AJOUTER : Highlight du mode de sélection actif
+              // ✅ Curseur et sélection conditionnels
+              cursor: isSpectatorMode
+                ? "default"
+                : activeSelectionMode
+                  ? "text"
+                  : "pointer",
+              userSelect: isSpectatorMode
+                ? "none"
+                : activeSelectionMode
+                  ? "text"
+                  : "none",
+              // Votre logique backgroundColor existante...
               backgroundColor:
                 activeSelectionMode &&
                 ((activeSelectionMode === "client" && !isConseiller) ||
@@ -481,9 +550,13 @@ const TranscriptAlternative = ({
                     : "rgba(0, 120, 255, 0.05)"
                   : isCurrentParagraph
                     ? isDarkMode
-                      ? "rgba(255, 50, 50, 0.2)"
-                      : "rgba(255, 0, 0, 0.1)"
-                    : highlightSpeakers
+                      ? isSpectatorMode
+                        ? "rgba(37, 99, 235, 0.3)"
+                        : "rgba(255, 50, 50, 0.2)"
+                      : isSpectatorMode
+                        ? "rgba(37, 99, 235, 0.2)"
+                        : "rgba(255, 0, 0, 0.1)"
+                    : shouldHighlightSpeakers
                       ? altBgColor
                       : "transparent",
               ...(isCurrentParagraph && {
@@ -492,12 +565,11 @@ const TranscriptAlternative = ({
                 transformOrigin: "left center",
               }),
             }}
-            // ✅ MODIFIER : Désactiver le clic si en mode sélection
             onClick={(e) => {
-              if (!activeSelectionMode) {
+              if (!activeSelectionMode && !isSpectatorMode) {
+                // ✅ Désactiver en mode spectateur
                 handleParagraphClick(paragraph, index);
               }
-              // Si en mode sélection, ne pas déclencher la lecture
             }}
           >
             {paragraph.text}
@@ -509,6 +581,14 @@ const TranscriptAlternative = ({
 
   return (
     <Box sx={{ padding: 2 }}>
+      {isSpectatorMode && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            <strong>Mode spectateur</strong> - Vue alternative synchronisée avec
+            le coach
+          </Typography>
+        </Alert>
+      )}
       {!hideHeader && (
         <>
           <Typography variant="h6" gutterBottom>
@@ -584,7 +664,11 @@ const TranscriptAlternative = ({
           padding: 1.5,
           maxHeight: "400px",
           overflowY: "auto",
-          userSelect: activeSelectionMode ? "text" : "none", // ✅ AJOUTER
+          userSelect: isSpectatorMode
+            ? "none"
+            : activeSelectionMode
+              ? "text"
+              : "none", // ✅ Conditionnel
         }}
         ref={containerRef}
       >

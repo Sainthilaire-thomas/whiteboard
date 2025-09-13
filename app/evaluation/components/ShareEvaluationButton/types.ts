@@ -1,5 +1,5 @@
-// types.ts - Module Evaluation ShareEvaluationButton
-// Version corrigée avec la nouvelle fonction checkActiveSessionsForCoach
+// app/evaluation/components/ShareEvaluationButton/types.ts
+// Version mise à jour avec les nouvelles méthodes Realtime Phase 3
 
 export interface SharedEvaluationSession {
   id: string;
@@ -30,7 +30,7 @@ export interface UseEvaluationSharingReturn {
   startSharing: (sessionName: string) => Promise<void>;
   stopSharing: () => Promise<void>;
 
-  // Actions de contrôle
+  // Actions de contrôle existantes
   updateAudioPosition: (position: number) => Promise<void>;
   updateSessionMode: (mode: "live" | "paused" | "ended") => Promise<void>;
   updateObjectivityControls: (controls: {
@@ -41,9 +41,25 @@ export interface UseEvaluationSharingReturn {
 
   // Actions utilitaires
   clearError: () => void;
-
-  // ✅ NOUVEAU : Fonction de récupération automatique des sessions actives
   checkActiveSessionsForCoach: () => Promise<void>;
+
+  // ✅ NOUVEAU Phase 3 : Méthodes de synchronisation temps réel
+  updateTranscriptPosition: (
+    wordIndex: number,
+    paragraphIndex: number
+  ) => Promise<void>;
+  updateViewMode: (mode: "word" | "paragraph") => Promise<void>;
+  updateHighlighting: (
+    highlightTurnOne: boolean,
+    highlightSpeakers: boolean
+  ) => Promise<void>;
+  updateSessionModeRealtime: (
+    mode: "live" | "paused" | "ended"
+  ) => Promise<void>;
+
+  // ✅ NOUVEAU Phase 3 : État de connexion Realtime
+  isRealtimeConnected: boolean;
+  realtimeError: string | null;
 }
 
 export interface ShareEvaluationButtonProps {

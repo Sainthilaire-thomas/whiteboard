@@ -8,9 +8,10 @@ import {
   Popover,
   FormControlLabel,
   Switch,
+  Alert,
 } from "@mui/material";
 
-import { Word } from "@/types/types";
+import { Word, Transcription } from "@/types/types";
 import { useAudio } from "@/context/AudioContext";
 import AudioPlayer from "./AudioPlayer";
 import PostitComponent from "./Postit"; // Import renamed to avoid namespace conflict
@@ -59,6 +60,13 @@ interface TranscriptProps {
   hideHeader?: boolean;
   highlightTurnOne?: boolean;
   transcriptSelectionMode?: string;
+
+  isSpectatorMode?: boolean;
+  highlightedWordIndex?: number;
+  highlightedParagraphIndex?: number;
+  highlightSpeakers?: boolean;
+  viewMode?: "word" | "paragraph";
+  transcription?: Transcription | null;
 }
 
 const Transcript = ({
@@ -66,9 +74,16 @@ const Transcript = ({
   hideHeader = false,
   highlightTurnOne = false,
   transcriptSelectionMode,
+
+  isSpectatorMode = false,
+  highlightedWordIndex,
+  highlightedParagraphIndex,
+  highlightSpeakers = true,
+  viewMode = "word",
+  transcription: propTranscription,
 }: TranscriptProps) => {
   const {
-    transcription,
+    transcription: contextTranscription,
     fetchTranscription,
     selectedCall,
     createAudioUrlWithToken,
@@ -82,6 +97,11 @@ const Transcript = ({
     setClientSelection,
     setConseillerSelection,
   } = useCallData();
+
+  const transcription =
+    isSpectatorMode && propTranscription
+      ? propTranscription
+      : contextTranscription;
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -189,11 +209,16 @@ const Transcript = ({
   }, [activeSelectionMode, transcription]);
 
   // Charger la transcription
+
   useEffect(() => {
-    if (callId && (!transcription || transcription.callid !== callId)) {
+    if (
+      callId &&
+      !isSpectatorMode &&
+      (!contextTranscription || contextTranscription.callid !== callId)
+    ) {
       fetchTranscription(callId);
     }
-  }, [callId]);
+  }, [callId, isSpectatorMode]);
 
   // Générer l'URL audio
   useEffect(() => {
@@ -211,6 +236,10 @@ const Transcript = ({
   }, [selectedCall, setAudioSrc]);
 
   const handleWordClick = (word: Word, index: number) => {
+    if (isSpectatorMode) {
+      console.log("Mode spectateur - interactions désactivées");
+      return; // Pas d'interaction en mode spectateur
+    }
     executeWithLock(async () => {
       if (isPlaying) {
         pause();
@@ -256,19 +285,61 @@ const Transcript = ({
     }
   }, [currentWordIndex]);
 
+  useEffect(() => {
+    if (isSpectatorMode && highlightedWordIndex !== undefined) {
+      const targetRef = wordRefs.current[highlightedWordIndex];
+      if (targetRef) {
+        targetRef.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+    }
+  }, [isSpectatorMode, highlightedWordIndex]);
+
   // Styles conditionnels pour les tours de parole
   const getWordStyle = (index: number, word: Word) => {
     const speakerType = getSpeakerType(word.turn ?? "turn1");
 
-    return {
-      fontWeight: index === currentWordIndex ? "bold" : "normal",
-      color: index === currentWordIndex ? "red" : "inherit",
-      backgroundColor: highlightTurnOne
-        ? getSpeakerStyle(speakerType, true).backgroundColor
-        : "transparent",
+    let style = {
+      fontWeight: "normal" as "normal" | "bold", // ✅ CORRIGER le type
+      color: "inherit" as string, // ✅ CORRIGER le type
+      backgroundColor: "transparent" as string, // ✅ CORRIGER le type
       padding: "2px 4px",
       borderRadius: "4px",
     };
+
+    if (isSpectatorMode) {
+      // ✅ Mode spectateur : highlighting reçu du coach
+      if (viewMode === "word" && index === highlightedWordIndex) {
+        style.fontWeight = "bold";
+        style.color = "white";
+        style.backgroundColor = "#2563eb"; // Bleu pour highlighting synchronisé
+      }
+
+      // Highlighting locuteurs si activé
+      if (highlightSpeakers && highlightTurnOne) {
+        const speakerStyle = getSpeakerStyle(speakerType, true);
+        if (speakerStyle.backgroundColor) {
+          style.backgroundColor = speakerStyle.backgroundColor;
+        }
+      }
+    } else {
+      // ✅ Mode coach : highlighting normal (votre logique existante)
+      if (index === currentWordIndex) {
+        style.fontWeight = "bold";
+        style.color = "red";
+      }
+
+      if (highlightTurnOne) {
+        const speakerStyle = getSpeakerStyle(speakerType, true);
+        if (speakerStyle.backgroundColor) {
+          style.backgroundColor = speakerStyle.backgroundColor;
+        }
+      }
+    }
+
+    return style;
   };
 
   const postitMarkers = appelPostits.map((postit) => ({
@@ -279,6 +350,15 @@ const Transcript = ({
 
   return (
     <Box sx={{ padding: hideHeader ? 1 : 2 }}>
+      {/* ✅ AJOUTER indicateur mode spectateur */}
+      {isSpectatorMode && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            <strong>Mode spectateur</strong> - Synchronisé avec le coach en
+            temps réel
+          </Typography>
+        </Alert>
+      )}
       {/* TITRE ET TOGGLE - Masqués si hideHeader = true */}
       {!hideHeader && (
         <>
@@ -388,17 +468,22 @@ const Transcript = ({
                   wordRefs.current[index] = el;
                 }}
                 style={{
-                  ...getWordStyle(index, word),
-                  cursor: activeSelectionMode ? "text" : "pointer",
-                  userSelect: activeSelectionMode ? "text" : "none",
-                  backgroundColor: activeSelectionMode
-                    ? getSpeakerSelectionStyle(
-                        getSpeakerType(word.turn ?? "turn1")
-                      ).backgroundColor
-                    : getWordStyle(index, word).backgroundColor,
+                  ...getWordStyle(index, word), // ✅ Utilise la logique modifiée
+                  cursor: isSpectatorMode
+                    ? "default"
+                    : activeSelectionMode
+                      ? "text"
+                      : "pointer",
+                  userSelect: isSpectatorMode
+                    ? "none"
+                    : activeSelectionMode
+                      ? "text"
+                      : "none",
                 }}
                 onClick={() =>
-                  !activeSelectionMode && handleWordClick(word, index)
+                  !isSpectatorMode &&
+                  !activeSelectionMode &&
+                  handleWordClick(word, index)
                 }
               >
                 {word.text}{" "}
@@ -421,6 +506,13 @@ export default memo(Transcript, (prevProps, nextProps) => {
     prevProps.callId === nextProps.callId &&
     prevProps.hideHeader === nextProps.hideHeader &&
     prevProps.highlightTurnOne === nextProps.highlightTurnOne &&
-    prevProps.transcriptSelectionMode === nextProps.transcriptSelectionMode
+    prevProps.transcriptSelectionMode === nextProps.transcriptSelectionMode &&
+    // ✅ AJOUTER les nouvelles props pour éviter re-render inutiles
+    prevProps.isSpectatorMode === nextProps.isSpectatorMode &&
+    prevProps.highlightedWordIndex === nextProps.highlightedWordIndex &&
+    prevProps.highlightedParagraphIndex ===
+      nextProps.highlightedParagraphIndex &&
+    prevProps.highlightSpeakers === nextProps.highlightSpeakers &&
+    prevProps.viewMode === nextProps.viewMode
   );
 });

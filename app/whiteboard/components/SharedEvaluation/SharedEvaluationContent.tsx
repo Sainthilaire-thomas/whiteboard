@@ -21,6 +21,9 @@ import StopIcon from "@mui/icons-material/Stop";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import { SharedEvaluationSession } from "../../hooks/types";
 
+// ✅ AJOUTER cet import
+import { SynchronizedTranscript } from "./SynchronizedTranscript";
+
 interface SharedEvaluationContentProps {
   session: SharedEvaluationSession;
   onRefresh: () => Promise<void>;
@@ -32,6 +35,8 @@ export function SharedEvaluationContent({
 }: SharedEvaluationContentProps) {
   const theme = useTheme();
   const [showDetails, setShowDetails] = useState(false);
+
+  // ... toutes vos fonctions formatTime, formatDateTime, getStatusIcon, getStatusMessage inchangées ...
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -73,79 +78,97 @@ export function SharedEvaluationContent({
   };
 
   return (
-    <Box sx={{ maxWidth: 1000, mx: "auto", p: 2 }}>
-      {/* Statut session principal */}
+    <Box
+      sx={{
+        maxWidth: 1200,
+        mx: "auto",
+        p: 2,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* ✅ Section header condensée pour faire place à la transcription */}
       <Paper
-        sx={{ p: 3, textAlign: "center", mb: 2, bgcolor: "background.paper" }}
+        sx={{ p: 2, textAlign: "center", mb: 2, bgcolor: "background.paper" }}
       >
-        <Box sx={{ mb: 2 }}>{getStatusIcon(session.session_mode)}</Box>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 2,
+          }}
+        >
+          {/* Statut principal */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Box sx={{ fontSize: 32 }}>
+              {session.session_mode === "live"
+                ? "🔴"
+                : session.session_mode === "paused"
+                  ? "⏸️"
+                  : "⏹️"}
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ mb: 0 }}>
+                {session.session_name}
+              </Typography>
+              <Typography color="text.secondary" variant="body2">
+                {getStatusMessage(session.session_mode)}
+              </Typography>
+            </Box>
+          </Box>
 
-        <Typography variant="h4" gutterBottom>
-          Session d'évaluation en cours
-        </Typography>
-
-        <Typography color="text.secondary" sx={{ mb: 3 }}>
-          {getStatusMessage(session.session_mode)}
-        </Typography>
-
-        {/* Métriques clés */}
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={12} sm={4}>
+          {/* Métriques compactes */}
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             <Paper
               variant="outlined"
-              sx={{ p: 2, bgcolor: "background.default" }}
+              sx={{ p: 1, minWidth: 80, textAlign: "center" }}
             >
-              <Typography variant="h4" color="primary.main">
+              <Typography variant="h6" color="primary.main">
                 {formatTime(session.audio_position)}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Position actuelle
+              <Typography variant="caption" color="text.secondary">
+                Position
               </Typography>
             </Paper>
-          </Grid>
-          <Grid item xs={12} sm={4}>
             <Paper
               variant="outlined"
-              sx={{ p: 2, bgcolor: "background.default" }}
+              sx={{ p: 1, minWidth: 80, textAlign: "center" }}
             >
-              <Typography variant="h4">
-                {session.session_mode === "live"
-                  ? "🔴"
-                  : session.session_mode === "paused"
-                    ? "⏸️"
-                    : "⏹️"}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                État de la session
-              </Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Paper
-              variant="outlined"
-              sx={{ p: 2, bgcolor: "background.default" }}
-            >
-              <Typography variant="h4" color="primary.main">
+              <Typography variant="h6" color="primary.main">
                 #{session.call_id}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Appel évalué
+              <Typography variant="caption" color="text.secondary">
+                Appel
               </Typography>
             </Paper>
-          </Grid>
-        </Grid>
+          </Box>
 
-        {/* Bouton pour afficher plus de détails */}
-        <Button
-          onClick={() => setShowDetails(!showDetails)}
-          endIcon={showDetails ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          variant="text"
-        >
-          {showDetails ? "Masquer les détails" : "Voir plus de détails"}
-        </Button>
+          {/* Actions */}
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              onClick={() => setShowDetails(!showDetails)}
+              endIcon={showDetails ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              variant="outlined"
+              size="small"
+            >
+              Détails
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={onRefresh}
+              startIcon={<RefreshIcon />}
+              size="small"
+            >
+              Actualiser
+            </Button>
+          </Box>
+        </Box>
       </Paper>
 
-      {/* Détails étendus */}
+      {/* ✅ Détails étendus - INCHANGÉ mais collapsible */}
       <Collapse in={showDetails}>
         <Paper sx={{ p: 2, mb: 2, bgcolor: "background.paper" }}>
           <Typography variant="h6" gutterBottom>
@@ -303,113 +326,84 @@ export function SharedEvaluationContent({
         </Paper>
       </Collapse>
 
-      {/* Zone principale - Placeholder pour Phase 3 */}
+      {/* ✅ REMPLACER toute la zone placeholder par SynchronizedTranscript */}
       <Paper
-        sx={{ p: 3, textAlign: "center", mb: 2, bgcolor: "background.paper" }}
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          bgcolor: "background.paper",
+          mb: 2,
+        }}
       >
-        <Typography variant="h5" gutterBottom>
-          Audio et transcription synchronisés
-        </Typography>
-        <Typography color="text.secondary" sx={{ mb: 2 }}>
-          Cette zone affichera l'audio et la transcription synchronisés avec le
-          coach en Phase 3.
-        </Typography>
-
-        {/* Aperçu de l'interface future */}
-        <Box sx={{ maxWidth: 600, mx: "auto" }}>
-          {/* Lecteur audio mockup */}
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 2,
-              mb: 1,
-              border: "2px dashed",
-              borderColor: "divider",
-              bgcolor: "background.default",
-            }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              Lecteur audio synchronisé (Phase 3)
+        {/* Header Phase 3 */}
+        <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            🎉 Phase 3 - Transcription Synchronisée Temps Réel
+          </Typography>
+          <Alert severity="success" sx={{ mb: 0 }}>
+            <Typography variant="body2">
+              <strong>Nouveau !</strong> Vous pouvez maintenant voir la
+              transcription synchronisée avec le coach en temps réel. Le
+              highlighting et l'auto-scroll suivent la navigation du coach
+              instantanément.
             </Typography>
-          </Paper>
-
-          {/* Transcription mockup */}
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 2,
-              mb: 1,
-              border: "2px dashed",
-              borderColor: "divider",
-              bgcolor: "background.default",
-            }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              Transcription synchronisée avec possibilité de "toper" (Phase 3)
-            </Typography>
-          </Paper>
-
-          {/* Zone d'actions participants mockup */}
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 2,
-              border: "2px dashed",
-              borderColor: "divider",
-              bgcolor: "background.default",
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 1,
-                mb: 1,
-                flexWrap: "wrap",
-              }}
-            >
-              <Button disabled variant="outlined" color="warning" size="small">
-                ⭐ Toper ce passage
-              </Button>
-              <Button disabled variant="outlined" color="info" size="small">
-                💬 Ajouter commentaire
-              </Button>
-              <Button disabled variant="outlined" color="success" size="small">
-                🎯 Identifier critère
-              </Button>
-            </Box>
-            <Typography variant="body2" color="text.secondary">
-              Actions participants (Phase 4)
-            </Typography>
-          </Paper>
+          </Alert>
         </Box>
 
-        {/* Instructions */}
-        <Alert severity="info" sx={{ mt: 2, textAlign: "left" }}>
-          <Typography variant="subtitle2" gutterBottom>
-            🚧 Phase 2 - Affichage basique
-          </Typography>
-          <Typography variant="body2">
-            Vous pouvez voir que la session est active et suivre son état. La
-            synchronisation audio/transcription et les interactions participant
-            seront disponibles dans les prochaines phases.
-          </Typography>
-        </Alert>
+        {/* Zone transcription temps réel */}
+        <Box sx={{ flex: 1, overflow: "hidden" }}>
+          <SynchronizedTranscript
+            sessionId={session.id}
+            callId={session.call_id}
+          />
+        </Box>
       </Paper>
 
-      {/* Footer avec actions */}
-      <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-        <Button
-          variant="outlined"
-          onClick={onRefresh}
-          startIcon={<RefreshIcon />}
+      {/* ✅ Footer actions - Phase 4/5 aperçu */}
+      <Paper sx={{ p: 2, bgcolor: "background.paper" }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 2,
+          }}
         >
-          Actualiser
-        </Button>
-        <Button disabled variant="outlined" startIcon={<BarChartIcon />}>
-          Voir les statistiques (Phase 5)
-        </Button>
-      </Box>
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Prochaines fonctionnalités
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+              <Button disabled variant="outlined" size="small" color="warning">
+                ⭐ Toper (Phase 4)
+              </Button>
+              <Button disabled variant="outlined" size="small" color="info">
+                💬 Commenter (Phase 4)
+              </Button>
+              <Button disabled variant="outlined" size="small" color="success">
+                🎯 Critères (Phase 4)
+              </Button>
+              <Button
+                disabled
+                variant="outlined"
+                size="small"
+                startIcon={<BarChartIcon />}
+              >
+                Statistiques (Phase 5)
+              </Button>
+            </Box>
+          </Box>
+
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              Session active • Synchronisation temps réel ✅
+            </Typography>
+          </Box>
+        </Box>
+      </Paper>
     </Box>
   );
 }
