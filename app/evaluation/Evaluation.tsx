@@ -16,7 +16,7 @@ import { useAppContext } from "@/context/AppContext";
 import { useCallData } from "@/context/CallDataContext";
 import { useAudio } from "@/context/AudioContext";
 import { useFilteredDomains } from "@/hooks/AppContext/useFilteredDomains";
-import EvaluationTranscript from "./components/EvaluationTranscript";
+import EvaluationTranscript from "./components/EvaluationTranscript/EvaluationTranscript";
 import SyntheseEvaluation from "./components/SyntheseEvaluation/index";
 import SelectionEntrepriseEtAppel from "../components/common/SelectionEntrepriseEtAppel";
 import Postit from "./components/Postit";

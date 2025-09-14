@@ -13,8 +13,8 @@ import {
   Chip,
 } from "@mui/material";
 import { columnConfigSujets } from "@/config/gridConfig";
-import SimplifiedGridContainerSujets from "../SimplifiedGridContainerSujets";
-import SimplifiedGridContainerPratiques from "../SimplifiedGridContainerPratiques";
+import SimplifiedGridContainerSujets from "./SimplifiedGridContainerSujets";
+import SimplifiedGridContainerPratiques from "./SimplifiedGridContainerPratiques";
 
 // Import des types locaux simplifiés
 import {

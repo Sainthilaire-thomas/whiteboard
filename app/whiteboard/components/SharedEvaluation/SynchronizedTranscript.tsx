@@ -23,8 +23,8 @@ import { useRealtimeEvaluationSync } from "../../hooks/useRealtimeEvaluationSync
 import { useSpectatorTranscriptions } from "../../hooks/useSpectatorTranscriptions";
 
 // Imports des composants Transcript existants
-import Transcript from "../../../evaluation/components/Transcript";
-import TranscriptAlternative from "../../../evaluation/components/TranscriptAlternative";
+import Transcript from "../../../evaluation/components/EvaluationTranscript/Transcript";
+import TranscriptAlternative from "../../../evaluation/components/EvaluationTranscript/TranscriptAlternative";
 
 interface SynchronizedTranscriptProps {
   sessionId: string;

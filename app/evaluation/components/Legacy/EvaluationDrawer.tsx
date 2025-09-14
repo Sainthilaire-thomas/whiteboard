@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Box, Drawer, Tabs, Tab } from "@mui/material";
 import HistoriqueEvaluation from "./HistoriqueEvaluation";
-import SyntheseEvaluation from "./SyntheseEvaluation";
+import SyntheseEvaluation from "../SyntheseEvaluation";
 import { EvaluationDrawerProps } from "@/types/types";
 
 export default function EvaluationDrawer({

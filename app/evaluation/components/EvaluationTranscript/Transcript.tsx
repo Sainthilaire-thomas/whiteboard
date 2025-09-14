@@ -14,7 +14,7 @@ import {
 import { Word, Transcription } from "@/types/types";
 import { useAudio } from "@/context/AudioContext";
 import AudioPlayer from "./AudioPlayer";
-import PostitComponent from "./Postit"; // Import renamed to avoid namespace conflict
+import PostitComponent from "../Postit"; // Import renamed to avoid namespace conflict
 import {
   getSpeakerType,
   isSpeakerConseil,

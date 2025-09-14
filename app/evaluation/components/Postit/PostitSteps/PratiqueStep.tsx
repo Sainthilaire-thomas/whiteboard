@@ -3,7 +3,7 @@ import React from "react";
 import { Box, Typography, Fade } from "@mui/material";
 import { Postit } from "@/types/types";
 import { hasValidPractice } from "@/hooks/Postit/utils";
-import GridContainerPratiquesEval from "../../GridContainerPratiquesEval";
+import GridContainerPratiquesEval from "../GridContainerPratiquesEval";
 
 // Interface corrigée pour correspondre à l'utilisation réelle
 interface PratiqueStepProps {

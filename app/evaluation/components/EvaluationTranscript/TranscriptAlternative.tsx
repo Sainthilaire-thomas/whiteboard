@@ -25,7 +25,7 @@ import {
 } from "@/utils/SpeakerUtils";
 
 import AudioPlayer from "./AudioPlayer";
-import Postit from "./Postit";
+import Postit from "../Postit";
 
 interface TranscriptAlternativeProps {
   callId: number;

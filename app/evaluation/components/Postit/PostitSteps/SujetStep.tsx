@@ -2,7 +2,7 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 import { Postit } from "@/types/types";
 import { Item } from "@/types/types";
-import GridContainerSujetsEval from "../../GridContainerSujetsEval";
+import GridContainerSujetsEval from "../GridContainerSujetsEval";
 
 interface SujetStepProps {
   selectedPostit: Postit;

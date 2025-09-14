@@ -8,8 +8,8 @@ import {
   IconButton,
   Modal,
 } from "@mui/material";
-import GridContainerPratiquesEval from "./GridContainerPratiquesEval";
-import GridContainerSujetsEval from "./GridContainerSujetsEval";
+import GridContainerPratiquesEval from "../Postit/GridContainerPratiquesEval";
+import GridContainerSujetsEval from "../Postit/GridContainerSujetsEval";
 import Exercices from "./Exercices";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import dynamic from "next/dynamic";
@@ -17,7 +17,7 @@ import { useState, useMemo } from "react";
 import { columnConfigPratiques, columnConfigSujets } from "@/config/gridConfig";
 
 // Chargement dynamique de SyntheseEvaluation
-const SyntheseEvaluation = dynamic(() => import("./SyntheseEvaluation"), {
+const SyntheseEvaluation = dynamic(() => import("../SyntheseEvaluation"), {
   loading: () => <p>Chargement de la synthèse...</p>,
 });
 
