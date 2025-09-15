@@ -27,7 +27,7 @@ import { useFilteredDomains } from "@/hooks/AppContext/useFilteredDomains";
 // Composants existants
 import EvaluationTranscript from "./components/EvaluationTranscript/EvaluationTranscript";
 import SyntheseEvaluation from "./components/SyntheseEvaluation/index";
-import SelectionEntrepriseEtAppel from "../components/common/SelectionEntrepriseEtAppel";
+import SelectionEntrepriseEtAppel from "../components/common/SelectionEntrepriseEtAppel/SelectionEntrepriseEtAppel";
 import Postit from "./components/Postit";
 import FourZones from "./components/FourZones/";
 import UnifiedHeader from "./components/UnifiedHeader";
@@ -52,6 +52,7 @@ type DisplayMode = "normal" | "transcript-fullwidth" | "context-fullwidth";
 function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
+  const [compactMode, setCompactMode] = useState(false);
 
   // NOUVEAU: Feature flag pour NewTranscript
   const [useNewTranscript, setUseNewTranscript] = useState(false);
@@ -267,9 +268,9 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
 
   // NOUVEAU: Configuration pour NewTranscript
   const newTranscriptConfig = useMemo(() => {
-    return applyConfigPreset("evaluationAdvanced", {
+    return applyConfigPreset("evaluationTurns", {
+      // ✅ Utiliser le preset turns
       audioSrc: selectedCall?.audiourl || "",
-      displayMode: viewMode === "word" ? "word-by-word" : "paragraphs",
       fontSize: fontSize,
       interactions: {
         wordClick: true,
@@ -278,7 +279,6 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
         timelineNavigation: true,
         keyboardShortcuts: true,
         highlightTurns: highlightTurnOne,
-        spectatorMode: false,
       },
       layout: {
         audioPlayerPosition: "integrated",
@@ -289,7 +289,6 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
     });
   }, [
     selectedCall?.audiourl,
-    viewMode,
     fontSize,
     transcriptSelectionMode,
     highlightTurnOne,
@@ -435,7 +434,7 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
               callId={selectedCall?.callid?.toString() || "demo"}
               config={newTranscriptConfig}
               // Props de compatibilité avec l'ancien système
-              hideHeader={true} // Header géré par UnifiedHeader
+              hideHeader={false} // Header géré par UnifiedHeader
               viewMode={viewMode}
               transcriptSelectionMode={validatedTranscriptMode}
               isSpectatorMode={false}

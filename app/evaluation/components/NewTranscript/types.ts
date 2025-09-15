@@ -16,7 +16,7 @@ export interface NewTranscriptProps {
 export interface TranscriptConfig {
   mode: "evaluation" | "tagging" | "analysis" | "spectator";
   audioSrc: string;
-  displayMode: "word-by-word" | "paragraphs" | "hybrid";
+  displayMode: "word-by-word" | "paragraphs" | "hybrid" | "turns" | "compact"; // ✅ Ajout "turns" et "compact"
   timelineMode: "compact" | "detailed" | "minimal" | "hidden";
   eventTypes: EventTypeConfig[];
   interactions: InteractionConfig;
@@ -122,13 +122,14 @@ export interface TimelineMarker {
   type?: string;
 }
 
-// Transcription
+// Transcription - VERSION CORRIGÉE
 export interface Word {
   id: number;
   text: string;
   start_time: number;
   end_time: number;
-  speaker?: string;
+  speaker?: string; // "Conseiller" | "Client" | "Inconnu" (calculé depuis turn)
+  turn?: string; // ✅ AJOUT : Valeur originale du champ turn (turn1, turn2, etc.)
   confidence?: number;
 }
 
@@ -175,7 +176,7 @@ export const defaultTranscriptConfig: TranscriptConfig = {
 };
 
 // Types de migration des composants existants
-export type LegacyTranscriptMode = "word-by-word" | "paragraphs";
+export type LegacyTranscriptMode = "word-by-word" | "paragraphs" | "turns"; // ✅ Ajout "turns"
 export type LegacyPostit = {
   id: number;
   timestamp: number;
@@ -193,16 +194,31 @@ export type LegacyTimelineMarker = {
   color: string;
 };
 
-// Utilitaires de conversion
+// Utilitaires de conversion - VERSION CORRIGÉE
 export const convertLegacyToConfig = (legacyProps: {
-  viewMode?: "word" | "paragraph";
+  viewMode?: "word" | "paragraph" | "turns";
   transcriptSelectionMode?: string;
   isSpectatorMode?: boolean;
   highlightTurnOne?: boolean;
 }): Partial<TranscriptConfig> => {
+  let displayMode: TranscriptConfig["displayMode"];
+
+  switch (legacyProps.viewMode) {
+    case "word":
+      displayMode = "word-by-word";
+      break;
+    case "paragraph":
+      displayMode = "paragraphs";
+      break;
+    case "turns":
+      displayMode = "turns";
+      break;
+    default:
+      displayMode = "paragraphs";
+  }
+
   return {
-    displayMode:
-      legacyProps.viewMode === "word" ? "word-by-word" : "paragraphs",
+    displayMode,
     interactions: {
       wordClick: true,
       textSelection: !!legacyProps.transcriptSelectionMode,
@@ -269,6 +285,17 @@ export interface ControlsZoneProps {
   config: TranscriptConfig;
   events: TemporalEvent[];
   onConfigChange: (config: Partial<TranscriptConfig>) => void;
+}
+
+// ✅ AJOUT : Props spécifiques pour TurnsView
+export interface TurnsViewProps {
+  transcription: Word[];
+  events: TemporalEvent[];
+  fontSize: number;
+  speakerColors: Record<string, string>;
+  showTimestamps?: boolean;
+  onWordClick: (word: Word) => void;
+  onEventClick: (event: TemporalEvent) => void;
 }
 
 // Configuration d'export

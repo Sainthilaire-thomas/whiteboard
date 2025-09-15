@@ -18,6 +18,9 @@ import { PostitProvider } from "./core/providers/PostitProvider";
 import { useCallData } from "@/context/CallDataContext";
 import { useAudio } from "@/context/AudioContext";
 
+// Import SpeakerUtils pour la correction
+import { getSpeakerType, getSpeakerDisplayName } from "@/utils/SpeakerUtils";
+
 // Import des zones
 import HeaderZone from "./components/HeaderZone";
 import TimelineZone from "./components/TimelineZone";
@@ -43,7 +46,7 @@ const TranscriptSkeleton: React.FC = () => (
   </Box>
 );
 
-// Fonction pour convertir les transcriptions au format Word[]
+// Fonction pour convertir les transcriptions au format Word[] - VERSION CORRIGÉE
 const convertTranscriptionToWords = (transcription: any): Word[] => {
   if (!transcription || !transcription.words) {
     console.warn("⚠️ Aucune transcription disponible");
@@ -51,14 +54,48 @@ const convertTranscriptionToWords = (transcription: any): Word[] => {
   }
 
   try {
-    return transcription.words.map((word: any, index: number) => ({
-      id: word.id || index,
-      text: word.word || word.text || "",
-      start_time: word.startTime || word.start_time || 0,
-      end_time: word.endTime || word.end_time || 0,
-      speaker: word.speaker || "Unknown",
-      confidence: word.confidence || 1,
-    }));
+    const converted = transcription.words.map((word: any, index: number) => {
+      // ✅ CORRECTION PRINCIPALE : Utiliser le champ 'turn' avec SpeakerUtils
+      const turnValue = word.turn || "unknown";
+      const speakerType = getSpeakerType(turnValue);
+      const speakerName = getSpeakerDisplayName(speakerType);
+
+      return {
+        id: word.id || index,
+        text: word.word || word.text || "",
+        start_time: word.startTime || word.start_time || 0,
+        end_time: word.endTime || word.end_time || 0,
+        speaker: speakerName, // ✅ "Conseiller" ou "Client" ou "Inconnu"
+        turn: turnValue, // ✅ Préserver le champ turn original
+        confidence: word.confidence || 1,
+      };
+    });
+
+    // 🔍 DEBUG speakers après conversion
+    console.log("🔍 DEBUG SPEAKERS APRÈS CONVERSION:");
+    console.log("Total words:", converted.length);
+
+    const speakers = new Set(converted.map((w: Word) => w.speaker));
+    console.log("Unique speakers:", Array.from(speakers));
+
+    const speakerCounts: Record<string, number> = {};
+    converted.forEach((word: Word) => {
+      const speaker = word.speaker || "undefined";
+      speakerCounts[speaker] = (speakerCounts[speaker] || 0) + 1;
+    });
+    console.log("Speaker distribution:", speakerCounts);
+
+    console.log(
+      "Sample words with speakers:",
+      converted.slice(0, 10).map((w: Word) => ({
+        text: w.text,
+        speaker: w.speaker,
+        turn: w.turn,
+        time: w.start_time,
+      }))
+    );
+
+    return converted;
   } catch (error) {
     console.error("❌ Erreur conversion transcription:", error);
     return [];
@@ -146,9 +183,18 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
           start_time: w.startTime ?? w.start_time ?? 0,
           end_time: w.endTime ?? w.end_time ?? 0,
           speaker: w.speaker,
+          turn: w.turn, // ✅ Ajouter le champ turn
         }));
       },
-      createPostit: addPostit ? (p) => addPostit(p as any) : undefined,
+      createPostit: addPostit
+        ? (p) =>
+            addPostit(
+              p.wordid || 0,
+              p.word || "",
+              p.timestamp || 0,
+              p // Passer l'objet complet comme additionalData
+            )
+        : undefined,
       updatePostit: updatePostit
         ? (id, u) => updatePostit(id, u as any)
         : undefined,
@@ -176,7 +222,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
     refetch();
   }, [eventManager, postitProvider, refetch]);
 
-  // Conversion des vraies transcriptions au format Word[]
+  // Conversion des vraies transcriptions au format Word[] - VERSION CORRIGÉE
   const realTranscription = useMemo(() => {
     return convertTranscriptionToWords(transcription);
   }, [transcription]);
@@ -364,7 +410,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
             border: (theme) => `1px solid ${theme.palette.divider}`,
           }}
         >
-          <div>🚀 NewTranscript Phase 2</div>
+          <div>🚀 NewTranscript Phase 2 - FIXED</div>
           <div>CallId: {callId}</div>
           <div>Current Time: {currentTime.toFixed(1)}s</div>
           <div>
@@ -385,7 +431,9 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
               {Math.round(currentTurnStats.progress * 100)}%)
             </div>
           )}
-          <div>Transcription source: {transcription ? "REAL" : "NONE"}</div>
+          <div>
+            Transcription source: {transcription ? "REAL+FIXED" : "NONE"}
+          </div>
         </Box>
       )}
     </Box>
@@ -396,7 +444,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
 export const useNewTranscriptMigration = (enabled: boolean = false) => {
   return {
     isEnabled: enabled,
-    version: "2.0.0-beta",
+    version: "2.0.0-beta-fixed",
     migrationPhase: 2,
     features: {
       eventManager: true,
@@ -406,8 +454,9 @@ export const useNewTranscriptMigration = (enabled: boolean = false) => {
       transcriptZone: true,
       controlsZone: false,
       realTimeSync: true,
-      audioIntegration: true, // Maintenant true !
-      realTranscriptions: true, // Maintenant true !
+      audioIntegration: true,
+      realTranscriptions: true,
+      speakerDetection: true, // ✅ NOUVEAU: Detection des speakers corrigée
     },
   };
 };

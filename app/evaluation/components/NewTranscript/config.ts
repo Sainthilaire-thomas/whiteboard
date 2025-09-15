@@ -1,6 +1,7 @@
 // app/evaluation/components/NewTranscript/config.ts
 
 import { TranscriptConfig, EventTypeConfig } from "./types";
+import { SpeakerType } from "@/utils/SpeakerUtils";
 
 // Configuration par défaut pour le mode évaluation
 export const evaluationConfig: TranscriptConfig = {
@@ -219,7 +220,11 @@ export const validateConfig = (
   }
 
   // Validation du displayMode
-  if (!["word-by-word", "paragraphs", "hybrid"].includes(config.displayMode)) {
+  if (
+    !["word-by-word", "paragraphs", "hybrid", "turns", "compact"].includes(
+      config.displayMode
+    )
+  ) {
     errors.push(`DisplayMode invalide: ${config.displayMode}`);
   }
 
@@ -294,6 +299,65 @@ export const configPresets = {
         editable: true,
       },
     ],
+  },
+
+  // ✅ NOUVEAU : Preset pour mode turns (compatible ancien système)
+  evaluationTurns: {
+    mode: "evaluation" as const,
+    displayMode: "turns" as const,
+    timelineMode: "detailed" as const,
+    eventTypes: [
+      {
+        type: "postit",
+        enabled: true,
+        visible: true,
+        editable: true,
+        layer: "primary",
+        color: "#ff6b6b",
+        priority: 2,
+      },
+    ],
+    interactions: {
+      wordClick: true,
+      textSelection: true,
+      eventEditing: true,
+      timelineNavigation: true,
+      keyboardShortcuts: true,
+    },
+    layout: {
+      audioPlayerPosition: "top" as const,
+      showControls: false,
+      transcriptHeight: "calc(100vh - 200px)",
+      timelineHeight: 120,
+    },
+  },
+
+  // ✅ PRÉPARATION : Preset pour mode compact (étape 2)
+  evaluationCompact: {
+    mode: "evaluation" as const,
+    displayMode: "compact" as const,
+    timelineMode: "detailed" as const, // ✅ CORRECTION: utiliser "detailed" au lieu de "integrated"
+    eventTypes: [
+      {
+        type: "postit",
+        enabled: true,
+        visible: true,
+        editable: true,
+      },
+    ],
+    interactions: {
+      wordClick: false, // Pas de clic mot en mode compact
+      textSelection: false,
+      eventEditing: true,
+      timelineNavigation: true,
+      keyboardShortcuts: true,
+    },
+    layout: {
+      audioPlayerPosition: "integrated" as const,
+      showControls: true, // Stats et contrôles visibles
+      transcriptHeight: "calc(100vh - 150px)", // Plus d'espace
+      timelineHeight: 60, // Plus petit en mode compact
+    },
   },
 
   // Preset pour tagging LPL

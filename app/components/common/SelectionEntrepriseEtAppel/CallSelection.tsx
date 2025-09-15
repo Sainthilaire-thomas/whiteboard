@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useCallData } from "@/context/CallDataContext";
 import { useConseiller } from "@/context/ConseillerContext";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -28,11 +28,14 @@ import {
   DialogActions,
   FormControl,
   InputLabel,
+  Stack,
+  Chip,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { fetchTagsSummaryForCalls } from "./fetchTagsSummaryForCalls"; // ✅ named import
 
 interface CallSelectionProps {
   selectedEntreprise: number | null;
@@ -60,16 +63,40 @@ export default function CallSelection({
     isLoadingConseillers,
   } = useConseiller();
 
+  const callsUnique = useMemo(() => {
+    const seen = new Set<number>();
+    return calls.filter((c) => {
+      if (seen.has(c.callid)) return false;
+      seen.add(c.callid);
+      return true;
+    });
+  }, [calls]);
+
   const [selectedNatures, setSelectedNatures] = useState<{
     [key: number]: "evaluation" | "coaching";
   }>({});
   const [showDialog, setShowDialog] = useState<number | null>(null);
+  const [tagsByCall, setTagsByCall] = useState<
+    Map<number, { call_id: number; count: number }>
+  >(new Map());
 
   useEffect(() => {
     if (selectedEntreprise !== null) {
       fetchCalls(selectedEntreprise);
     }
   }, [selectedEntreprise, fetchCalls]);
+  useEffect(() => {
+    const run = async () => {
+      if (!calls?.length) {
+        setTagsByCall(new Map());
+        return;
+      }
+      const ids = calls.map((c) => c.callid);
+      const map = await fetchTagsSummaryForCalls(ids);
+      setTagsByCall(map);
+    };
+    run();
+  }, [calls]);
 
   if (isLoadingCalls) {
     return (
@@ -88,7 +115,7 @@ export default function CallSelection({
         <AccordionDetails>
           {calls.length > 0 ? (
             <Grid container direction="column" spacing={2}>
-              {calls.map((call) => (
+              {callsUnique.map((call) => (
                 <Grid item xs={12} key={call.callid}>
                   <Card variant="outlined" sx={{ width: "100%" }}>
                     <CardContent>
@@ -99,11 +126,12 @@ export default function CallSelection({
                         {call.description || "Aucune description"}
                       </Typography>
 
+                      {/* Activités existantes */}
                       {call.callactivityrelation.length > 0 ? (
-                        call.callactivityrelation.map((relation) =>
-                          relation.activitesconseillers.map((act) => (
+                        call.callactivityrelation.map((relation, rIdx) =>
+                          relation.activitesconseillers.map((act, aIdx) => (
                             <Typography
-                              key={act.nature}
+                              key={`${call.callid}-${act.idactivite ?? `${rIdx}-${aIdx}`}-${act.nature}`}
                               variant="body2"
                               color="primary"
                             >
@@ -116,6 +144,27 @@ export default function CallSelection({
                           Aucune activité associée
                         </Typography>
                       )}
+
+                      {/* ✅ Bloc méta */}
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{ mt: 1 }}
+                        useFlexGap
+                        flexWrap="wrap"
+                      >
+                        {(() => {
+                          const count = tagsByCall.get(call.callid)?.count ?? 0;
+                          const has = count > 0;
+                          return (
+                            <Chip
+                              size="small"
+                              label={has ? `Taggé (${count})` : "Non taggé"}
+                              variant={has ? "filled" : "outlined"}
+                            />
+                          );
+                        })()}
+                      </Stack>
                     </CardContent>
 
                     <CardActions>

@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import { PlayArrow, NoteAdd, LocalOffer } from "@mui/icons-material";
 import { useAudio } from "@/context/AudioContext";
+import { TurnsView } from "./TurnsView";
 
 import {
   TranscriptZoneProps,
@@ -626,6 +627,37 @@ export const TranscriptZone: React.FC<TranscriptZoneProps> = ({
       case "hybrid":
         return (
           <HybridView {...commonProps} currentWordIndex={currentWordIndex} />
+        );
+
+      case "turns":
+        return (
+          <TurnsView
+            transcription={transcription}
+            events={events}
+            fontSize={config.fontSize}
+            speakerColors={{
+              Conseiller: "#d4a574",
+              Client: "#5b9bd5",
+              Agent: "#d4a574",
+              Customer: "#5b9bd5",
+              Unknown: "#666666",
+            }}
+            showTimestamps={true}
+            onWordClick={onWordClick}
+            onEventClick={onEventClick}
+          />
+        );
+
+      // 3. Ajouter case "compact" (pour préparer étape 2)
+      case "compact":
+        return (
+          <Box sx={{ p: 2, textAlign: "center", color: "text.secondary" }}>
+            <Typography variant="h6">Mode Compact</Typography>
+            <Typography variant="body2">
+              En cours d'implémentation...
+            </Typography>
+            {/* Temporaire - sera remplacé par CompactView */}
+          </Box>
         );
 
       default:
