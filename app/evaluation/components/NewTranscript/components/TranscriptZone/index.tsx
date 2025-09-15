@@ -16,6 +16,7 @@ import {
   IconButton,
 } from "@mui/material";
 import { PlayArrow, NoteAdd, LocalOffer } from "@mui/icons-material";
+import { useAudio } from "@/context/AudioContext";
 
 import {
   TranscriptZoneProps,
@@ -533,7 +534,7 @@ const HybridView: React.FC<HybridViewProps> = (props) => {
           padding: 1,
           borderBottom: "1px solid",
           borderColor: "divider",
-          backgroundColor: "grey.50",
+          backgroundColor: "action.hover", // Amélioration dark mode
           display: "flex",
           justifyContent: "center",
         }}
@@ -576,14 +577,13 @@ export const TranscriptZone: React.FC<TranscriptZoneProps> = ({
   onTextSelection,
   onEventClick,
 }) => {
-  // Mock currentTime pour la démo (sera remplacé par le hook audio réel)
-  const [currentTime] = useState(0);
+  // Connexion au vrai hook audio au lieu du mock
+  const { currentTime } = useAudio();
 
   // Handler pour la sélection de texte
   const handleTextSelection = useCallback(() => {
     const selection = window.getSelection();
     if (selection && selection.toString().length > 0) {
-      // TODO: Implémenter la logique de sélection
       const selectedText = selection.toString();
       console.log("📄 Text selected:", selectedText);
 
@@ -608,7 +608,7 @@ export const TranscriptZone: React.FC<TranscriptZoneProps> = ({
       fontSize: config.fontSize,
       onWordClick,
       onEventClick,
-      currentTime,
+      currentTime, // Maintenant c'est le vrai currentTime
     };
 
     switch (config.displayMode) {
@@ -720,7 +720,9 @@ export const TranscriptZone: React.FC<TranscriptZoneProps> = ({
               borderTop: "1px solid",
               borderColor: "divider",
               backgroundColor: (theme) =>
-                theme.palette.mode === "dark" ? "background.paper" : "grey.50",
+                theme.palette.mode === "dark"
+                  ? "background.paper"
+                  : "action.hover",
               fontSize: "0.7rem",
               color: "text.secondary",
             }}

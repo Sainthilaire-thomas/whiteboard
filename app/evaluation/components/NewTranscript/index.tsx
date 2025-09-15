@@ -16,8 +16,9 @@ import {
 import { useEventManager } from "./core/EventManager";
 import { PostitProvider } from "./core/providers/PostitProvider";
 import { useCallData } from "@/context/CallDataContext";
+import { useAudio } from "@/context/AudioContext";
 
-// Import des zones (Phase 2)
+// Import des zones
 import HeaderZone from "./components/HeaderZone";
 import TimelineZone from "./components/TimelineZone";
 import TranscriptZone, {
@@ -42,6 +43,28 @@ const TranscriptSkeleton: React.FC = () => (
   </Box>
 );
 
+// Fonction pour convertir les transcriptions au format Word[]
+const convertTranscriptionToWords = (transcription: any): Word[] => {
+  if (!transcription || !transcription.words) {
+    console.warn("⚠️ Aucune transcription disponible");
+    return [];
+  }
+
+  try {
+    return transcription.words.map((word: any, index: number) => ({
+      id: word.id || index,
+      text: word.word || word.text || "",
+      start_time: word.startTime || word.start_time || 0,
+      end_time: word.endTime || word.end_time || 0,
+      speaker: word.speaker || "Unknown",
+      confidence: word.confidence || 1,
+    }));
+  } catch (error) {
+    console.error("❌ Erreur conversion transcription:", error);
+    return [];
+  }
+};
+
 // Composant principal NewTranscript
 export const NewTranscript: React.FC<NewTranscriptProps> = ({
   callId,
@@ -61,10 +84,14 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
     addPostit,
     updatePostit,
     deletePostit,
-    transcription, // optionnel si tu veux détecter le speaker
+    transcription, // Les vraies données de transcription
     selectedCall,
   } = useCallData();
+
+  const { currentTime, duration, seekTo } = useAudio();
+
   console.log("🔄 NewTranscript Phase 2 initializing with callId:", callId);
+  console.log("📊 Transcription data:", transcription);
 
   // Configuration finale (merge user config + legacy props + defaults)
   const config = useMemo((): TranscriptConfig => {
@@ -111,10 +138,8 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
         const n = Number(cid);
         return (appelPostits ?? []).filter((p) => p.callid === n);
       },
-      // (optionnel) si tu veux déduire le speaker ; sinon laisse vide
       getWordsForCall: async (_cid: string) => {
-        const words = (transcription as any)?.words ?? [];
-        // normalisation vers {id,text,start_time,end_time,speaker}
+        const words = transcription?.words ?? [];
         return words.map((w: any) => ({
           id: w.id ?? w.wordid ?? 0,
           text: w.word ?? w.text ?? "",
@@ -148,167 +173,50 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
   useEffect(() => {
     if (!eventManager) return;
     eventManager.registerProvider(postitProvider);
-    // recharge les events depuis les providers
     refetch();
   }, [eventManager, postitProvider, refetch]);
 
-  // Mock data pour les tests (remplacer par les vrais hooks plus tard)
-  const [mockAudioState, setMockAudioState] = useState({
-    isPlaying: false,
-    currentTime: 15.5,
-    duration: 180,
-    volume: 0.8,
-  });
+  // Conversion des vraies transcriptions au format Word[]
+  const realTranscription = useMemo(() => {
+    return convertTranscriptionToWords(transcription);
+  }, [transcription]);
 
-  const [mockTranscription] = useState<Word[]>([
-    {
-      id: 1,
-      text: "Bonjour",
-      start_time: 10.0,
-      end_time: 10.5,
-      speaker: "Conseiller",
-    },
-    {
-      id: 2,
-      text: "Monsieur",
-      start_time: 10.6,
-      end_time: 11.1,
-      speaker: "Conseiller",
-    },
-    {
-      id: 3,
-      text: "Martin",
-      start_time: 11.2,
-      end_time: 11.6,
-      speaker: "Conseiller",
-    },
-    {
-      id: 4,
-      text: "comment",
-      start_time: 11.7,
-      end_time: 12.0,
-      speaker: "Conseiller",
-    },
-    {
-      id: 5,
-      text: "puis-je",
-      start_time: 12.1,
-      end_time: 12.4,
-      speaker: "Conseiller",
-    },
-    {
-      id: 6,
-      text: "vous",
-      start_time: 12.5,
-      end_time: 12.7,
-      speaker: "Conseiller",
-    },
-    {
-      id: 7,
-      text: "aider",
-      start_time: 12.8,
-      end_time: 13.2,
-      speaker: "Conseiller",
-    },
-    {
-      id: 8,
-      text: "aujourd'hui",
-      start_time: 13.3,
-      end_time: 14.0,
-      speaker: "Conseiller",
-    },
-    {
-      id: 9,
-      text: "Bonjour",
-      start_time: 15.0,
-      end_time: 15.4,
-      speaker: "Client",
-    },
-    {
-      id: 10,
-      text: "j'ai",
-      start_time: 15.5,
-      end_time: 15.7,
-      speaker: "Client",
-    },
-    { id: 11, text: "un", start_time: 15.8, end_time: 15.9, speaker: "Client" },
-    {
-      id: 12,
-      text: "problème",
-      start_time: 16.0,
-      end_time: 16.6,
-      speaker: "Client",
-    },
-    {
-      id: 13,
-      text: "avec",
-      start_time: 16.7,
-      end_time: 16.9,
-      speaker: "Client",
-    },
-    {
-      id: 14,
-      text: "mon",
-      start_time: 17.0,
-      end_time: 17.2,
-      speaker: "Client",
-    },
-    {
-      id: 15,
-      text: "compte",
-      start_time: 17.3,
-      end_time: 17.8,
-      speaker: "Client",
-    },
-  ]);
-
-  // Synchronisation transcript-audio
+  // Synchronisation transcript-audio avec les vraies données
   const { currentWordIndex, currentTurnStats, progressPercentage } =
-    useTranscriptSync(mockTranscription, mockAudioState.currentTime);
+    useTranscriptSync(realTranscription, currentTime);
 
-  // Navigation dans le transcript
+  // Navigation dans le transcript avec vraie fonction seekTo
   const { goToWord, goToNextWord, goToPreviousWord, canGoNext, canGoPrevious } =
-    useTranscriptNavigation(
-      mockTranscription,
-      currentWordIndex,
-      (time: number) => {
-        setMockAudioState((prev) => ({ ...prev, currentTime: time }));
-        console.log("🎯 Navigate to time:", time);
-      }
-    );
-
-  // Simulation lecture audio (pour la démo)
-  useEffect(() => {
-    if (mockAudioState.isPlaying) {
-      const interval = setInterval(() => {
-        setMockAudioState((prev) => ({
-          ...prev,
-          currentTime: Math.min(prev.currentTime + 0.1, prev.duration),
-        }));
-      }, 100);
-      return () => clearInterval(interval);
-    }
-  }, [mockAudioState.isPlaying]);
+    useTranscriptNavigation(realTranscription, currentWordIndex, seekTo);
 
   // Handlers des interactions
-  const handleEventClick = useCallback((event: TemporalEvent) => {
-    console.log("📍 Event clicked:", event);
-    setMockAudioState((prev) => ({ ...prev, currentTime: event.startTime }));
-  }, []);
+  const handleEventClick = useCallback(
+    (event: TemporalEvent) => {
+      console.log("📍 Event clicked:", event);
+      seekTo(event.startTime);
+    },
+    [seekTo]
+  );
 
-  const handleWordClick = useCallback((word: Word) => {
-    console.log("📝 Word clicked:", word);
-    setMockAudioState((prev) => ({ ...prev, currentTime: word.start_time }));
-  }, []);
+  const handleWordClick = useCallback(
+    (word: Word) => {
+      console.log("📝 Word clicked:", word);
+      seekTo(word.start_time);
+    },
+    [seekTo]
+  );
 
   const handleTextSelection = useCallback((selection: TextSelection) => {
     console.log("📄 Text selected:", selection);
   }, []);
 
-  const handleTimelineClick = useCallback((time: number) => {
-    console.log("⏰ Timeline clicked at time:", time);
-    setMockAudioState((prev) => ({ ...prev, currentTime: time }));
-  }, []);
+  const handleTimelineClick = useCallback(
+    (time: number) => {
+      console.log("⏰ Timeline clicked at time:", time);
+      seekTo(time);
+    },
+    [seekTo]
+  );
 
   const handleConfigChange = useCallback(
     (newConfig: Partial<TranscriptConfig>) => {
@@ -345,6 +253,18 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
     );
   }
 
+  // Si pas de transcription, afficher un message informatif
+  if (!realTranscription.length) {
+    return (
+      <Alert severity="info" sx={{ margin: 2 }}>
+        <Box sx={{ fontWeight: "bold" }}>Aucune transcription disponible</Box>
+        <Box>
+          Sélectionnez un appel avec transcription pour utiliser NewTranscript
+        </Box>
+      </Alert>
+    );
+  }
+
   // Rendu principal
   return (
     <Box
@@ -370,17 +290,17 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
       {dynamicConfig.timelineMode !== "hidden" && (
         <TimelineZone
           events={events}
-          currentTime={mockAudioState.currentTime}
-          duration={mockAudioState.duration}
+          currentTime={currentTime}
+          duration={duration}
           config={dynamicConfig}
           onEventClick={handleEventClick}
           onTimelineClick={handleTimelineClick}
         />
       )}
 
-      {/* Zone Transcript - Texte principal */}
+      {/* Zone Transcript - Texte principal avec vraies données */}
       <TranscriptZone
-        transcription={mockTranscription}
+        transcription={realTranscription}
         events={events}
         config={dynamicConfig}
         currentWordIndex={currentWordIndex}
@@ -416,7 +336,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
 
           <Box sx={{ display: "flex", gap: 2 }}>
             <span>Événements: {events.length}</span>
-            <span>Mots: {mockTranscription.length}</span>
+            <span>Mots: {realTranscription.length}</span>
             <span>Progression: {progressPercentage}%</span>
           </Box>
         </Box>
@@ -446,15 +366,15 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
         >
           <div>🚀 NewTranscript Phase 2</div>
           <div>CallId: {callId}</div>
-          <div>Current Time: {mockAudioState.currentTime.toFixed(1)}s</div>
+          <div>Current Time: {currentTime.toFixed(1)}s</div>
           <div>
             Current Word:{" "}
             {currentWordIndex >= 0
-              ? mockTranscription[currentWordIndex]?.text
+              ? realTranscription[currentWordIndex]?.text
               : "N/A"}
           </div>
           <div>
-            Events: {events.length} | Words: {mockTranscription.length}
+            Events: {events.length} | Words: {realTranscription.length}
           </div>
           <div>
             Config: {dynamicConfig.mode} • {dynamicConfig.displayMode}
@@ -465,6 +385,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
               {Math.round(currentTurnStats.progress * 100)}%)
             </div>
           )}
+          <div>Transcription source: {transcription ? "REAL" : "NONE"}</div>
         </Box>
       )}
     </Box>
@@ -485,7 +406,8 @@ export const useNewTranscriptMigration = (enabled: boolean = false) => {
       transcriptZone: true,
       controlsZone: false,
       realTimeSync: true,
-      audioIntegration: false,
+      audioIntegration: true, // Maintenant true !
+      realTranscriptions: true, // Maintenant true !
     },
   };
 };

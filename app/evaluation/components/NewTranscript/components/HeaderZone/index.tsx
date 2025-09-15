@@ -31,6 +31,8 @@ import {
   LightMode,
   DarkMode,
 } from "@mui/icons-material";
+import { useAudio } from "@/context/AudioContext";
+import { useCallData } from "@/context/CallDataContext";
 
 import { HeaderZoneProps } from "../../types";
 
@@ -350,38 +352,45 @@ export const HeaderZone: React.FC<HeaderZoneProps> = ({
   // États locaux
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // TODO: Intégration avec les hooks réels (Phase 2)
-  // const { selectedCall } = useCallData();
-  // const { isPlaying, currentTime, duration, volume, play, pause, seekTo, setVolume } = useAudio();
+  // Hooks pour les données réelles
+  const { selectedCall } = useCallData();
+  const {
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    play,
+    pause,
+    seekTo,
+    setVolume,
+  } = useAudio();
 
-  // Mock data pour Phase 1
-  const [mockAudioState, setMockAudioState] = useState({
-    isPlaying: false,
-    currentTime: 0,
-    duration: 100,
-    volume: 0.8,
-  });
-
-  // Handlers
+  // Handlers avec les vraies fonctions audio
   const handlePlay = useCallback(() => {
-    setMockAudioState((prev) => ({ ...prev, isPlaying: true }));
+    play();
     console.log("🎵 Play audio");
-  }, []);
+  }, [play]);
 
   const handlePause = useCallback(() => {
-    setMockAudioState((prev) => ({ ...prev, isPlaying: false }));
+    pause();
     console.log("⏸️ Pause audio");
-  }, []);
+  }, [pause]);
 
-  const handleSeek = useCallback((time: number) => {
-    setMockAudioState((prev) => ({ ...prev, currentTime: time }));
-    console.log("⏰ Seek to:", time);
-  }, []);
+  const handleSeek = useCallback(
+    (time: number) => {
+      seekTo(time);
+      console.log("⏰ Seek to:", time);
+    },
+    [seekTo]
+  );
 
-  const handleVolumeChange = useCallback((volume: number) => {
-    setMockAudioState((prev) => ({ ...prev, volume }));
-    console.log("🔊 Volume change:", volume);
-  }, []);
+  const handleVolumeChange = useCallback(
+    (newVolume: number) => {
+      setVolume(newVolume);
+      console.log("🔊 Volume change:", newVolume);
+    },
+    [setVolume]
+  );
 
   const handleFullscreenToggle = useCallback(() => {
     setIsFullscreen((prev) => !prev);
@@ -438,18 +447,18 @@ export const HeaderZone: React.FC<HeaderZoneProps> = ({
     >
       {/* Call Info */}
       <CallInfo
-        filename={`Call_${callId}`} // TODO: Utiliser selectedCall?.filename
+        filename={selectedCall?.filename || `Call_${callId}`}
         callId={callId}
-        duration={formatDuration(mockAudioState.duration)}
+        duration={formatDuration(duration)}
         status="active"
       />
 
       {/* Audio Controls */}
       <AudioControls
-        isPlaying={mockAudioState.isPlaying}
-        currentTime={mockAudioState.currentTime}
-        duration={mockAudioState.duration}
-        volume={mockAudioState.volume}
+        isPlaying={isPlaying}
+        currentTime={currentTime}
+        duration={duration}
+        volume={volume}
         onPlay={handlePlay}
         onPause={handlePause}
         onSeek={handleSeek}
