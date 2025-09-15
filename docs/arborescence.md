@@ -1,6 +1,6 @@
 # 🌳 Arborescence du projet whiteboard
 
-> Générée automatiquement le 13/09/2025 15:52:15
+> Générée automatiquement le 15/09/2025 06:25:28
 
 ## 📂 Structure des fichiers
 
@@ -151,6 +151,13 @@ whiteboard/
 │   │   │   │   ├── ⚛️ index.tsx (315 B)
 │   │   │   │   ├── ⚛️ types.tsx (3.6 KB)
 │   │   │   │   └── ⚛️ utils.tsx (911 B)
+│   │   │   ├── 📁 EvaluationTranscript/
+│   │   │   │   ├── ⚛️ AudioControl.tsx (3.4 KB)
+│   │   │   │   ├── ⚛️ AudioPlayer.tsx (5.1 KB)
+│   │   │   │   ├── ⚛️ EvaluationTranscript.tsx (5.5 KB)
+│   │   │   │   ├── ⚛️ TimeLineAudio.tsx (4.7 KB)
+│   │   │   │   ├── ⚛️ Transcript.tsx (15.2 KB)
+│   │   │   │   └── ⚛️ TranscriptAlternative.tsx (22 KB)
 │   │   │   ├── 📁 FourZones/
 │   │   │   │   ├── 📁 components/
 │   │   │   │   │   ├── 📁 DroppableZone/
@@ -215,6 +222,33 @@ whiteboard/
 │   │   │   │   │   ├── ⚛️ rolePlayUtils.tsx (3.2 KB)
 │   │   │   │   │   └── ⚛️ stepContentUtils.tsx (10 KB)
 │   │   │   │   └── ⚛️ index.tsx (18 KB)
+│   │   │   ├── 📁 Legacy/
+│   │   │   │   ├── ⚛️ BandeauEval.tsx (6.4 KB)
+│   │   │   │   ├── ⚛️ Evalcontainer.tsx (445 B)
+│   │   │   │   ├── ⚛️ EvaluationCard.tsx (2.8 KB)
+│   │   │   │   ├── ⚛️ EvaluationCardCompact.tsx (2.1 KB)
+│   │   │   │   ├── ⚛️ EvaluationDrawer.tsx (1.1 KB)
+│   │   │   │   ├── ⚛️ EvaluationPostits.tsx (3.1 KB)
+│   │   │   │   ├── ⚛️ EvaluationSidebar.tsx (1.3 KB)
+│   │   │   │   ├── ⚛️ Exercices.tsx (7.8 KB)
+│   │   │   │   ├── ⚛️ HistoriqueEvaluation.tsx (248 B)
+│   │   │   │   ├── ⚛️ Progression.tsx (3 KB)
+│   │   │   │   └── ⚛️ TimestampInput.tsx (4.4 KB)
+│   │   │   ├── 📁 NewTranscript/
+│   │   │   │   ├── 📁 components/
+│   │   │   │   │   ├── 📁 HeaderZone/
+│   │   │   │   │   │   └── ⚛️ index.tsx (13 KB)
+│   │   │   │   │   ├── 📁 TimelineZone/
+│   │   │   │   │   │   └── ⚛️ index.tsx (17.6 KB)
+│   │   │   │   │   └── 📁 TranscriptZone/
+│   │   │   │   │       └── ⚛️ index.tsx (25.7 KB)
+│   │   │   │   ├── 📁 core/
+│   │   │   │   │   ├── 📁 providers/
+│   │   │   │   │   │   └── 📘 PostitProvider.ts (7.7 KB)
+│   │   │   │   │   └── ⚛️ EventManager.tsx (8.4 KB)
+│   │   │   │   ├── 📘 config.ts (8.8 KB)
+│   │   │   │   ├── ⚛️ index.tsx (12.9 KB)
+│   │   │   │   └── 📘 types.ts (6.7 KB)
 │   │   │   ├── 📁 Postit/
 │   │   │   │   ├── 📁 components/
 │   │   │   │   │   └── ⚛️ StepNavigation.tsx (8.4 KB)
@@ -235,6 +269,8 @@ whiteboard/
 │   │   │   │   │   ├── ⚛️ SujetStep.tsx (1.8 KB)
 │   │   │   │   │   └── ⚛️ SummaryPanel.tsx (6.8 KB)
 │   │   │   │   ├── ⚛️ constants.tsx (4 KB)
+│   │   │   │   ├── ⚛️ GridContainerPratiquesEval.tsx (9 KB)
+│   │   │   │   ├── ⚛️ GridContainerSujetsEval.tsx (5.8 KB)
 │   │   │   │   ├── ⚛️ index.tsx (10 KB)
 │   │   │   │   ├── ⚛️ types.tsx (14.2 KB)
 │   │   │   │   └── ⚛️ utils.tsx (2.6 KB)
@@ -254,48 +290,29 @@ whiteboard/
 │   │   │   │   ├── ⚛️ CritereQualiteTab.tsx (4.7 KB)
 │   │   │   │   ├── ⚛️ index.tsx (12.3 KB)
 │   │   │   │   ├── 📝 README.md (3.1 KB)
+│   │   │   │   ├── ⚛️ SimplifiedGridContainerPratiques.tsx (4.4 KB)
+│   │   │   │   ├── ⚛️ SimplifiedGridContainerSujets.tsx (4.1 KB)
 │   │   │   │   ├── ⚛️ SimulationCoachingTab.tsx (21.9 KB)
 │   │   │   │   ├── ⚛️ syntheseEvaluation.types.tsx (9.1 KB)
 │   │   │   │   └── ⚛️ SyntheseTab.tsx (36 KB)
-│   │   │   ├── 📁 UnifiedHeader/
-│   │   │   │   ├── 📁 shared/
-│   │   │   │   │   ├── ⚛️ CallInfo.tsx (2 KB)
-│   │   │   │   │   ├── ⚛️ ColorationToggle.tsx (2.2 KB)
-│   │   │   │   │   ├── ⚛️ ContextualActions.tsx (4.8 KB)
-│   │   │   │   │   ├── ⚛️ DisplayActions.tsx (4.1 KB)
-│   │   │   │   │   ├── ⚛️ DomainSelector.tsx (1.5 KB)
-│   │   │   │   │   ├── ⚛️ TitleSection.tsx (950 B)
-│   │   │   │   │   ├── ⚛️ TranscriptionActions.tsx (1.3 KB)
-│   │   │   │   │   └── ⚛️ ViewModeToggle.tsx (1.6 KB)
-│   │   │   │   ├── ⚛️ ContextualHeader.tsx (4 KB)
-│   │   │   │   ├── ⚛️ index.tsx (4 KB)
-│   │   │   │   ├── ⚛️ TranscriptionHeader.tsx (6 KB)
-│   │   │   │   └── 📘 unifiedHeader.types.ts (2.5 KB)
-│   │   │   ├── ⚛️ AddPostitButton.tsx (5.1 KB)
-│   │   │   ├── ⚛️ AudioControl.tsx (3.4 KB)
-│   │   │   ├── ⚛️ AudioPlayer.tsx (5.1 KB)
-│   │   │   ├── ⚛️ BandeauEval.tsx (6.3 KB)
-│   │   │   ├── ⚛️ Evalcontainer.tsx (445 B)
-│   │   │   ├── ⚛️ EvaluationCard.tsx (2.8 KB)
-│   │   │   ├── ⚛️ EvaluationCardCompact.tsx (2.1 KB)
-│   │   │   ├── ⚛️ EvaluationDrawer.tsx (1.1 KB)
-│   │   │   ├── ⚛️ EvaluationPostits.tsx (3.1 KB)
-│   │   │   ├── ⚛️ EvaluationSidebar.tsx (1.3 KB)
-│   │   │   ├── ⚛️ EvaluationTranscript.tsx (5.5 KB)
-│   │   │   ├── ⚛️ Exercices.tsx (7.8 KB)
-│   │   │   ├── ⚛️ GridContainerPratiquesEval.tsx (9 KB)
-│   │   │   ├── ⚛️ GridContainerSujetsEval.tsx (5.8 KB)
-│   │   │   ├── ⚛️ HistoriqueEvaluation.tsx (248 B)
-│   │   │   ├── ⚛️ Progression.tsx (3 KB)
-│   │   │   ├── ⚛️ SimplifiedGridContainerPratiques.tsx (4.4 KB)
-│   │   │   ├── ⚛️ SimplifiedGridContainerSujets.tsx (4.1 KB)
-│   │   │   ├── ⚛️ TimeLineAudio.tsx (4.7 KB)
-│   │   │   ├── ⚛️ TimestampInput.tsx (4.4 KB)
-│   │   │   ├── ⚛️ Transcript.tsx (15.2 KB)
-│   │   │   └── ⚛️ TranscriptAlternative.tsx (22 KB)
+│   │   │   └── 📁 UnifiedHeader/
+│   │   │       ├── 📁 shared/
+│   │   │       │   ├── ⚛️ AddPostitButton.tsx (5.1 KB)
+│   │   │       │   ├── ⚛️ CallInfo.tsx (2 KB)
+│   │   │       │   ├── ⚛️ ColorationToggle.tsx (2.2 KB)
+│   │   │       │   ├── ⚛️ ContextualActions.tsx (4.8 KB)
+│   │   │       │   ├── ⚛️ DisplayActions.tsx (4.1 KB)
+│   │   │       │   ├── ⚛️ DomainSelector.tsx (1.5 KB)
+│   │   │       │   ├── ⚛️ TitleSection.tsx (950 B)
+│   │   │       │   ├── ⚛️ TranscriptionActions.tsx (1.3 KB)
+│   │   │       │   └── ⚛️ ViewModeToggle.tsx (1.6 KB)
+│   │   │       ├── ⚛️ ContextualHeader.tsx (4 KB)
+│   │   │       ├── ⚛️ index.tsx (4 KB)
+│   │   │       ├── ⚛️ TranscriptionHeader.tsx (6 KB)
+│   │   │       └── 📘 unifiedHeader.types.ts (2.5 KB)
 │   │   ├── 📁 hooks/
 │   │   │   └── ⚛️ useRealtimeEvaluationSharing.tsx (6.2 KB)
-│   │   ├── ⚛️ Evaluation.tsx (14 KB)
+│   │   ├── ⚛️ Evaluation.tsx (16.7 KB)
 │   │   ├── ⚛️ evaluation.types.tsx (11.1 KB)
 │   │   ├── ⚛️ EvaluationClient.tsx (478 B)
 │   │   ├── ⚛️ layout.tsx (712 B)
@@ -350,13 +367,6 @@ whiteboard/
 │   │   │   ├── ⚛️ useSharedEvaluation.tsx (7.9 KB)
 │   │   │   └── ⚛️ useSpectatorTranscriptions.tsx (3.3 KB)
 │   │   ├── ⚛️ page.tsx (422 B)
-│   │   ├── 📝 README_PHASE3 copy.MD (14 KB)
-│   │   ├── 📝 README_PHASE3.MD (28 KB)
-│   │   ├── 📝 README.MD (18.3 KB)
-│   │   ├── 📝 README4.MD (16.2 KB)
-│   │   ├── 📝 README5.MD (20.3 KB)
-│   │   ├── 📝 README6.MD (14.5 KB)
-│   │   ├── 📝 READMEAFFECTATIONSUJETWHITEBOARD.MD (13.2 KB)
 │   │   └── ⚛️ Whiteboard.tsx (7.7 KB)
 │   ├── 📁 zohoworkdrive/
 │   │   ├── 📁 components/
@@ -400,7 +410,38 @@ whiteboard/
 │   ├── ⚛️ TaggingDataContext.tsx (7.7 KB)
 │   └── ⚛️ ZohoContext.tsx (2.2 KB)
 ├── 📁 docs/
-│   └── 📝 arborescence.md (28.8 KB)
+│   ├── 📁 context/
+│   │   ├── 📝 AppContext.md (21.2 KB)
+│   │   ├── 📝 AudioContext.md (14.5 KB)
+│   │   ├── 📝 CallDataContext.md (20.8 KB)
+│   │   └── 📝 TaggingDataContext.md (28.6 KB)
+│   ├── 📁 evaluation/
+│   │   ├── 📁 EvaluationTranscript/
+│   │   │   ├── 📝 AudioPlayer.md (7 KB)
+│   │   │   ├── 📝 TimelineAudio.md (12.7 KB)
+│   │   │   ├── 📝 Transcript.md (12.4 KB)
+│   │   │   └── 📝 TranscriptAlternative.md (15.5 KB)
+│   │   ├── 📁 NewTranscript/
+│   │   │   ├── 📝 architecture.md (13.5 KB)
+│   │   │   ├── 📝 layout.md (14.8 KB)
+│   │   │   └── 📝 migration-NewTranscript.md (22.7 KB)
+│   │   └── 📝 description-evaluation.MD (6 KB)
+│   ├── 📁 legacy/
+│   │   ├── 📝 README_PHASE3 copy.MD (14 KB)
+│   │   ├── 📝 README_PHASE3.MD (28 KB)
+│   │   ├── 📝 README.MD (18.3 KB)
+│   │   ├── 📝 README4.MD (16.2 KB)
+│   │   ├── 📝 README5.MD (20.3 KB)
+│   │   ├── 📝 README6.MD (14.5 KB)
+│   │   └── 📝 READMEAFFECTATIONSUJETWHITEBOARD.MD (13.2 KB)
+│   ├── 📁 sessions/
+│   │   └── 📝 2025-09-14-migration-newTranscript-step2.md (5.1 KB)
+│   ├── 📁 supabase/
+│   │   ├── 📝 optimisation-supabase.MD (7.8 KB)
+│   │   └── 📝 supabase.MD (9.3 KB)
+│   ├── 📁 types/
+│   │   └── 📝 types-documentation.md (161.9 KB)
+│   └── 📝 arborescence.md (28.9 KB)
 ├── 📁 hooks/
 │   ├── 📁 AppContext/
 │   │   ├── ⚛️ useActivities.tsx (3.9 KB)
@@ -455,7 +496,8 @@ whiteboard/
 │   └── 🖼️ window.svg (385 B)
 ├── 📁 scripts/
 │   ├── 📜 .eslintrc.js (454 B)
-│   └── 📄 generate-tree.mjs (8.7 KB)
+│   ├── 📄 generate-tree.mjs (8.7 KB)
+│   └── 📄 generate-types-doc.mjs (11.4 KB)
 ├── 📁 services/
 │   ├── ⚛️ AudioCacheService.tsx (7.5 KB)
 │   └── ⚛️ AudioService.tsx (3.9 KB)
@@ -496,20 +538,20 @@ whiteboard/
 
 ## 📊 Statistiques du projet
 
-- **Fichiers**: 367
-- **Dossiers**: 118
-- **Taille totale**: 2.5 MB
+- **Fichiers**: 392
+- **Dossiers**: 135
+- **Taille totale**: 2.9 MB
 
 ### Types de fichiers
 
 | Extension | Nombre |
 |-----------|--------|
-| .tsx | 311 |
-| .md | 18 |
-| .ts | 18 |
+| .tsx | 316 |
+| .md | 34 |
+| .ts | 21 |
 | .json | 6 |
 | .svg | 5 |
-| .mjs | 3 |
+| .mjs | 4 |
 | .js | 2 |
 | .ico | 1 |
 | .css | 1 |
@@ -521,6 +563,7 @@ whiteboard/
 | Fichier | Taille |
 |---------|--------|
 | package-lock.json | 266.6 KB |
+| docs\types\types-documentation.md | 161.9 KB |
 | app\evaluation\components\EntrainementSuivi\EntrainementSuivi.tsx | 40.4 KB |
 | app\evaluation\components\EntrainementSuivi\components\TrainingPath.tsx | 38.6 KB |
 | app\evaluation\admin\components\sections\AdminCategoriesSection.tsx | 36.5 KB |
@@ -529,7 +572,6 @@ whiteboard/
 | app\evaluation\components\SyntheseEvaluation\RadarEvaluation\README.MD | 34.7 KB |
 | app\evaluation\admin\components\sections\AdminSujetsSection.tsx | 29 KB |
 | app\evaluation\components\FourZones\components\FinalReviewStep\FinalReviewStep.tsx | 28.9 KB |
-| docs\arborescence.md | 28.8 KB |
 
 ---
 
