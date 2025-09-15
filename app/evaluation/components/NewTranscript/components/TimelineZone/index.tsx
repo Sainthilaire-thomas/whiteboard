@@ -7,24 +7,43 @@ import React, {
   useRef,
   useEffect,
 } from "react";
-import { Box, Slider, Typography, Tooltip, Paper } from "@mui/material";
+import { Box, Slider, Typography, Tooltip, Paper, Chip } from "@mui/material";
 import { TimelineZoneProps, TemporalEvent, TimelineLayer } from "../../types";
 
 // Utilitaires pour la timeline
 const timelineUtils = {
   // Convertir temps en position X
   timeToPosition: (time: number, duration: number, width: number) => {
-    return (time / duration) * width;
+    if (duration <= 0) return 0;
+    return Math.max(0, Math.min(width, (time / duration) * width));
   },
 
   // Convertir position X en temps
   positionToTime: (position: number, width: number, duration: number) => {
-    return (position / width) * duration;
+    if (width <= 0) return 0;
+    return Math.max(0, Math.min(duration, (position / width) * duration));
   },
 
   // Grouper les événements par couches
   groupEventsByLayer: (events: TemporalEvent[], eventTypes: any[]) => {
     const layers: Record<string, TimelineLayer> = {};
+
+    // Créer une couche par défaut si aucun type configuré
+    if (!eventTypes || eventTypes.length === 0) {
+      const defaultEvents = events.filter((e) => e.type === "postit");
+      if (defaultEvents.length > 0) {
+        layers["postit"] = {
+          id: "postit",
+          name: "Post-its",
+          events: defaultEvents,
+          height: 24,
+          color: "#ff6b6b",
+          visible: true,
+          interactive: true,
+        };
+      }
+      return Object.values(layers);
+    }
 
     eventTypes.forEach((eventType) => {
       if (!eventType.enabled || !eventType.visible) return;
@@ -33,15 +52,18 @@ const timelineUtils = {
         (event) => event.type === eventType.type
       );
 
-      layers[eventType.type] = {
-        id: eventType.type,
-        name: eventType.type.charAt(0).toUpperCase() + eventType.type.slice(1),
-        events: layerEvents,
-        height: eventType.type === "postit" ? 20 : 15,
-        color: eventType.color || "#2196f3",
-        visible: true,
-        interactive: true,
-      };
+      if (layerEvents.length > 0) {
+        layers[eventType.type] = {
+          id: eventType.type,
+          name:
+            eventType.type.charAt(0).toUpperCase() + eventType.type.slice(1),
+          events: layerEvents,
+          height: eventType.type === "postit" ? 24 : 20,
+          color: eventType.color || "#2196f3",
+          visible: true,
+          interactive: true,
+        };
+      }
     });
 
     return Object.values(layers);
@@ -49,24 +71,31 @@ const timelineUtils = {
 
   // Calculer hauteur totale de la timeline
   getTotalHeight: (layers: TimelineLayer[], mode: string) => {
-    const baseHeight = 40; // Pour la barre de progression
+    const headerHeight = 40;
+    const progressBarHeight = 50;
     const layerHeight = layers.reduce(
-      (total, layer) => total + (layer.visible ? layer.height + 4 : 0),
+      (total, layer) => total + (layer.visible ? layer.height + 8 : 0),
       0
     );
 
     switch (mode) {
       case "minimal":
-        return 30;
+        return 40;
       case "compact":
-        return baseHeight + Math.min(layerHeight, 60);
+        return headerHeight + progressBarHeight + Math.min(layerHeight, 80);
       case "detailed":
-        return baseHeight + layerHeight;
+        return headerHeight + progressBarHeight + layerHeight + 20;
       case "expanded":
-        return baseHeight + layerHeight + 40; // Plus d'espace
+        return headerHeight + progressBarHeight + layerHeight + 60;
       default:
-        return baseHeight + layerHeight;
+        return headerHeight + progressBarHeight + layerHeight;
     }
+  },
+
+  formatTime: (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   },
 };
 
@@ -77,7 +106,6 @@ interface TimelineEventMarkerProps {
   width: number;
   height: number;
   color: string;
-  shape: "rectangle" | "circle" | "diamond";
   onClick: (event: TemporalEvent) => void;
   onHover?: (event: TemporalEvent) => void;
 }
@@ -88,16 +116,15 @@ const TimelineEventMarker: React.FC<TimelineEventMarkerProps> = ({
   width,
   height,
   color,
-  shape,
   onClick,
   onHover,
 }) => {
   const startX = timelineUtils.timeToPosition(event.startTime, duration, width);
   const endX = event.endTime
     ? timelineUtils.timeToPosition(event.endTime, duration, width)
-    : startX + 8; // Largeur par défaut pour événements ponctuels
+    : startX + 12; // Largeur par défaut pour événements ponctuels
 
-  const eventWidth = Math.max(endX - startX, 4); // Largeur minimale
+  const eventWidth = Math.max(endX - startX, 8); // Largeur minimale visible
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -111,57 +138,34 @@ const TimelineEventMarker: React.FC<TimelineEventMarkerProps> = ({
     onHover?.(event);
   }, [event, onHover]);
 
-  const getEventStyle = () => {
-    const baseStyle = {
-      position: "absolute" as const,
-      left: startX,
-      width: eventWidth,
-      height: height - 2,
-      backgroundColor: event.metadata.color || color,
-      cursor: "pointer",
-      zIndex: 10,
-      transition: "transform 0.2s ease",
-    };
-
-    switch (shape) {
-      case "circle":
-        return {
-          ...baseStyle,
-          borderRadius: "50%",
-          width: Math.max(height - 2, 8),
-          height: height - 2,
-        };
-      case "diamond":
-        return {
-          ...baseStyle,
-          clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-          width: Math.max(height - 2, 8),
-          height: height - 2,
-        };
-      case "rectangle":
-      default:
-        return {
-          ...baseStyle,
-          borderRadius: 2,
-        };
-    }
+  const getEventText = () => {
+    return (
+      event.data?.text ||
+      event.data?.sujet ||
+      event.metadata?.category ||
+      "Événement"
+    );
   };
 
   return (
     <Tooltip
       title={
         <Box>
-          <Typography variant="subtitle2">
-            {event.data.text || event.data.tag || "Événement"}
+          <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+            {getEventText()}
           </Typography>
           <Typography variant="caption">
-            {new Date(event.startTime * 1000).toLocaleTimeString()}
-            {event.endTime &&
-              ` - ${new Date(event.endTime * 1000).toLocaleTimeString()}`}
+            {timelineUtils.formatTime(event.startTime)}
+            {event.endTime && ` - ${timelineUtils.formatTime(event.endTime)}`}
           </Typography>
-          {event.metadata.category && (
+          {event.metadata?.category && (
             <Typography variant="caption" sx={{ display: "block" }}>
-              {event.metadata.category}
+              Catégorie: {event.metadata.category}
+            </Typography>
+          )}
+          {event.metadata?.speaker && (
+            <Typography variant="caption" sx={{ display: "block" }}>
+              {event.metadata.speaker}
             </Typography>
           )}
         </Box>
@@ -171,7 +175,24 @@ const TimelineEventMarker: React.FC<TimelineEventMarkerProps> = ({
     >
       <Box
         sx={{
-          ...getEventStyle(),
+          position: "absolute",
+          left: startX,
+          top: 2,
+          width: eventWidth,
+          height: height - 4,
+          backgroundColor: event.metadata?.color || color,
+          border: `1px solid ${event.metadata?.color || color}`,
+          borderRadius: event.type === "postit" ? "50%" : "4px",
+          cursor: "pointer",
+          zIndex: 10,
+          transition: "all 0.2s ease",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "0.7rem",
+          color: "white",
+          fontWeight: "bold",
+          textShadow: "0 1px 2px rgba(0,0,0,0.5)",
           "&:hover": {
             transform: "scale(1.1)",
             zIndex: 20,
@@ -180,7 +201,9 @@ const TimelineEventMarker: React.FC<TimelineEventMarkerProps> = ({
         }}
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}
-      />
+      >
+        {event.type === "postit" ? "📝" : "🏷️"}
+      </Box>
     </Tooltip>
   );
 };
@@ -211,9 +234,10 @@ const TimelineLayerComponent: React.FC<TimelineLayerComponentProps> = ({
         position: "relative",
         width: "100%",
         height: layer.height,
-        backgroundColor: layer.color + "15", // Couleur de fond très légère
+        backgroundColor: `${layer.color}15`, // Couleur de fond très légère
         borderRadius: 1,
-        marginBottom: 0.5,
+        marginBottom: 1,
+        border: `1px solid ${layer.color}30`,
       }}
     >
       {/* Label de la couche */}
@@ -221,26 +245,29 @@ const TimelineLayerComponent: React.FC<TimelineLayerComponentProps> = ({
         variant="caption"
         sx={{
           position: "absolute",
-          left: 4,
-          top: 2,
-          fontSize: "0.7rem",
-          color: "text.secondary",
+          left: 8,
+          top: 4,
+          fontSize: "0.75rem",
+          color: layer.color,
+          fontWeight: "bold",
           zIndex: 5,
+          backgroundColor: "rgba(255,255,255,0.9)",
+          padding: "1px 4px",
+          borderRadius: "2px",
         }}
       >
         {layer.name} ({layer.events.length})
       </Typography>
 
       {/* Événements */}
-      {layer.events.map((event) => (
+      {layer.events.map((event, index) => (
         <TimelineEventMarker
-          key={event.id}
+          key={`${event.id}-${index}`}
           event={event}
           duration={duration}
           width={width}
           height={layer.height}
           color={layer.color}
-          shape={event.type === "postit" ? "circle" : "rectangle"}
           onClick={onEventClick}
           onHover={onEventHover}
         />
@@ -251,51 +278,61 @@ const TimelineLayerComponent: React.FC<TimelineLayerComponentProps> = ({
 
 // Curseur temporel
 interface TimelineCursorProps {
-  position: number; // Position en %
-  visible: boolean;
+  currentTime: number;
+  duration: number;
   height: number;
+  width: number;
 }
 
 const TimelineCursor: React.FC<TimelineCursorProps> = ({
-  position,
-  visible,
+  currentTime,
+  duration,
   height,
+  width,
 }) => {
-  if (!visible) return null;
+  const position = timelineUtils.timeToPosition(currentTime, duration, width);
 
   return (
     <Box
       sx={{
         position: "absolute",
-        left: `${position}%`,
+        left: position,
         top: 0,
-        width: 2,
+        width: 3,
         height: height,
         backgroundColor: "error.main",
         zIndex: 30,
         pointerEvents: "none",
         transition: "left 0.1s ease-out",
+        boxShadow: "0 0 4px rgba(244, 67, 54, 0.5)",
       }}
     >
       {/* Indicateur en haut */}
       <Box
         sx={{
           position: "absolute",
-          top: -8,
-          left: -6,
-          width: 14,
-          height: 14,
+          top: -6,
+          left: -8,
+          width: 16,
+          height: 16,
           backgroundColor: "error.main",
           borderRadius: "50%",
           border: "2px solid white",
-          boxShadow: 1,
+          boxShadow: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "0.6rem",
+          color: "white",
         }}
-      />
+      >
+        ▶
+      </Box>
     </Box>
   );
 };
 
-// Barre de progression principale
+// Barre de progression principale avec graduations
 interface ProgressBarProps {
   currentTime: number;
   duration: number;
@@ -307,7 +344,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   currentTime,
   duration,
   onTimelineClick,
-  height = 40,
+  height = 50,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -328,6 +365,21 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
     [duration, onTimelineClick]
   );
 
+  // Générer les graduations
+  const graduations = useMemo(() => {
+    const intervals = Math.min(Math.floor(duration / 30), 10); // Une graduation toutes les 30s, max 10
+    const step = duration / (intervals || 1);
+
+    return Array.from({ length: intervals + 1 }, (_, i) => {
+      const time = i * step;
+      return {
+        time,
+        position: (time / duration) * 100,
+        label: timelineUtils.formatTime(time),
+      };
+    });
+  }, [duration]);
+
   return (
     <Box
       ref={containerRef}
@@ -337,10 +389,12 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         position: "relative",
         cursor: "pointer",
         backgroundColor: "action.hover",
-        borderRadius: 1,
+        borderRadius: 2,
         display: "flex",
         alignItems: "center",
-        padding: "0 8px",
+        border: "1px solid",
+        borderColor: "divider",
+        overflow: "hidden",
       }}
       onClick={handleClick}
     >
@@ -351,46 +405,86 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           left: 0,
           top: 0,
           height: "100%",
-          width: `${(currentTime / duration) * 100}%`,
+          width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
           backgroundColor: "primary.main",
-          borderRadius: 1,
           opacity: 0.3,
+          transition: "width 0.1s ease-out",
         }}
       />
 
       {/* Graduations temporelles */}
+      {graduations.map((grad, index) => (
+        <Box
+          key={index}
+          sx={{
+            position: "absolute",
+            left: `${grad.position}%`,
+            top: 0,
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            alignItems: "center",
+            pointerEvents: "none",
+          }}
+        >
+          {/* Ligne de graduation */}
+          <Box
+            sx={{
+              width: 1,
+              height: 8,
+              backgroundColor: "text.secondary",
+              opacity: 0.5,
+            }}
+          />
+
+          {/* Label de temps */}
+          <Typography
+            variant="caption"
+            sx={{
+              fontSize: "0.7rem",
+              color: "text.secondary",
+              backgroundColor: "background.paper",
+              padding: "1px 4px",
+              borderRadius: "2px",
+              transform: "translateX(-50%)",
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            {grad.label}
+          </Typography>
+
+          {/* Ligne de graduation en bas */}
+          <Box
+            sx={{
+              width: 1,
+              height: 8,
+              backgroundColor: "text.secondary",
+              opacity: 0.5,
+            }}
+          />
+        </Box>
+      ))}
+
+      {/* Temps actuel affiché au centre */}
       <Box
         sx={{
           position: "absolute",
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          padding: "0 8px",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          backgroundColor: "primary.main",
+          color: "primary.contrastText",
+          padding: "4px 8px",
+          borderRadius: 1,
+          fontSize: "0.8rem",
+          fontWeight: "bold",
           pointerEvents: "none",
         }}
       >
-        {Array.from({ length: 6 }, (_, i) => {
-          const time = (duration / 5) * i;
-          const minutes = Math.floor(time / 60);
-          const seconds = Math.floor(time % 60);
-          return (
-            <Typography
-              key={i}
-              variant="caption"
-              sx={{
-                fontSize: "0.7rem",
-                color: "text.secondary",
-                backgroundColor: "background.paper",
-                padding: "1px 4px",
-                borderRadius: "2px",
-              }}
-            >
-              {minutes}:{seconds.toString().padStart(2, "0")}
-            </Typography>
-          );
-        })}
+        {timelineUtils.formatTime(currentTime)} /{" "}
+        {timelineUtils.formatTime(duration)}
       </Box>
     </Box>
   );
@@ -419,16 +513,11 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
     return timelineUtils.getTotalHeight(eventLayers, config.timelineMode);
   }, [eventLayers, config.timelineMode]);
 
-  // Calculer la position du curseur
-  const cursorPosition = useMemo(() => {
-    return duration > 0 ? (currentTime / duration) * 100 : 0;
-  }, [currentTime, duration]);
-
   // Observer les changements de taille
   useEffect(() => {
     const observeResize = () => {
       if (timelineRef.current) {
-        setTimelineWidth(timelineRef.current.offsetWidth);
+        setTimelineWidth(timelineRef.current.offsetWidth - 32); // Padding compensation
       }
     };
 
@@ -470,8 +559,8 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
     return (
       <Box
         sx={{
-          height: 30,
-          padding: "4px 8px",
+          height: 40,
+          padding: "4px 16px",
           borderBottom: "1px solid",
           borderColor: "divider",
           backgroundColor: "background.paper",
@@ -482,9 +571,8 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
           currentTime={currentTime}
           duration={duration}
           onTimelineClick={handleTimelineClick}
-          height={22}
+          height={32}
         />
-        <TimelineCursor position={cursorPosition} visible={true} height={22} />
       </Box>
     );
   }
@@ -508,28 +596,36 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "4px 12px",
+          padding: "8px 16px",
           backgroundColor: "action.hover",
           borderBottom: "1px solid",
           borderColor: "divider",
+          minHeight: 40,
         }}
       >
-        <Typography variant="caption" sx={{ fontWeight: "bold" }}>
-          Timeline ({events.length} événements)
+        <Typography
+          variant="subtitle2"
+          sx={{ fontWeight: "bold", fontSize: "0.9rem" }}
+        >
+          Timeline
         </Typography>
 
-        <Box sx={{ display: "flex", gap: 2 }}>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+          <Chip
+            label={`${events.length} événements`}
+            size="small"
+            color="primary"
+            variant="outlined"
+          />
           <Typography variant="caption" color="text.secondary">
-            {new Date(currentTime * 1000).toLocaleTimeString()}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            / {new Date(duration * 1000).toLocaleTimeString()}
+            {timelineUtils.formatTime(currentTime)} /{" "}
+            {timelineUtils.formatTime(duration)}
           </Typography>
         </Box>
       </Box>
 
       {/* Barre de progression principale */}
-      <Box sx={{ padding: "8px", paddingBottom: 0 }}>
+      <Box sx={{ padding: "8px 16px" }}>
         <ProgressBar
           currentTime={currentTime}
           duration={duration}
@@ -540,8 +636,7 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
       {/* Couches d'événements */}
       <Box
         sx={{
-          padding: "8px",
-          paddingTop: "4px",
+          padding: "8px 16px",
           position: "relative",
         }}
       >
@@ -550,7 +645,7 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
             key={layer.id}
             layer={layer}
             duration={duration}
-            width={timelineWidth - 16} // Padding compensation
+            width={timelineWidth}
             onEventClick={handleEventClick}
             onEventHover={handleEventHover}
           />
@@ -563,22 +658,36 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              height: 40,
+              height: 60,
               color: "text.secondary",
               fontStyle: "italic",
+              backgroundColor: "action.hover",
+              borderRadius: 1,
+              border: "1px dashed",
+              borderColor: "divider",
             }}
           >
-            Aucun événement à afficher
+            <Box sx={{ textAlign: "center" }}>
+              <Typography variant="body2">
+                Aucun événement à afficher
+              </Typography>
+              <Typography variant="caption">
+                Les post-its et annotations apparaîtront ici
+              </Typography>
+            </Box>
           </Box>
         )}
       </Box>
 
       {/* Curseur temporel global */}
-      <TimelineCursor
-        position={cursorPosition}
-        visible={duration > 0}
-        height={totalHeight}
-      />
+      {duration > 0 && (
+        <TimelineCursor
+          currentTime={currentTime}
+          duration={duration}
+          height={totalHeight}
+          width={timelineWidth}
+        />
+      )}
 
       {/* Info événement survolé */}
       {hoveredEvent && config.timelineMode === "detailed" && (
@@ -586,29 +695,35 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
           sx={{
             position: "absolute",
             bottom: 8,
-            right: 8,
-            padding: 1,
+            right: 16,
+            padding: 2,
             backgroundColor: "background.default",
             border: "1px solid",
-            borderColor: "background.paper",
-            maxWidth: 200,
+            borderColor: "divider",
+            maxWidth: 250,
             zIndex: 40,
           }}
           elevation={3}
         >
-          <Typography variant="subtitle2" sx={{ fontSize: "0.8rem" }}>
-            {hoveredEvent.data.text || hoveredEvent.data.tag || "Événement"}
+          <Typography
+            variant="subtitle2"
+            sx={{ fontSize: "0.85rem", fontWeight: "bold" }}
+          >
+            {hoveredEvent.data?.text || hoveredEvent.data?.sujet || "Événement"}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {hoveredEvent.metadata.category} • {hoveredEvent.metadata.speaker}
+            {hoveredEvent.metadata?.category} •{" "}
+            {timelineUtils.formatTime(hoveredEvent.startTime)}
           </Typography>
-          <Typography
-            variant="caption"
-            sx={{ display: "block" }}
-            color="text.secondary"
-          >
-            {new Date(hoveredEvent.startTime * 1000).toLocaleTimeString()}
-          </Typography>
+          {hoveredEvent.metadata?.speaker && (
+            <Typography
+              variant="caption"
+              sx={{ display: "block" }}
+              color="text.secondary"
+            >
+              {hoveredEvent.metadata.speaker}
+            </Typography>
+          )}
         </Paper>
       )}
 
@@ -618,7 +733,7 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
           sx={{
             position: "absolute",
             top: 2,
-            right: 2,
+            left: 2,
             fontSize: "0.6rem",
             color: "text.disabled",
             backgroundColor: "action.hover",
@@ -626,15 +741,14 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
             borderRadius: "2px",
           }}
         >
-          {eventLayers.length}L • {events.length}E • {Math.round(timelineWidth)}
-          px
+          {eventLayers.length}L • {events.length}E • {timelineWidth}px
         </Box>
       )}
     </Paper>
   );
 };
 
-// Hook utilitaire pour la timeline
+// Hook utilitaire pour la timeline (inchangé)
 export const useTimelineSync = (
   currentTime: number,
   events: TemporalEvent[]

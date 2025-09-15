@@ -1,6 +1,6 @@
 # 🌳 Arborescence du projet whiteboard
 
-> Générée automatiquement le 15/09/2025 06:25:28
+> Générée automatiquement le 15/09/2025 15:31:57
 
 ## 📂 Structure des fichiers
 
@@ -60,17 +60,23 @@ whiteboard/
 │   │           └── ⚛️ route.tsx (4.5 KB)
 │   ├── 📁 components/
 │   │   ├── 📁 common/
+│   │   │   ├── 📁 SelectionEntrepriseEtAppel/
+│   │   │   │   ├── 📁 hooks/
+│   │   │   │   │   └── 📘 useCallsSummary.ts (1.2 KB)
+│   │   │   │   ├── ⚛️ AllCallsBrowser.tsx (19 KB)
+│   │   │   │   ├── ⚛️ CallSelection.tsx (15.1 KB)
+│   │   │   │   ├── ⚛️ EntrepriseSelection.tsx (1.5 KB)
+│   │   │   │   ├── 📘 fetchTagsSummaryForCalls.ts (711 B)
+│   │   │   │   ├── 📘 index.ts (747 B)
+│   │   │   │   └── ⚛️ SelectionEntrepriseEtAppel.tsx (1 KB)
 │   │   │   ├── 📁 Theme/
 │   │   │   │   └── ⚛️ ThemeProvider.tsx (2.1 KB)
 │   │   │   ├── ⚛️ ActivityIndicator.tsx (14.7 KB)
 │   │   │   ├── ⚛️ AuthStatus.tsx (4 KB)
-│   │   │   ├── ⚛️ CallSelection.tsx (13.4 KB)
-│   │   │   ├── ⚛️ EntrepriseSelection.tsx (1.5 KB)
 │   │   │   ├── ⚛️ GlobalNavBar.tsx (1.6 KB)
 │   │   │   ├── ⚛️ NewCallUploader.tsx (6.8 KB)
 │   │   │   ├── ⚛️ PreserveRouteOnRefresh.tsx (2.2 KB)
-│   │   │   ├── ⚛️ SelectionConseiller.tsx (4.8 KB)
-│   │   │   └── ⚛️ SelectionEntrepriseEtAppel.tsx (545 B)
+│   │   │   └── ⚛️ SelectionConseiller.tsx (4.8 KB)
 │   │   └── 📁 navigation/
 │   │       └── 📁 ActivitySidebar/
 │   │           ├── 📁 components/
@@ -237,18 +243,19 @@ whiteboard/
 │   │   │   ├── 📁 NewTranscript/
 │   │   │   │   ├── 📁 components/
 │   │   │   │   │   ├── 📁 HeaderZone/
-│   │   │   │   │   │   └── ⚛️ index.tsx (13 KB)
+│   │   │   │   │   │   └── ⚛️ index.tsx (16.7 KB)
 │   │   │   │   │   ├── 📁 TimelineZone/
-│   │   │   │   │   │   └── ⚛️ index.tsx (17.6 KB)
+│   │   │   │   │   │   └── ⚛️ index.tsx (21.1 KB)
 │   │   │   │   │   └── 📁 TranscriptZone/
-│   │   │   │   │       └── ⚛️ index.tsx (25.7 KB)
+│   │   │   │   │       ├── ⚛️ index.tsx (26.8 KB)
+│   │   │   │   │       └── ⚛️ TurnsView.tsx (12.5 KB)
 │   │   │   │   ├── 📁 core/
 │   │   │   │   │   ├── 📁 providers/
 │   │   │   │   │   │   └── 📘 PostitProvider.ts (7.7 KB)
 │   │   │   │   │   └── ⚛️ EventManager.tsx (8.4 KB)
-│   │   │   │   ├── 📘 config.ts (8.8 KB)
-│   │   │   │   ├── ⚛️ index.tsx (12.9 KB)
-│   │   │   │   └── 📘 types.ts (6.7 KB)
+│   │   │   │   ├── 📘 config.ts (10.5 KB)
+│   │   │   │   ├── ⚛️ index.tsx (13.3 KB)
+│   │   │   │   └── 📘 types.ts (7.6 KB)
 │   │   │   ├── 📁 Postit/
 │   │   │   │   ├── 📁 components/
 │   │   │   │   │   └── ⚛️ StepNavigation.tsx (8.4 KB)
@@ -410,6 +417,8 @@ whiteboard/
 │   ├── ⚛️ TaggingDataContext.tsx (7.7 KB)
 │   └── ⚛️ ZohoContext.tsx (2.2 KB)
 ├── 📁 docs/
+│   ├── 📁 common/
+│   │   └── 📝 SelectionEntrepriseEtAppel.md (4 KB)
 │   ├── 📁 context/
 │   │   ├── 📝 AppContext.md (21.2 KB)
 │   │   ├── 📝 AudioContext.md (14.5 KB)
@@ -435,13 +444,14 @@ whiteboard/
 │   │   ├── 📝 README6.MD (14.5 KB)
 │   │   └── 📝 READMEAFFECTATIONSUJETWHITEBOARD.MD (13.2 KB)
 │   ├── 📁 sessions/
-│   │   └── 📝 2025-09-14-migration-newTranscript-step2.md (5.1 KB)
+│   │   ├── 📝 2025-09-14-migration-newTranscript-step2.md (5.1 KB)
+│   │   └── 📝 2025-09-15-avancement-migration-newtranscript.md (6.5 KB)
 │   ├── 📁 supabase/
 │   │   ├── 📝 optimisation-supabase.MD (7.8 KB)
 │   │   └── 📝 supabase.MD (9.3 KB)
 │   ├── 📁 types/
 │   │   └── 📝 types-documentation.md (161.9 KB)
-│   └── 📝 arborescence.md (28.9 KB)
+│   └── 📝 arborescence.md (31.2 KB)
 ├── 📁 hooks/
 │   ├── 📁 AppContext/
 │   │   ├── ⚛️ useActivities.tsx (3.9 KB)
@@ -538,17 +548,17 @@ whiteboard/
 
 ## 📊 Statistiques du projet
 
-- **Fichiers**: 392
-- **Dossiers**: 135
-- **Taille totale**: 2.9 MB
+- **Fichiers**: 399
+- **Dossiers**: 138
+- **Taille totale**: 3 MB
 
 ### Types de fichiers
 
 | Extension | Nombre |
 |-----------|--------|
-| .tsx | 316 |
-| .md | 34 |
-| .ts | 21 |
+| .tsx | 318 |
+| .md | 36 |
+| .ts | 24 |
 | .json | 6 |
 | .svg | 5 |
 | .mjs | 4 |
@@ -570,8 +580,8 @@ whiteboard/
 | app\evaluation\components\SyntheseEvaluation\SyntheseTab.tsx | 36 KB |
 | SUPABASE.MD | 34.8 KB |
 | app\evaluation\components\SyntheseEvaluation\RadarEvaluation\README.MD | 34.7 KB |
+| docs\arborescence.md | 31.2 KB |
 | app\evaluation\admin\components\sections\AdminSujetsSection.tsx | 29 KB |
-| app\evaluation\components\FourZones\components\FinalReviewStep\FinalReviewStep.tsx | 28.9 KB |
 
 ---
 

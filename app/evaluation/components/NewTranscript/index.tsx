@@ -1,4 +1,5 @@
 // app/evaluation/components/NewTranscript/index.tsx
+// VERSION AVEC TAGPROVIDER
 
 import React, { useMemo, useCallback, useEffect, useState } from "react";
 import { Box, CircularProgress, Alert } from "@mui/material";
@@ -15,6 +16,7 @@ import {
 
 import { useEventManager } from "./core/EventManager";
 import { PostitProvider } from "./core/providers/PostitProvider";
+import { createTagProvider } from "./core/providers/TagProvider"; // ✅ NOUVEAU
 import { useCallData } from "@/context/CallDataContext";
 import { useAudio } from "@/context/AudioContext";
 
@@ -46,7 +48,7 @@ const TranscriptSkeleton: React.FC = () => (
   </Box>
 );
 
-// Fonction pour convertir les transcriptions au format Word[] - VERSION CORRIGÉE
+// Fonction pour convertir les transcriptions au format Word[]
 const convertTranscriptionToWords = (transcription: any): Word[] => {
   if (!transcription || !transcription.words) {
     console.warn("⚠️ Aucune transcription disponible");
@@ -55,7 +57,6 @@ const convertTranscriptionToWords = (transcription: any): Word[] => {
 
   try {
     const converted = transcription.words.map((word: any, index: number) => {
-      // ✅ CORRECTION PRINCIPALE : Utiliser le champ 'turn' avec SpeakerUtils
       const turnValue = word.turn || "unknown";
       const speakerType = getSpeakerType(turnValue);
       const speakerName = getSpeakerDisplayName(speakerType);
@@ -65,35 +66,17 @@ const convertTranscriptionToWords = (transcription: any): Word[] => {
         text: word.word || word.text || "",
         start_time: word.startTime || word.start_time || 0,
         end_time: word.endTime || word.end_time || 0,
-        speaker: speakerName, // ✅ "Conseiller" ou "Client" ou "Inconnu"
-        turn: turnValue, // ✅ Préserver le champ turn original
+        speaker: speakerName,
+        turn: turnValue,
         confidence: word.confidence || 1,
       };
     });
 
-    // 🔍 DEBUG speakers après conversion
     console.log("🔍 DEBUG SPEAKERS APRÈS CONVERSION:");
     console.log("Total words:", converted.length);
 
     const speakers = new Set(converted.map((w: Word) => w.speaker));
     console.log("Unique speakers:", Array.from(speakers));
-
-    const speakerCounts: Record<string, number> = {};
-    converted.forEach((word: Word) => {
-      const speaker = word.speaker || "undefined";
-      speakerCounts[speaker] = (speakerCounts[speaker] || 0) + 1;
-    });
-    console.log("Speaker distribution:", speakerCounts);
-
-    console.log(
-      "Sample words with speakers:",
-      converted.slice(0, 10).map((w: Word) => ({
-        text: w.text,
-        speaker: w.speaker,
-        turn: w.turn,
-        time: w.start_time,
-      }))
-    );
 
     return converted;
   } catch (error) {
@@ -102,7 +85,7 @@ const convertTranscriptionToWords = (transcription: any): Word[] => {
   }
 };
 
-// Composant principal NewTranscript
+// Composant principal NewTranscript avec TagProvider
 export const NewTranscript: React.FC<NewTranscriptProps> = ({
   callId,
   config: userConfig,
@@ -121,14 +104,13 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
     addPostit,
     updatePostit,
     deletePostit,
-    transcription, // Les vraies données de transcription
+    transcription,
     selectedCall,
   } = useCallData();
 
   const { currentTime, duration, seekTo } = useAudio();
 
-  console.log("🔄 NewTranscript Phase 2 initializing with callId:", callId);
-  console.log("📊 Transcription data:", transcription);
+  console.log("🔄 NewTranscript with TagProvider initializing:", callId);
 
   // Configuration finale (merge user config + legacy props + defaults)
   const config = useMemo((): TranscriptConfig => {
@@ -169,6 +151,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
     refetch,
   } = useEventManager(callId, dynamicConfig);
 
+  // ✅ PostitProvider (existant)
   const postitProvider = useMemo(() => {
     return new PostitProvider({
       getAppelPostits: async (cid: string) => {
@@ -183,17 +166,11 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
           start_time: w.startTime ?? w.start_time ?? 0,
           end_time: w.endTime ?? w.end_time ?? 0,
           speaker: w.speaker,
-          turn: w.turn, // ✅ Ajouter le champ turn
+          turn: w.turn,
         }));
       },
       createPostit: addPostit
-        ? (p) =>
-            addPostit(
-              p.wordid || 0,
-              p.word || "",
-              p.timestamp || 0,
-              p // Passer l'objet complet comme additionalData
-            )
+        ? (p) => addPostit(p.wordid || 0, p.word || "", p.timestamp || 0, p)
         : undefined,
       updatePostit: updatePostit
         ? (id, u) => updatePostit(id, u as any)
@@ -215,14 +192,78 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
     });
   }, [appelPostits, transcription, addPostit, updatePostit, deletePostit]);
 
-  // Enregistre le provider dans l'EventManager
+  // ✅ NOUVEAU: TagProvider
+  const tagProvider = useMemo(() => {
+    return createTagProvider({
+      getTaggedTurns: async (cid: string) => {
+        console.log(`🏷️ Loading tags for call ${cid}`);
+
+        // TODO: Intégrer avec TaggingDataContext quand disponible
+        // Pour l'instant, données de démonstration
+        return [
+          {
+            id: "tag-1",
+            tag: "réclamation",
+            verbatim: "J'ai un problème avec mon compte",
+            start_time: 15,
+            end_time: 18,
+            speaker: "Client",
+            color: "#dc2626",
+          },
+          {
+            id: "tag-2",
+            tag: "positif",
+            verbatim: "Merci beaucoup pour votre aide",
+            start_time: 45,
+            end_time: 47,
+            speaker: "Client",
+            color: "#22c55e",
+          },
+          {
+            id: "tag-3",
+            tag: "technique",
+            verbatim: "Je vais vérifier les paramètres",
+            start_time: 80,
+            end_time: 83,
+            speaker: "Conseiller",
+            color: "#7c3aed",
+          },
+        ];
+      },
+    });
+  }, [callId]);
+
+  // ✅ Enregistrement des providers selon le mode
+  // Enregistrement des providers selon le mode
   useEffect(() => {
     if (!eventManager) return;
-    eventManager.registerProvider(postitProvider);
-    refetch();
-  }, [eventManager, postitProvider, refetch]);
 
-  // Conversion des vraies transcriptions au format Word[] - VERSION CORRIGÉE
+    console.log("🔧 Registering providers for mode:", dynamicConfig.mode);
+
+    // ✅ NETTOYER d'abord tous les providers
+    eventManager.destroy();
+
+    // ✅ Enregistrer SEULEMENT le bon provider selon le mode
+    if (dynamicConfig.mode === "evaluation") {
+      eventManager.registerProvider(postitProvider);
+      console.log("📝 PostitProvider ONLY registered");
+    } else if (dynamicConfig.mode === "tagging") {
+      eventManager.registerProvider(tagProvider);
+      console.log("🏷️ TagProvider ONLY registered");
+    } else if (dynamicConfig.mode === "analysis") {
+      eventManager.registerProvider(postitProvider);
+      eventManager.registerProvider(tagProvider);
+      console.log("📝🏷️ Both providers registered");
+    } else if (dynamicConfig.mode === "spectator") {
+      eventManager.registerProvider(postitProvider);
+      eventManager.registerProvider(tagProvider);
+      console.log("👁️ Both providers registered (read-only)");
+    }
+
+    refetch();
+  }, [eventManager, postitProvider, tagProvider, dynamicConfig.mode, refetch]);
+
+  // Conversion des vraies transcriptions au format Word[]
   const realTranscription = useMemo(() => {
     return convertTranscriptionToWords(transcription);
   }, [transcription]);
@@ -371,7 +412,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
           }}
         >
           <Box sx={{ display: "flex", gap: 2 }}>
-            <span>🎛️ Controls</span>
+            <span>🎛️ Mode: {dynamicConfig.mode}</span>
             {currentTurnStats && (
               <span>
                 {currentTurnStats.speaker} •
@@ -381,9 +422,13 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
           </Box>
 
           <Box sx={{ display: "flex", gap: 2 }}>
-            <span>Événements: {events.length}</span>
-            <span>Mots: {realTranscription.length}</span>
-            <span>Progression: {progressPercentage}%</span>
+            <span>
+              📝 Post-its: {events.filter((e) => e.type === "postit").length}
+            </span>
+            <span>
+              🏷️ Tags: {events.filter((e) => e.type === "tag").length}
+            </span>
+            <span>📊 Total: {events.length} événements</span>
           </Box>
         </Box>
       )}
@@ -410,29 +455,19 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
             border: (theme) => `1px solid ${theme.palette.divider}`,
           }}
         >
-          <div>🚀 NewTranscript Phase 2 - FIXED</div>
-          <div>CallId: {callId}</div>
+          <div>🚀 NewTranscript with TagProvider</div>
+          <div>Mode: {dynamicConfig.mode}</div>
           <div>Current Time: {currentTime.toFixed(1)}s</div>
           <div>
-            Current Word:{" "}
-            {currentWordIndex >= 0
-              ? realTranscription[currentWordIndex]?.text
-              : "N/A"}
+            Events: {events.length} (
+            {events.filter((e) => e.type === "postit").length} post-its,{" "}
+            {events.filter((e) => e.type === "tag").length} tags)
           </div>
           <div>
-            Events: {events.length} | Words: {realTranscription.length}
-          </div>
-          <div>
-            Config: {dynamicConfig.mode} • {dynamicConfig.displayMode}
-          </div>
-          {currentTurnStats && (
-            <div>
-              Turn: {currentTurnStats.speaker} (
-              {Math.round(currentTurnStats.progress * 100)}%)
-            </div>
-          )}
-          <div>
-            Transcription source: {transcription ? "REAL+FIXED" : "NONE"}
+            Providers: PostitProvider +{" "}
+            {["tagging", "analysis", "spectator"].includes(dynamicConfig.mode)
+              ? "TagProvider"
+              : "TagProvider (disabled)"}
           </div>
         </Box>
       )}
@@ -440,15 +475,16 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
   );
 };
 
-// Hook utilitaire pour la migration
+// Hook utilitaire pour la migration avec TagProvider
 export const useNewTranscriptMigration = (enabled: boolean = false) => {
   return {
     isEnabled: enabled,
-    version: "2.0.0-beta-fixed",
+    version: "2.0.0-with-tags",
     migrationPhase: 2,
     features: {
       eventManager: true,
       postitProvider: true,
+      tagProvider: true, // ✅ NOUVEAU
       headerZone: true,
       timelineZone: true,
       transcriptZone: true,
@@ -456,7 +492,8 @@ export const useNewTranscriptMigration = (enabled: boolean = false) => {
       realTimeSync: true,
       audioIntegration: true,
       realTranscriptions: true,
-      speakerDetection: true, // ✅ NOUVEAU: Detection des speakers corrigée
+      speakerDetection: true,
+      multiMode: true, // ✅ Support multiple modes
     },
   };
 };

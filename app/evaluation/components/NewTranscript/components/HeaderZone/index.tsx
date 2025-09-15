@@ -13,6 +13,7 @@ import {
   ButtonGroup,
   Button,
   Chip,
+  InputLabel,
 } from "@mui/material";
 import {
   PlayArrow,
@@ -30,6 +31,10 @@ import {
   FullscreenExit,
   LightMode,
   DarkMode,
+  Timeline,
+  VisibilityOff,
+  Compress,
+  ExpandMore,
 } from "@mui/icons-material";
 import { useAudio } from "@/context/AudioContext";
 import { useCallData } from "@/context/CallDataContext";
@@ -259,13 +264,21 @@ const AudioControls: React.FC<AudioControlsProps> = ({
 };
 
 interface ViewControlsProps {
-  displayMode: "word-by-word" | "paragraphs" | "hybrid" | "turns" | "compact"; // ✅ Ajouter "turns" | "compact"
+  displayMode: "word-by-word" | "paragraphs" | "hybrid" | "turns" | "compact";
+  timelineMode: "compact" | "detailed" | "minimal" | "hidden";
+  mode: "evaluation" | "tagging" | "analysis" | "spectator"; // ✅ MANQUANT
   fontSize: number;
   theme: "light" | "dark" | "auto";
   isFullscreen: boolean;
   onDisplayModeChange: (
     mode: "word-by-word" | "paragraphs" | "hybrid" | "turns" | "compact"
-  ) => void; // ✅ Ajouter aussi ici
+  ) => void;
+  onTimelineModeChange: (
+    mode: "compact" | "detailed" | "minimal" | "hidden"
+  ) => void;
+  onModeChange: (
+    mode: "evaluation" | "tagging" | "analysis" | "spectator"
+  ) => void; // ✅ MANQUANT
   onFontSizeChange: (size: number) => void;
   onThemeChange: (theme: "light" | "dark" | "auto") => void;
   onFullscreenToggle: () => void;
@@ -273,23 +286,62 @@ interface ViewControlsProps {
 
 const ViewControls: React.FC<ViewControlsProps> = ({
   displayMode,
+  timelineMode,
+  mode, // ✅ AJOUTER ICI
   fontSize,
   theme,
   isFullscreen,
   onDisplayModeChange,
+  onTimelineModeChange,
+  onModeChange, // ✅ AJOUTER ICI
   onFontSizeChange,
   onThemeChange,
   onFullscreenToggle,
 }) => (
   <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+    <FormControl size="small" sx={{ minWidth: 130 }}>
+      <InputLabel id="mode-label" sx={{ fontSize: "0.8rem" }}>
+        Mode
+      </InputLabel>
+      <Select
+        labelId="mode-label"
+        value={mode}
+        onChange={(e) => onModeChange(e.target.value as any)}
+        label="Mode"
+        sx={{ fontSize: "0.8rem" }}
+      >
+        <MenuItem value="evaluation">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            📝 Évaluation
+          </Box>
+        </MenuItem>
+        <MenuItem value="tagging">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            🏷️ Tagging
+          </Box>
+        </MenuItem>
+        <MenuItem value="analysis">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            📊 Analyse
+          </Box>
+        </MenuItem>
+        <MenuItem value="spectator">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            👁️ Spectateur
+          </Box>
+        </MenuItem>
+      </Select>
+    </FormControl>
     {/* Display Mode */}
     <FormControl size="small" sx={{ minWidth: 140 }}>
-      {" "}
-      {/* ✅ Élargir pour nouvelles options */}
+      <InputLabel id="display-mode-label" sx={{ fontSize: "0.8rem" }}>
+        Affichage
+      </InputLabel>
       <Select
+        labelId="display-mode-label"
         value={displayMode}
         onChange={(e) => onDisplayModeChange(e.target.value as any)}
-        displayEmpty
+        label="Affichage"
         sx={{ fontSize: "0.8rem" }}
       >
         <MenuItem value="word-by-word">
@@ -310,7 +362,6 @@ const ViewControls: React.FC<ViewControlsProps> = ({
             Hybride
           </Box>
         </MenuItem>
-        {/* ✅ AJOUTER les nouvelles options */}
         <MenuItem value="turns">
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <ViewList fontSize="small" />
@@ -319,14 +370,87 @@ const ViewControls: React.FC<ViewControlsProps> = ({
         </MenuItem>
         <MenuItem value="compact">
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <ViewModule fontSize="small" />
+            <Compress fontSize="small" />
             Compact
           </Box>
         </MenuItem>
       </Select>
     </FormControl>
 
-    {/* Rest of the component remains the same... */}
+    {/* ✅ NOUVEAU: Timeline Mode */}
+    <FormControl size="small" sx={{ minWidth: 120 }}>
+      <InputLabel id="timeline-mode-label" sx={{ fontSize: "0.8rem" }}>
+        Timeline
+      </InputLabel>
+      <Select
+        labelId="timeline-mode-label"
+        value={timelineMode}
+        onChange={(e) => onTimelineModeChange(e.target.value as any)}
+        label="Timeline"
+        sx={{ fontSize: "0.8rem" }}
+      >
+        <MenuItem value="hidden">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <VisibilityOff fontSize="small" />
+            Masquée
+          </Box>
+        </MenuItem>
+        <MenuItem value="minimal">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Timeline fontSize="small" />
+            Minimale
+          </Box>
+        </MenuItem>
+        <MenuItem value="compact">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Compress fontSize="small" />
+            Compacte
+          </Box>
+        </MenuItem>
+        <MenuItem value="detailed">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <ExpandMore fontSize="small" />
+            Détaillée
+          </Box>
+        </MenuItem>
+      </Select>
+    </FormControl>
+
+    {/* Font Size */}
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 100 }}>
+      <Typography variant="caption" sx={{ fontSize: "0.7rem" }}>
+        Police
+      </Typography>
+      <Slider
+        value={fontSize}
+        onChange={(_, newValue) => onFontSizeChange(newValue as number)}
+        min={10}
+        max={24}
+        step={1}
+        size="small"
+        sx={{ width: 60 }}
+      />
+      <Typography variant="caption" sx={{ fontSize: "0.7rem", minWidth: 20 }}>
+        {fontSize}px
+      </Typography>
+    </Box>
+
+    {/* Theme Toggle */}
+    <Tooltip title="Changer le thème">
+      <IconButton
+        size="small"
+        onClick={() => onThemeChange(theme === "light" ? "dark" : "light")}
+      >
+        {theme === "light" ? <DarkMode /> : <LightMode />}
+      </IconButton>
+    </Tooltip>
+
+    {/* Fullscreen Toggle */}
+    <Tooltip title={isFullscreen ? "Quitter plein écran" : "Plein écran"}>
+      <IconButton size="small" onClick={onFullscreenToggle}>
+        {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
+      </IconButton>
+    </Tooltip>
   </Box>
 );
 
@@ -485,10 +609,16 @@ export const HeaderZone: React.FC<HeaderZoneProps> = ({
       <Box sx={{ display: { xs: "none", md: "block" } }}>
         <ViewControls
           displayMode={config.displayMode}
+          timelineMode={config.timelineMode}
+          mode={config.mode} // ✅ AJOUTER ICI
           fontSize={config.fontSize}
           theme={config.theme}
           isFullscreen={isFullscreen}
           onDisplayModeChange={(mode) => onConfigChange({ displayMode: mode })}
+          onTimelineModeChange={(mode) =>
+            onConfigChange({ timelineMode: mode })
+          }
+          onModeChange={(mode) => onConfigChange({ mode })} // ✅ DÉJÀ PRÉSENT
           onFontSizeChange={(size) => onConfigChange({ fontSize: size })}
           onThemeChange={(theme) => onConfigChange({ theme })}
           onFullscreenToggle={handleFullscreenToggle}
