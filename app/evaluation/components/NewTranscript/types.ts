@@ -17,7 +17,7 @@ export interface TranscriptConfig {
   mode: "evaluation" | "tagging" | "analysis" | "spectator";
   audioSrc: string;
   displayMode: "word-by-word" | "paragraphs" | "hybrid" | "turns" | "compact"; // ✅ Ajout "turns" et "compact"
-  timelineMode: "compact" | "detailed" | "minimal" | "hidden";
+  timelineMode: "minimal" | "hidden" | "compact" | "detailed" | "impact";
   eventTypes: EventTypeConfig[];
   interactions: InteractionConfig;
   layout: LayoutConfig;

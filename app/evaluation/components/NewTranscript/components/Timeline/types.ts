@@ -9,8 +9,21 @@ export interface TimelineProfile {
   maxRows: number;
   dense: boolean;
   showLabels: boolean;
-  minGap?: number;
-  pointWidth?: number;
+  showGraduations: boolean;
+  eventGap: number;
+  minEventWidth: number;
+  rowHeight: number;
+
+  // ✅ NOUVEAU : Configuration spécifique au mode impact
+  impactSpecific?: {
+    showMetrics: boolean;
+    showCoherenceIndicators: boolean;
+    showImpactWaves: boolean;
+    waveOpacity: number;
+    coherentWaveColor: string;
+    incoherentWaveColor: string;
+    neutralWaveColor: string;
+  };
 }
 
 /**
@@ -61,12 +74,12 @@ export interface LayerLayout {
  * Configuration d'événements pour groupement
  */
 export interface EventTypeConfig {
-  type: string;
-  enabled?: boolean;
-  visible?: boolean;
-  color?: string;
-  render?: string;
-  height?: number;
+  id: string;
+  name: string;
+  color: string;
+  icon?: string;
+  visible: boolean;
+  priority: number;
 }
 
 /**
@@ -88,3 +101,72 @@ export interface TimeGraduation {
   position: number;
   label: string;
 }
+
+/**
+ * Types spécifiques au mode Impact
+ */
+
+/**
+ * Paire d'événements adjacents conseiller → client
+ */
+export interface AdjacentPair {
+  id: string;
+  conseiller: TemporalEvent;
+  client: TemporalEvent;
+  conseillerStrategy: "positive" | "negative" | "neutral";
+  clientReaction: "positive" | "negative" | "neutral";
+  isCoherent: boolean;
+  timeDelta: number;
+}
+
+/**
+ * Métriques d'efficacité des interactions
+ */
+export interface ImpactMetrics {
+  totalPairs: number;
+  positiveImpacts: number;
+  negativeImpacts: number;
+  neutralImpacts: number;
+  coherentImpacts: number;
+  efficiencyRate: number; // Pourcentage d'impacts cohérents
+  avgTimeDelta: number;
+}
+
+/**
+ * Props communes pour les markers Impact
+ */
+export interface ImpactMarkerBaseProps {
+  x: number;
+  y: number;
+  onClick: (event: TemporalEvent) => void;
+  onHover?: (event: TemporalEvent) => void;
+  event: TemporalEvent;
+}
+
+/**
+ * Props spécifiques aux markers conseiller
+ */
+export interface ConseillerMarkerProps extends ImpactMarkerBaseProps {
+  strategy: "positive" | "negative" | "neutral";
+}
+
+/**
+ * Props spécifiques aux markers client
+ */
+export interface ClientMarkerProps extends ImpactMarkerBaseProps {
+  reaction: "positive" | "negative" | "neutral";
+  isCoherent?: boolean;
+}
+
+/**
+ * Props pour les ondes d'impact
+ */
+export interface ImpactWaveProps {
+  pair: AdjacentPair;
+  width: number;
+  duration: number;
+}
+
+export type ConseillerStrategy = "positive" | "negative" | "neutral";
+export type ClientReaction = "positive" | "negative" | "neutral";
+export type ImpactLevel = "positive" | "central" | "negative";

@@ -10,29 +10,65 @@ export const profiles: Record<string, TimelineProfile> = {
     maxRows: 1,
     dense: true,
     showLabels: false,
-    minGap: 2,
-    pointWidth: 8,
+    showGraduations: false,
+    eventGap: 2, // ← Remplacer minGap par eventGap
+    minEventWidth: 8, // ← Remplacer pointWidth par minEventWidth
+    rowHeight: 16, // ← Ajouter rowHeight
   },
   compact: {
     maxRows: 1,
     dense: true,
     showLabels: false,
-    minGap: 4,
-    pointWidth: 10,
+    showGraduations: true,
+    eventGap: 4, // ← Remplacer minGap par eventGap
+    minEventWidth: 10, // ← Remplacer pointWidth par minEventWidth
+    rowHeight: 24, // ← Ajouter rowHeight
   },
   detailed: {
     maxRows: 4,
     dense: false,
     showLabels: true,
-    minGap: 6,
-    pointWidth: 14,
+    showGraduations: true,
+    eventGap: 6, // ← Remplacer minGap par eventGap
+    minEventWidth: 14, // ← Remplacer pointWidth par minEventWidth
+    rowHeight: 32, // ← Ajouter rowHeight
   },
   expanded: {
     maxRows: 6,
     dense: false,
     showLabels: true,
-    minGap: 8,
-    pointWidth: 16,
+    showGraduations: true,
+    eventGap: 8, // ← Remplacer minGap par eventGap
+    minEventWidth: 16, // ← Remplacer pointWidth par minEventWidth
+    rowHeight: 36, // ← Ajouter rowHeight
+  },
+  // Le profil impact reste inchangé car il est correct
+  impact: {
+    maxRows: 3,
+    dense: false,
+    showLabels: false,
+    showGraduations: true,
+    eventGap: 4,
+    minEventWidth: 12,
+    rowHeight: 40,
+    impactSpecific: {
+      showMetrics: true,
+      showCoherenceIndicators: true,
+      showImpactWaves: true,
+      waveOpacity: 0.7,
+      coherentWaveColor: "#28a745",
+      incoherentWaveColor: "#dc3545",
+      neutralWaveColor: "#6c757d",
+    },
+  },
+  hidden: {
+    maxRows: 0,
+    dense: true,
+    showLabels: false,
+    showGraduations: false,
+    eventGap: 0,
+    minEventWidth: 0,
+    rowHeight: 0,
   },
 };
 
@@ -61,5 +97,5 @@ export const getRowGap = (profile: TimelineProfile): number => {
  * Calcule la largeur minimale d'un événement selon le profil
  */
 export const getMinEventWidth = (profile: TimelineProfile): number => {
-  return profile.pointWidth || (profile.dense ? 10 : 14);
+  return profile.minEventWidth || (profile.dense ? 10 : 14); // ← Utiliser minEventWidth au lieu de pointWidth
 };

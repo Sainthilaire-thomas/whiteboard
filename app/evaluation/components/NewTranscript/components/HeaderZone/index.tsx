@@ -36,6 +36,7 @@ import {
   VisibilityOff,
   Compress,
   ExpandMore,
+  TrendingUp as TrendingUpIcon,
 } from "@mui/icons-material";
 import { useAudio } from "@/context/AudioContext";
 import { useCallData } from "@/context/CallDataContext";
@@ -265,7 +266,7 @@ const AudioControls: React.FC<AudioControlsProps> = ({
 
 interface ViewControlsProps {
   displayMode: "word-by-word" | "paragraphs" | "hybrid" | "turns" | "compact";
-  timelineMode: "compact" | "detailed" | "minimal" | "hidden";
+  timelineMode: "compact" | "detailed" | "minimal" | "hidden" | "impact";
   mode: "evaluation" | "tagging" | "analysis" | "spectator";
   fontSize: number;
   theme: "light" | "dark" | "auto";
@@ -274,7 +275,7 @@ interface ViewControlsProps {
     mode: "word-by-word" | "paragraphs" | "hybrid" | "turns" | "compact"
   ) => void;
   onTimelineModeChange: (
-    mode: "compact" | "detailed" | "minimal" | "hidden"
+    mode: "compact" | "detailed" | "minimal" | "hidden" | "impact"
   ) => void;
   onModeChange: (
     mode: "evaluation" | "tagging" | "analysis" | "spectator"
@@ -411,6 +412,42 @@ const ViewControls: React.FC<ViewControlsProps> = ({
             <ExpandMore fontSize="small" />
             Détaillée
           </Box>
+        </MenuItem>{" "}
+        <MenuItem
+          value="impact"
+          sx={{
+            borderTop: "1px solid rgba(0,0,0,0.1)",
+            backgroundColor: "rgba(46, 125, 50, 0.04)",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <TrendingUpIcon fontSize="small" sx={{ color: "#2e7d32" }} />
+            <Box>
+              <Typography
+                variant="inherit"
+                sx={{ fontWeight: "bold", color: "#2e7d32" }}
+              >
+                Mode Impact
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{ fontSize: "0.7rem", color: "text.secondary" }}
+              >
+                Analyse conseiller → client
+              </Typography>
+            </Box>
+            <Chip
+              label="NOUVEAU"
+              size="small"
+              sx={{
+                height: 16,
+                fontSize: "0.6rem",
+                backgroundColor: "#2e7d32",
+                color: "white",
+                ml: "auto",
+              }}
+            />
+          </Box>
         </MenuItem>
       </Select>
     </FormControl>
@@ -520,7 +557,7 @@ export const HeaderZone: React.FC<HeaderZoneProps> = ({
           break;
         default:
           console.warn(`Mode inconnu: ${newMode}`);
-          newConfig = { mode: newMode };
+          newConfig = { mode: newMode as any };
       }
 
       console.log("🔧 Configuration appliquée:", {

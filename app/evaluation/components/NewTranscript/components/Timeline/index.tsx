@@ -8,7 +8,8 @@ import { TimelineProfile, EventTypeConfig } from "./types";
 import { getProfile } from "./profiles";
 import { useElementWidth } from "./hooks/useResizeObserver"; // ✅ Hook créé
 import { useTimelineSync } from "./hooks/useTimelineSync";
-
+import { useImpactAnalysis } from "./hooks/useImpactAnalysis"; // ← NOUVEAU
+import { useTaggingData } from "@/context/TaggingDataContext";
 // Import des composants refactorisés
 import { TimelineHeader } from "./Header/TimelineHeader";
 import { ProgressBar } from "./Progress/ProgressBar";
@@ -18,6 +19,8 @@ import { TimelineLayer } from "./Layers/TimelineLayer";
 import { TagMarker } from "./Layers/markers/TagMarker";
 import { PostitMarker } from "./Layers/markers/PostitMarker";
 import { EventMarker } from "./Layers/EventMarker";
+import { ImpactTimeline } from "./Impact/ImpactTimeline";
+import { TranscriptConfig } from "../../types";
 
 interface TimelineZoneProps {
   events: TemporalEvent[];
@@ -25,7 +28,7 @@ interface TimelineZoneProps {
   duration: number;
   config: {
     timelineMode: string;
-    eventTypes?: EventTypeConfig[];
+    eventTypes?: any[]; // ← Utiliser any[] pour éviter le conflit
     layout?: {
       showControls?: boolean;
     };
@@ -58,7 +61,18 @@ export function TimelineZone({
 
   // Synchronisation avec l'audio
   const syncData = useTimelineSync(events, currentTime);
-
+  const { tags } = useTaggingData();
+  // Analyse d'impact si mode impact
+  const impactAnalysis = useImpactAnalysis(
+    config.timelineMode === "impact" ? events : [],
+    tags
+  );
+  console.log("🎯 TIMELINE ZONE:", {
+    mode: config.timelineMode,
+    events: events.length,
+    tags: tags.length,
+    impactPairs: impactAnalysis.adjacentPairs.length,
+  });
   // Handlers
   const handleEventClick = useCallback(
     (event: TemporalEvent) => {
@@ -125,6 +139,8 @@ export function TimelineZone({
         return headerHeight + progressHeight + layerBaseHeight * 2;
       case "expanded":
         return headerHeight + progressHeight + layerBaseHeight * 3;
+      case "impact": // ← AJOUTER CETTE LIGNE
+        return 180;
       default:
         return headerHeight + progressHeight + layerBaseHeight;
     }
@@ -132,6 +148,60 @@ export function TimelineZone({
 
   const totalHeight = calculateTotalHeight();
 
+  // Mode impact - rendu spécialisé
+  if (config.timelineMode === "impact") {
+    return (
+      <Paper
+        ref={timelineRef}
+        sx={{
+          height: 180, // Fixe pour le mode impact
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+          position: "relative",
+          overflow: "hidden",
+        }}
+        elevation={0}
+      >
+        <ImpactTimeline
+          adjacentPairs={impactAnalysis.adjacentPairs}
+          metrics={impactAnalysis.metrics}
+          width={width - 32}
+          duration={duration}
+          onEventClick={handleEventClick}
+        />
+
+        {/* Curseur temporel global pour mode impact */}
+        {duration > 0 && width > 0 && (
+          <TimelineCursor
+            currentTime={currentTime}
+            duration={duration}
+            height={180}
+            width={width - 32}
+          />
+        )}
+
+        {/* Zone cliquable pour navigation temporelle */}
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: 0,
+            left: 16,
+            right: 16,
+            height: 20,
+            cursor: "pointer",
+            zIndex: 5,
+          }}
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const time = (x / (width - 32)) * duration;
+            handleTimelineClick(time);
+          }}
+        />
+      </Paper>
+    );
+  }
   // Mode minimal - juste la barre de progression
   if (config.timelineMode === "minimal") {
     return (

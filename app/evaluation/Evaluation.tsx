@@ -459,7 +459,7 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
           {/* CORRECTION: Choix conditionnel sécurisé */}
           {canUseNewTranscript && newTranscriptConfig ? (
             <NewTranscript
-              callId={selectedCall.callid.toString()}
+              callId={selectedCall!.callid.toString()}
               config={newTranscriptConfig}
               // Props de compatibilité avec l'ancien système
               hideHeader={false} // GARDÉ: Header géré par NewTranscript lui-même
