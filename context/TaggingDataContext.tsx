@@ -11,14 +11,14 @@ import {
 } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 
-// --- Types ---
-interface Call {
+// --- Types exportés pour TagProvider ---
+export interface Call {
   callid: string;
   audiourl?: string;
   [key: string]: any;
 }
 
-interface Word {
+export interface Word {
   id: string;
   transcriptid: string;
   startTime: number;
@@ -26,31 +26,51 @@ interface Word {
   word: string;
 }
 
-interface Postit {
+export interface Postit {
   id: string;
   callid: string;
   text: string;
 }
 
-interface Tag {
+export interface Tag {
   id: string;
-  tag: string;
+  label?: string;
+  tag?: string;
   color?: string;
+  family?: string;
+  originespeaker?: string;
+  description?: string;
+  icon?: string;
 }
 
-interface TaggedTurn {
+export interface TaggedTurn {
   id: string;
   call_id: string;
   start_time: number;
   end_time: number;
   tag: string;
+  verbatim?: string;
   next_turn_verbatim?: string;
+  next_turn_tag?: string;
+  speaker?: string;
   color?: string;
+  annotations?: any[];
+}
+
+export interface NewTag {
+  call_id: string;
+  start_time: number;
+  end_time: number;
+  tag: string;
+  verbatim?: string;
+  next_turn_verbatim?: string;
+  next_turn_tag?: string;
+  speaker?: string;
 }
 
 interface TaggingDataContextType {
   taggingCalls: Call[];
-  setTaggingCalls: React.Dispatch<React.SetStateAction<Call[]>>; // ✅ Ajouté
+  setTaggingCalls: React.Dispatch<React.SetStateAction<Call[]>>;
   selectedTaggingCall: Call | null;
   selectTaggingCall: (call: Call) => void;
   callId: string | undefined;
@@ -103,18 +123,228 @@ export const TaggingDataProvider = ({ children }: TaggingDataProviderProps) => {
 
   const updateCurrentWord = (word: Word) => setCurrentWord(word);
 
+  // SEUL useEffect : charger les définitions de tags (pas les données d'appel)
   useEffect(() => {
     const fetchTags = async () => {
-      const { data, error } = await supabaseClient.from("lpltag").select("*");
-      if (error) {
-        console.error("Erreur de récupération des tags:", error.message);
-      } else {
-        setTags(data ?? []);
+      console.log("🏷️ CONTEXTE: Chargement des définitions de tags...");
+      try {
+        const { data, error } = await supabaseClient.from("lpltag").select("*");
+        if (error) {
+          console.error(
+            "❌ CONTEXTE: Erreur de récupération des définitions de tags:",
+            {
+              message: error.message || "Erreur inconnue",
+              details: error.details || "Aucun détail",
+              code: error.code || "Aucun code",
+            }
+          );
+        } else {
+          console.log(
+            `✅ CONTEXTE: ${data?.length || 0} définitions de tags chargées`
+          );
+          setTags(data ?? []);
+        }
+      } catch (exception) {
+        console.error(
+          "❌ CONTEXTE: Exception lors du chargement des tags:",
+          exception
+        );
       }
     };
+
     fetchTags();
+    console.log(
+      "🚀 CONTEXTE: TaggingDataProvider initialisé - prêt pour sélection d'appel"
+    );
+  }, []); // Pas de dépendances, exécuté une seule fois
+
+  // Fonctions de fetch (inchangées mais avec validation)
+  const fetchTaggingTranscription = useCallback(async (callId: string) => {
+    if (!callId) {
+      console.warn(
+        "⚠️ CONTEXTE: callId manquant pour fetchTaggingTranscription"
+      );
+      setTaggingTranscription([]);
+      return;
+    }
+
+    console.log(`🔄 CONTEXTE: Fetch transcription pour appel ${callId}`);
+    const { data: transcriptData, error: transcriptError } =
+      await supabaseClient
+        .from("transcript")
+        .select("transcriptid")
+        .eq("callid", callId)
+        .single();
+
+    if (transcriptError || !transcriptData?.transcriptid) {
+      console.warn("CONTEXTE: Transcript ID introuvable pour l'appel:", callId);
+      setTaggingTranscription([]);
+      return;
+    }
+
+    const { data: wordsData, error: wordsError } = await supabaseClient
+      .from("word")
+      .select("*")
+      .eq("transcriptid", transcriptData.transcriptid)
+      .order("startTime", { ascending: true });
+
+    if (wordsError) {
+      console.error("CONTEXTE: Erreur de récupération des mots:", wordsError);
+      setTaggingTranscription([]);
+    } else {
+      console.log(`✅ CONTEXTE: ${wordsData?.length || 0} mots chargés`);
+      setTaggingTranscription(wordsData ?? []);
+    }
   }, []);
 
+  const fetchTaggingPostits = useCallback(async (callId: string) => {
+    if (!callId) {
+      console.warn("⚠️ CONTEXTE: callId manquant pour fetchTaggingPostits");
+      setTaggingPostits([]);
+      return;
+    }
+
+    console.log(`🔄 CONTEXTE: Fetch post-its pour appel ${callId}`);
+    const { data, error } = await supabaseClient
+      .from("postit")
+      .select("*")
+      .eq("callid", callId);
+
+    if (error) {
+      console.error("CONTEXTE: Erreur de récupération des post-its:", error);
+      setTaggingPostits([]);
+    } else {
+      console.log(`✅ CONTEXTE: ${data?.length || 0} post-its chargés`);
+      setTaggingPostits(data ?? []);
+    }
+  }, []);
+
+  const fetchTaggedTurns = useCallback(
+    async (callId: string) => {
+      // VALIDATION STRICTE
+      if (!callId || typeof callId !== "string") {
+        console.warn(
+          `⚠️ CONTEXTE: callId invalide pour fetchTaggedTurns: ${callId}`
+        );
+        setTaggedTurns([]);
+        return;
+      }
+
+      console.log(`🏷️ CONTEXTE: Fetch tagged turns pour appel ${callId}`);
+      console.log(`🏷️ CONTEXTE: Tags disponibles: ${tags.length}`);
+
+      try {
+        const { data: turnsData, error } = await supabaseClient
+          .from("turntagged")
+          .select(
+            `
+            id,
+            call_id,
+            start_time,
+            end_time,
+            tag,
+            verbatim,
+            next_turn_verbatim,
+            next_turn_tag,
+            speaker
+          `
+          )
+          .eq("call_id", callId);
+
+        if (error) {
+          console.error(
+            "❌ CONTEXTE: Erreur de récupération des tagged turns:",
+            {
+              message: error.message || "Erreur inconnue",
+              details: error.details || "Aucun détail",
+              hint: error.hint || "Aucun indice",
+              code: error.code || "Aucun code",
+              callId: callId,
+            }
+          );
+          setTaggedTurns([]);
+          return;
+        }
+
+        console.log(
+          `🏷️ CONTEXTE: ${turnsData?.length || 0} tagged turns trouvés`
+        );
+
+        const enrichedTags = (turnsData ?? []).map((turn) => {
+          const matchingTag = tags.find(
+            (t) => t.label === turn.tag || t.tag === turn.tag
+          );
+
+          return {
+            ...turn,
+            color: matchingTag?.color ?? "#2196f3",
+          };
+        });
+
+        console.log(
+          `✅ CONTEXTE: ${enrichedTags.length} tagged turns enrichis`
+        );
+        setTaggedTurns(enrichedTags);
+      } catch (error) {
+        console.error("❌ CONTEXTE: Exception fetchTaggedTurns:", {
+          error,
+          callId,
+          message: error instanceof Error ? error.message : "Erreur inconnue",
+        });
+        setTaggedTurns([]);
+      }
+    },
+    [tags]
+  );
+
+  // FONCTION CRITIQUE : selectTaggingCall - point d'entrée unique pour charger les données
+  const selectTaggingCall = useCallback(
+    (call: Call) => {
+      console.log(`🎯 CONTEXTE: === SÉLECTION APPEL: ${call.callid} ===`);
+
+      if (!call || !call.callid) {
+        console.warn("⚠️ CONTEXTE: Appel invalide:", call);
+        return;
+      }
+
+      setSelectedTaggingCall(call);
+
+      // CHARGEMENT CONDITIONNEL : seulement si un appel valide est fourni
+      console.log(
+        `🔄 CONTEXTE: Chargement des données pour appel ${call.callid}`
+      );
+
+      Promise.allSettled([
+        fetchTaggingTranscription(call.callid),
+        fetchTaggingPostits(call.callid),
+        fetchTaggedTurns(call.callid),
+      ]).then((results) => {
+        const successCount = results.filter(
+          (r) => r.status === "fulfilled"
+        ).length;
+        console.log(
+          `✅ CONTEXTE: ${successCount}/3 opérations réussies pour ${call.callid}`
+        );
+
+        // Log des erreurs sans interrompre l'exécution
+        results.forEach((result, index) => {
+          if (result.status === "rejected") {
+            const operations = ["transcription", "post-its", "tagged turns"];
+            console.error(
+              `❌ CONTEXTE: Erreur ${operations[index]}:`,
+              result.reason
+            );
+          }
+        });
+      });
+
+      setAudioSrc(call.audiourl ?? null);
+      console.log("🎯 CONTEXTE: === FIN SÉLECTION APPEL ===");
+    },
+    [fetchTaggingTranscription, fetchTaggingPostits, fetchTaggedTurns]
+  );
+
+  // Autres fonctions (inchangées)
   const fetchTaggingCalls = useCallback(async () => {
     const { data, error } = await supabaseClient
       .from("call")
@@ -129,57 +359,6 @@ export const TaggingDataProvider = ({ children }: TaggingDataProviderProps) => {
     }
   }, []);
 
-  const fetchTaggingTranscription = useCallback(async (callId: string) => {
-    const { data: transcriptData, error: transcriptError } =
-      await supabaseClient
-        .from("transcript")
-        .select("transcriptid")
-        .eq("callid", callId)
-        .single();
-
-    if (transcriptError || !transcriptData?.transcriptid) {
-      console.warn("Transcript ID introuvable pour l'appel:", callId);
-      setTaggingTranscription([]);
-      return;
-    }
-
-    const { data: wordsData, error: wordsError } = await supabaseClient
-      .from("word")
-      .select("*")
-      .eq("transcriptid", transcriptData.transcriptid)
-      .order("startTime", { ascending: true });
-
-    if (wordsError) {
-      console.error("Erreur de récupération des mots:", wordsError);
-    } else {
-      setTaggingTranscription(wordsData ?? []);
-    }
-  }, []);
-
-  const fetchTaggingPostits = useCallback(async (callId: string) => {
-    const { data, error } = await supabaseClient
-      .from("postit")
-      .select("*")
-      .eq("callid", callId);
-    if (error) {
-      console.error("Erreur de récupération des post-its:", error);
-    } else {
-      setTaggingPostits(data ?? []);
-    }
-  }, []);
-
-  const selectTaggingCall = useCallback(
-    (call: Call) => {
-      setSelectedTaggingCall(call);
-      if (call.callid) {
-        fetchTaggingTranscription(call.callid);
-        fetchTaggingPostits(call.callid);
-        setAudioSrc(call.audiourl ?? null);
-      }
-    },
-    [fetchTaggingTranscription, fetchTaggingPostits]
-  );
-
   const playAudioAtTimestamp = (timestamp: number) => {
     if (audioSrc && playerRef.current) {
       playerRef.current.currentTime = timestamp;
@@ -187,74 +366,52 @@ export const TaggingDataProvider = ({ children }: TaggingDataProviderProps) => {
     }
   };
 
-  const fetchTaggedTurns = useCallback(
-    async (callId: string) => {
-      const { data: turnsData, error } = await supabaseClient
+  const addTag = useCallback(
+    async (newTag: Partial<TaggedTurn>) => {
+      console.log("🏷️ CONTEXTE: Ajout nouveau tag:", newTag);
+
+      const { data, error } = await supabaseClient
         .from("turntagged")
-        .select(
-          `
-        id,
-        call_id,
-        start_time,
-        end_time,
-        tag,
-        next_turn_verbatim
-      `
-        )
-        .eq("call_id", callId);
+        .insert([newTag])
+        .select("*");
 
       if (error) {
-        console.error("Erreur de récupération des tags:", error);
-        return;
+        console.error("❌ CONTEXTE: Erreur ajout tag:", error);
+        return null;
       }
 
-      const enrichedTags = (turnsData ?? []).map((turn) => {
-        const matchingTag = tags.find((t) => t.tag === turn.tag); // Match sur le label
-        return {
-          ...turn,
-          color: matchingTag?.color ?? "transparent", // ✅ Ajoute la couleur correspondante
+      if (data?.length) {
+        const matchingTag = tags.find(
+          (t) => t.label === data[0].tag || t.tag === data[0].tag
+        );
+        const enrichedTag = {
+          ...data[0],
+          color: matchingTag?.color || "#2196f3",
         };
-      });
 
-      setTaggedTurns(enrichedTags); // ✅ Met à jour le state avec les couleurs enrichies
+        setTaggedTurns((prev) => [...prev, enrichedTag]);
+        console.log("✅ CONTEXTE: Tag ajouté avec succès");
+        return enrichedTag;
+      }
+
+      return null;
     },
     [tags]
   );
 
-  const addTag = useCallback(async (newTag: Partial<TaggedTurn>) => {
-    const { data, error } = await supabaseClient
-      .from("turntagged")
-      .insert([newTag])
-      .select(
-        "id, call_id, start_time, end_time, tag, next_turn_verbatim, lpltag(color)"
-      );
-
-    if (error) {
-      console.error("Erreur lors de l'ajout du tag:", error);
-      return null;
-    }
-
-    if (data?.length) {
-      const enrichedTag = {
-        ...data[0],
-        color: data[0].lpltag[0]?.color || "transparent",
-      };
-      setTaggedTurns((prev) => [...prev, enrichedTag]);
-      return enrichedTag;
-    }
-
-    return null;
-  }, []);
-
   const deleteTurnTag = useCallback(async (id: string) => {
+    console.log(`🗑️ CONTEXTE: Suppression tag: ${id}`);
+
     const { error } = await supabaseClient
       .from("turntagged")
       .delete()
       .eq("id", id);
+
     if (error) {
-      console.error("Erreur lors de la suppression du tag:", error.message);
+      console.error("❌ CONTEXTE: Erreur suppression tag:", error.message);
     } else {
       setTaggedTurns((prev) => prev.filter((tag) => tag.id !== id));
+      console.log("✅ CONTEXTE: Tag supprimé avec succès");
     }
   }, []);
 
@@ -264,7 +421,7 @@ export const TaggingDataProvider = ({ children }: TaggingDataProviderProps) => {
         taggingCalls,
         setTaggingCalls,
         selectedTaggingCall,
-        selectTaggingCall,
+        selectTaggingCall, // ← Point d'entrée unique pour charger les données
         callId: selectedTaggingCall?.callid,
         taggingTranscription,
         fetchTaggingTranscription,

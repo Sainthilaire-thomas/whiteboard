@@ -26,47 +26,124 @@ const timelineUtils = {
 
   // Grouper les événements par couches
   groupEventsByLayer: (events: TemporalEvent[], eventTypes: any[]) => {
+    console.log("🔍 groupEventsByLayer - Input:", {
+      eventsCount: events.length,
+      eventTypesCount: eventTypes?.length || 0,
+      events: events.map((e) => ({ type: e.type, id: e.id })),
+      eventTypes: eventTypes,
+    });
+
     const layers: Record<string, TimelineLayer> = {};
 
-    // Créer une couche par défaut si aucun type configuré
+    // ✅ MODIFICATION: Créer des couches pour TOUS les types d'événements présents
+    // même si eventTypes n'est pas configuré
     if (!eventTypes || eventTypes.length === 0) {
-      const defaultEvents = events.filter((e) => e.type === "postit");
-      if (defaultEvents.length > 0) {
-        layers["postit"] = {
-          id: "postit",
-          name: "Post-its",
-          events: defaultEvents,
-          height: 24,
-          color: "#ff6b6b",
+      console.log("🔍 No eventTypes configured, creating default layers");
+
+      // Grouper par type d'événement
+      const eventsByType = events.reduce(
+        (acc, event) => {
+          if (!acc[event.type]) acc[event.type] = [];
+          acc[event.type].push(event);
+          return acc;
+        },
+        {} as Record<string, TemporalEvent[]>
+      );
+
+      Object.entries(eventsByType).forEach(([type, typeEvents]) => {
+        layers[type] = {
+          id: type,
+          name: type.charAt(0).toUpperCase() + type.slice(1) + "s",
+          events: typeEvents,
+          height: type === "postit" ? 24 : 20,
+          color: type === "postit" ? "#ff6b6b" : "#2196f3",
           visible: true,
           interactive: true,
         };
-      }
+        console.log(
+          `🔍 Created default layer for ${type}: ${typeEvents.length} events`
+        );
+      });
+
       return Object.values(layers);
     }
 
+    // ✅ MODIFICATION: Traitement amélioré avec eventTypes configurés
     eventTypes.forEach((eventType) => {
-      if (!eventType.enabled || !eventType.visible) return;
+      console.log(`🔍 Processing eventType:`, eventType);
+
+      if (!eventType.enabled || !eventType.visible) {
+        console.log(
+          `🔍 Skipping disabled/invisible eventType: ${eventType.type}`
+        );
+        return;
+      }
 
       const layerEvents = events.filter(
         (event) => event.type === eventType.type
+      );
+
+      console.log(
+        `🔍 Found ${layerEvents.length} events for type ${eventType.type}`
       );
 
       if (layerEvents.length > 0) {
         layers[eventType.type] = {
           id: eventType.type,
           name:
-            eventType.type.charAt(0).toUpperCase() + eventType.type.slice(1),
+            eventType.type.charAt(0).toUpperCase() +
+            eventType.type.slice(1) +
+            "s",
           events: layerEvents,
           height: eventType.type === "postit" ? 24 : 20,
           color: eventType.color || "#2196f3",
           visible: true,
           interactive: true,
         };
+        console.log(`🔍 Created configured layer for ${eventType.type}`);
       }
     });
 
-    return Object.values(layers);
+    // ✅ AJOUT: Si aucune couche n'a été créée mais qu'il y a des événements,
+    // créer des couches par défaut pour tous les types présents
+    if (Object.keys(layers).length === 0 && events.length > 0) {
+      console.log(
+        "🔍 No layers created from config, falling back to auto-detection"
+      );
+
+      const eventsByType = events.reduce(
+        (acc, event) => {
+          if (!acc[event.type]) acc[event.type] = [];
+          acc[event.type].push(event);
+          return acc;
+        },
+        {} as Record<string, TemporalEvent[]>
+      );
+
+      Object.entries(eventsByType).forEach(([type, typeEvents]) => {
+        layers[type] = {
+          id: type,
+          name: type.charAt(0).toUpperCase() + type.slice(1) + "s",
+          events: typeEvents,
+          height: 24,
+          color:
+            type === "tag"
+              ? "#2196f3"
+              : type === "postit"
+                ? "#ff6b6b"
+                : "#6b7280",
+          visible: true,
+          interactive: true,
+        };
+        console.log(
+          `🔍 Auto-created layer for ${type}: ${typeEvents.length} events`
+        );
+      });
+    }
+
+    const result = Object.values(layers);
+    console.log("🔍 groupEventsByLayer - Output:", result);
+    return result;
   },
 
   // Calculer hauteur totale de la timeline
@@ -100,6 +177,7 @@ const timelineUtils = {
 };
 
 // Sous-composant pour afficher un événement sur la timeline
+// --- TimelineEventMarker (remplacement complet)
 interface TimelineEventMarkerProps {
   event: TemporalEvent;
   duration: number;
@@ -108,6 +186,9 @@ interface TimelineEventMarkerProps {
   color: string;
   onClick: (event: TemporalEvent) => void;
   onHover?: (event: TemporalEvent) => void;
+  y?: number;
+  showLabel?: boolean;
+  labelMaxChars?: number;
 }
 
 const TimelineEventMarker: React.FC<TimelineEventMarkerProps> = ({
@@ -118,51 +199,39 @@ const TimelineEventMarker: React.FC<TimelineEventMarkerProps> = ({
   color,
   onClick,
   onHover,
+  y = 2,
+  showLabel = true,
+  labelMaxChars = 18,
 }) => {
   const startX = timelineUtils.timeToPosition(event.startTime, duration, width);
   const endX = event.endTime
     ? timelineUtils.timeToPosition(event.endTime, duration, width)
-    : startX + 12; // Largeur par défaut pour événements ponctuels
+    : startX + 12;
 
-  const eventWidth = Math.max(endX - startX, 8); // Largeur minimale visible
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onClick(event);
-    },
-    [event, onClick]
-  );
-
-  const handleMouseEnter = useCallback(() => {
-    onHover?.(event);
-  }, [event, onHover]);
-
-  const getEventText = () => {
-    return (
-      event.data?.text ||
-      event.data?.sujet ||
-      event.metadata?.category ||
-      "Événement"
-    );
-  };
+  const eventWidth = Math.max(endX - startX, 14);
+  const isPoint = !event.endTime;
+  const labelText =
+    event.data?.text ||
+    event.data?.sujet ||
+    event.metadata?.category ||
+    "Événement";
+  const truncated =
+    labelText.length > labelMaxChars
+      ? labelText.slice(0, labelMaxChars - 1) + "…"
+      : labelText;
+  const bg = event.metadata?.color || color;
 
   return (
     <Tooltip
       title={
         <Box>
           <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-            {getEventText()}
+            {labelText}
           </Typography>
           <Typography variant="caption">
             {timelineUtils.formatTime(event.startTime)}
             {event.endTime && ` - ${timelineUtils.formatTime(event.endTime)}`}
           </Typography>
-          {event.metadata?.category && (
-            <Typography variant="caption" sx={{ display: "block" }}>
-              Catégorie: {event.metadata.category}
-            </Typography>
-          )}
           {event.metadata?.speaker && (
             <Typography variant="caption" sx={{ display: "block" }}>
               {event.metadata.speaker}
@@ -177,32 +246,61 @@ const TimelineEventMarker: React.FC<TimelineEventMarkerProps> = ({
         sx={{
           position: "absolute",
           left: startX,
-          top: 2,
+          top: y,
           width: eventWidth,
           height: height - 4,
-          backgroundColor: event.metadata?.color || color,
-          border: `1px solid ${event.metadata?.color || color}`,
-          borderRadius: event.type === "postit" ? "50%" : "4px",
           cursor: "pointer",
-          zIndex: 10,
-          transition: "all 0.2s ease",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "0.7rem",
-          color: "white",
-          fontWeight: "bold",
-          textShadow: "0 1px 2px rgba(0,0,0,0.5)",
-          "&:hover": {
-            transform: "scale(1.1)",
-            zIndex: 20,
-            boxShadow: 2,
-          },
+          zIndex: 12,
+          transition: "transform .12s ease",
+          "&:hover": { transform: "translateY(-1px)", zIndex: 20 },
         }}
-        onClick={handleClick}
-        onMouseEnter={handleMouseEnter}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick(event);
+        }}
+        onMouseEnter={() => onHover?.(event)}
       >
-        {event.type === "postit" ? "📝" : "🏷️"}
+        {/* Barre (pleine hauteur) */}
+        <Box
+          sx={{
+            position: "absolute",
+            left: isPoint ? eventWidth / 2 - 1 : 0,
+            top: 0,
+            width: isPoint ? 2 : eventWidth,
+            height: "100%",
+            backgroundColor: bg,
+            opacity: isPoint ? 0.9 : 0.6,
+            borderRadius: isPoint ? 1 : 4,
+          }}
+        />
+        {/* Pilule label */}
+        {showLabel && eventWidth >= 38 && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 2,
+              left: "50%",
+              transform: "translateX(-50%)",
+              maxWidth: Math.max(38, eventWidth - 6),
+              px: 1,
+              height: 20,
+              lineHeight: "20px",
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              color: "#fff",
+              backgroundColor: bg,
+              border: `1px solid ${bg}`,
+              borderRadius: "999px",
+              boxShadow:
+                "inset 0 0 0 2px rgba(255,255,255,.18), 0 2px 6px rgba(0,0,0,.35)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {truncated}
+          </Box>
+        )}
       </Box>
     </Tooltip>
   );
@@ -224,23 +322,52 @@ const TimelineLayerComponent: React.FC<TimelineLayerComponentProps> = ({
   onEventClick,
   onEventHover,
 }) => {
-  if (!layer.visible || layer.events.length === 0) {
-    return null;
-  }
+  if (!layer.visible || layer.events.length === 0) return null;
+
+  const BASE_H = Math.max(layer.height, 22);
+  const ROW_H = Math.min(BASE_H - 4, 20);
+  const ROW_GAP = 4;
+  const MIN_GAP_PX = 6;
+  const POINT_W = 14;
+
+  const { items, rowsCount } = useMemo(() => {
+    const sorted = [...layer.events].sort((a, b) => a.startTime - b.startTime);
+    const rowLastEnd: number[] = []; // px
+
+    const laidOut = sorted.map((ev) => {
+      const sx = timelineUtils.timeToPosition(ev.startTime, duration, width);
+      const ex = ev.endTime
+        ? timelineUtils.timeToPosition(ev.endTime, duration, width)
+        : sx + POINT_W;
+      const w = Math.max(ex - sx, 14);
+
+      let row = 0;
+      while (row < rowLastEnd.length && sx <= rowLastEnd[row] + MIN_GAP_PX) {
+        row++;
+      }
+      if (row === rowLastEnd.length) rowLastEnd.push(0);
+      rowLastEnd[row] = sx + w;
+
+      return { ev, row };
+    });
+
+    return { items: laidOut, rowsCount: rowLastEnd.length || 1 };
+  }, [layer.events, duration, width]);
+
+  const dynamicHeight = Math.max(BASE_H, 6 + rowsCount * (ROW_H + ROW_GAP));
 
   return (
     <Box
       sx={{
         position: "relative",
         width: "100%",
-        height: layer.height,
-        backgroundColor: `${layer.color}15`, // Couleur de fond très légère
+        height: dynamicHeight,
+        backgroundColor: `${layer.color}15`,
         borderRadius: 1,
-        marginBottom: 1,
+        marginBottom: 8,
         border: `1px solid ${layer.color}30`,
       }}
     >
-      {/* Label de la couche */}
       <Typography
         variant="caption"
         sx={{
@@ -251,25 +378,27 @@ const TimelineLayerComponent: React.FC<TimelineLayerComponentProps> = ({
           color: layer.color,
           fontWeight: "bold",
           zIndex: 5,
-          backgroundColor: "rgba(255,255,255,0.9)",
-          padding: "1px 4px",
+          backgroundColor: "rgba(255,255,255,0.88)",
+          padding: "1px 6px",
           borderRadius: "2px",
+          border: `1px solid ${layer.color}30`,
         }}
       >
         {layer.name} ({layer.events.length})
       </Typography>
 
-      {/* Événements */}
-      {layer.events.map((event, index) => (
+      {items.map(({ ev, row }, i) => (
         <TimelineEventMarker
-          key={`${event.id}-${index}`}
-          event={event}
+          key={`${ev.id}-${i}`}
+          event={ev}
           duration={duration}
           width={width}
-          height={layer.height}
+          height={ROW_H + 4}
           color={layer.color}
           onClick={onEventClick}
           onHover={onEventHover}
+          y={4 + row * (ROW_H + ROW_GAP)}
+          showLabel
         />
       ))}
     </Box>
@@ -503,9 +632,70 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
   const timelineRef = useRef<HTMLDivElement>(null);
   const [timelineWidth, setTimelineWidth] = useState(800);
 
+  // ✅ AJOUT: Debug des événements reçus
+  useEffect(() => {
+    console.log("🔍 TimelineZone - Events received:", {
+      totalEvents: events.length,
+      eventTypes: events.map((e) => e.type),
+      events: events.map((e) => ({
+        id: e.id,
+        type: e.type,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        category: e.metadata.category,
+        color: e.metadata.color,
+      })),
+    });
+  }, [events]);
+
+  // ✅ AJOUT: Debug de la configuration
+  useEffect(() => {
+    console.log("🔍 TimelineZone - Config:", {
+      timelineMode: config.timelineMode,
+      eventTypes: config.eventTypes,
+      mode: config.mode,
+    });
+  }, [config]);
+
   // Calculer les couches d'événements
   const eventLayers = useMemo(() => {
-    return timelineUtils.groupEventsByLayer(events, config.eventTypes);
+    console.log("🔍 TimelineZone - Calculating event layers...");
+    const layers = timelineUtils.groupEventsByLayer(events, config.eventTypes);
+
+    // 🔁 Fallback inconditionnel si aucune couche n'est revenue alors qu'on a des events
+    if ((!layers || layers.length === 0) && events.length > 0) {
+      console.warn("⚠️ No layers from config; falling back to auto-grouping.");
+      const byType = events.reduce(
+        (acc, ev) => {
+          (acc[ev.type] ||= []).push(ev);
+          return acc;
+        },
+        {} as Record<string, TemporalEvent[]>
+      );
+
+      const autoLayers: TimelineLayer[] = Object.entries(byType).map(
+        ([type, evs]) => ({
+          id: type,
+          name: type.charAt(0).toUpperCase() + type.slice(1) + "s",
+          events: evs,
+          height: type === "postit" ? 24 : 20,
+          color:
+            type === "tag"
+              ? "#1976d2"
+              : type === "postit"
+                ? "#ff6b6b"
+                : "#6b7280",
+          visible: true,
+          interactive: true,
+        })
+      );
+
+      console.log("🔁 Fallback layers:", autoLayers);
+      return autoLayers;
+    }
+
+    console.log("🔍 TimelineZone - Event layers calculated:", layers);
+    return layers;
   }, [events, config.eventTypes]);
 
   // Calculer la hauteur totale
@@ -615,6 +805,23 @@ export const TimelineZone: React.FC<TimelineZoneProps> = ({
             label={`${events.length} événements`}
             size="small"
             color="primary"
+            variant="outlined"
+          />
+          <Typography variant="caption" color="text.secondary">
+            {timelineUtils.formatTime(currentTime)} /{" "}
+            {timelineUtils.formatTime(duration)}
+          </Typography>
+        </Box>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+          <Chip
+            label={`${events.length} événements`}
+            size="small"
+            color="primary"
+            variant="outlined"
+          />
+          <Chip
+            label={`${eventLayers.length} couches`}
+            size="small"
             variant="outlined"
           />
           <Typography variant="caption" color="text.secondary">

@@ -1,4 +1,5 @@
 // app/evaluation/components/NewTranscript/components/HeaderZone/index.tsx
+// VERSION CORRIGÉE - Applique la configuration complète selon le mode
 
 import React, { useCallback, useState } from "react";
 import {
@@ -40,8 +41,15 @@ import { useAudio } from "@/context/AudioContext";
 import { useCallData } from "@/context/CallDataContext";
 
 import { HeaderZoneProps } from "../../types";
+// Import des configurations par mode
+import {
+  evaluationConfig,
+  taggingConfig,
+  analysisConfig,
+  spectatorConfig,
+} from "../../config";
 
-// Sous-composants
+// Sous-composants (inchangés)
 interface CallInfoProps {
   filename?: string;
   callId: string;
@@ -109,12 +117,10 @@ const AudioControls: React.FC<AudioControlsProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [previousVolume, setPreviousVolume] = useState<number>(volume ?? 1);
 
-  // Valeur de progression pendant le drag (toujours contrôlée)
   const [pendingTime, setPendingTime] = useState<number>(
     Number.isFinite(currentTime) ? currentTime : 0
   );
 
-  // Quand currentTime change de l'extérieur, on synchronise si on n'est pas en drag
   React.useEffect(() => {
     if (!isDragging) {
       setPendingTime(Number.isFinite(currentTime) ? currentTime : 0);
@@ -127,7 +133,6 @@ const AudioControls: React.FC<AudioControlsProps> = ({
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   }, []);
 
-  // Slider de progression — on garde value contrôlée via pendingTime
   const handleSeekChange = useCallback(
     (_: Event, newValue: number | number[]) => {
       const time = Array.isArray(newValue)
@@ -145,7 +150,7 @@ const AudioControls: React.FC<AudioControlsProps> = ({
 
   const handleSeekEnd = useCallback(() => {
     setIsDragging(false);
-    onSeek(pendingTime); // commit
+    onSeek(pendingTime);
   }, [onSeek, pendingTime]);
 
   const handleVolumeToggle = useCallback(() => {
@@ -166,7 +171,6 @@ const AudioControls: React.FC<AudioControlsProps> = ({
     return <VolumeUp />;
   };
 
-  // valeurs sûres
   const safeDuration = Number.isFinite(duration) ? (duration as number) : 0;
   const safeVolume = isMuted
     ? 0
@@ -184,7 +188,6 @@ const AudioControls: React.FC<AudioControlsProps> = ({
         gap: 1,
       }}
     >
-      {/* Contrôles principaux */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         <Tooltip title={isPlaying ? "Pause" : "Lecture"}>
           <IconButton
@@ -207,7 +210,6 @@ const AudioControls: React.FC<AudioControlsProps> = ({
           / {formatTime(safeDuration)}
         </Typography>
 
-        {/* Volume controls */}
         <Box
           sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 120 }}
         >
@@ -217,7 +219,7 @@ const AudioControls: React.FC<AudioControlsProps> = ({
             </IconButton>
           </Tooltip>
           <Slider
-            value={safeVolume} // ✅ toujours défini
+            value={safeVolume}
             onChange={(_, newValue) => {
               const v = Array.isArray(newValue)
                 ? Number(newValue[0])
@@ -236,15 +238,13 @@ const AudioControls: React.FC<AudioControlsProps> = ({
         </Box>
       </Box>
 
-      {/* Progress bar */}
       <Box sx={{ width: "100%", px: 1 }}>
         <Slider
-          value={Number.isFinite(pendingTime) ? pendingTime : 0} // ✅ jamais undefined
+          value={Number.isFinite(pendingTime) ? pendingTime : 0}
           onChange={handleSeekChange}
           onMouseDown={handleSeekStart}
           onMouseUp={handleSeekEnd}
           onChangeCommitted={(_, newValue) => {
-            // commit au clavier/fin de drag
             const t = Array.isArray(newValue)
               ? Number(newValue[0])
               : Number(newValue);
@@ -266,7 +266,7 @@ const AudioControls: React.FC<AudioControlsProps> = ({
 interface ViewControlsProps {
   displayMode: "word-by-word" | "paragraphs" | "hybrid" | "turns" | "compact";
   timelineMode: "compact" | "detailed" | "minimal" | "hidden";
-  mode: "evaluation" | "tagging" | "analysis" | "spectator"; // ✅ MANQUANT
+  mode: "evaluation" | "tagging" | "analysis" | "spectator";
   fontSize: number;
   theme: "light" | "dark" | "auto";
   isFullscreen: boolean;
@@ -278,7 +278,7 @@ interface ViewControlsProps {
   ) => void;
   onModeChange: (
     mode: "evaluation" | "tagging" | "analysis" | "spectator"
-  ) => void; // ✅ MANQUANT
+  ) => void;
   onFontSizeChange: (size: number) => void;
   onThemeChange: (theme: "light" | "dark" | "auto") => void;
   onFullscreenToggle: () => void;
@@ -287,13 +287,13 @@ interface ViewControlsProps {
 const ViewControls: React.FC<ViewControlsProps> = ({
   displayMode,
   timelineMode,
-  mode, // ✅ AJOUTER ICI
+  mode,
   fontSize,
   theme,
   isFullscreen,
   onDisplayModeChange,
   onTimelineModeChange,
-  onModeChange, // ✅ AJOUTER ICI
+  onModeChange,
   onFontSizeChange,
   onThemeChange,
   onFullscreenToggle,
@@ -332,7 +332,7 @@ const ViewControls: React.FC<ViewControlsProps> = ({
         </MenuItem>
       </Select>
     </FormControl>
-    {/* Display Mode */}
+
     <FormControl size="small" sx={{ minWidth: 140 }}>
       <InputLabel id="display-mode-label" sx={{ fontSize: "0.8rem" }}>
         Affichage
@@ -377,7 +377,6 @@ const ViewControls: React.FC<ViewControlsProps> = ({
       </Select>
     </FormControl>
 
-    {/* ✅ NOUVEAU: Timeline Mode */}
     <FormControl size="small" sx={{ minWidth: 120 }}>
       <InputLabel id="timeline-mode-label" sx={{ fontSize: "0.8rem" }}>
         Timeline
@@ -416,7 +415,6 @@ const ViewControls: React.FC<ViewControlsProps> = ({
       </Select>
     </FormControl>
 
-    {/* Font Size */}
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 100 }}>
       <Typography variant="caption" sx={{ fontSize: "0.7rem" }}>
         Police
@@ -435,7 +433,6 @@ const ViewControls: React.FC<ViewControlsProps> = ({
       </Typography>
     </Box>
 
-    {/* Theme Toggle */}
     <Tooltip title="Changer le thème">
       <IconButton
         size="small"
@@ -445,7 +442,6 @@ const ViewControls: React.FC<ViewControlsProps> = ({
       </IconButton>
     </Tooltip>
 
-    {/* Fullscreen Toggle */}
     <Tooltip title={isFullscreen ? "Quitter plein écran" : "Plein écran"}>
       <IconButton size="small" onClick={onFullscreenToggle}>
         {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
@@ -482,17 +478,15 @@ const Actions: React.FC<ActionsProps> = ({ onExport, onShare, onSettings }) => (
   </Box>
 );
 
-// Composant principal HeaderZone
+// Composant principal HeaderZone - VERSION CORRIGÉE
 export const HeaderZone: React.FC<HeaderZoneProps> = ({
   callId,
   config,
   audioSrc,
   onConfigChange,
 }) => {
-  // États locaux
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Hooks pour les données réelles
   const { selectedCall } = useCallData();
   const {
     isPlaying,
@@ -505,7 +499,42 @@ export const HeaderZone: React.FC<HeaderZoneProps> = ({
     setVolume,
   } = useAudio();
 
-  // Handlers avec les vraies fonctions audio
+  // ✅ CORRECTION: Handler pour changement de mode avec configuration complète
+  const handleModeChange = useCallback(
+    (newMode: string) => {
+      console.log(`🔧 Changement mode: ${config.mode} → ${newMode}`);
+
+      let newConfig;
+      switch (newMode) {
+        case "evaluation":
+          newConfig = { ...evaluationConfig, audioSrc: config.audioSrc };
+          break;
+        case "tagging":
+          newConfig = { ...taggingConfig, audioSrc: config.audioSrc };
+          break;
+        case "analysis":
+          newConfig = { ...analysisConfig, audioSrc: config.audioSrc };
+          break;
+        case "spectator":
+          newConfig = { ...spectatorConfig, audioSrc: config.audioSrc };
+          break;
+        default:
+          console.warn(`Mode inconnu: ${newMode}`);
+          newConfig = { mode: newMode };
+      }
+
+      console.log("🔧 Configuration appliquée:", {
+        mode: newConfig.mode,
+        eventTypes: newConfig.eventTypes,
+        displayMode: newConfig.displayMode,
+        timelineMode: newConfig.timelineMode,
+      });
+
+      onConfigChange(newConfig);
+    },
+    [config.audioSrc, onConfigChange]
+  );
+
   const handlePlay = useCallback(() => {
     play();
     console.log("🎵 Play audio");
@@ -534,23 +563,19 @@ export const HeaderZone: React.FC<HeaderZoneProps> = ({
 
   const handleFullscreenToggle = useCallback(() => {
     setIsFullscreen((prev) => !prev);
-    // TODO: Logique fullscreen réelle
     console.log("📺 Fullscreen toggle:", !isFullscreen);
   }, [isFullscreen]);
 
   const handleExport = useCallback(() => {
     console.log("📤 Export transcript");
-    // TODO: Logique export
   }, []);
 
   const handleShare = useCallback(() => {
     console.log("🔗 Share transcript");
-    // TODO: Logique partage
   }, []);
 
   const handleSettings = useCallback(() => {
     console.log("⚙️ Open settings");
-    // TODO: Ouvrir panneau settings
   }, []);
 
   const formatDuration = useCallback((seconds: number) => {
@@ -585,7 +610,6 @@ export const HeaderZone: React.FC<HeaderZoneProps> = ({
         minHeight: 80,
       }}
     >
-      {/* Call Info */}
       <CallInfo
         filename={selectedCall?.filename || `Call_${callId}`}
         callId={callId}
@@ -593,7 +617,6 @@ export const HeaderZone: React.FC<HeaderZoneProps> = ({
         status="active"
       />
 
-      {/* Audio Controls */}
       <AudioControls
         isPlaying={isPlaying}
         currentTime={currentTime}
@@ -605,12 +628,11 @@ export const HeaderZone: React.FC<HeaderZoneProps> = ({
         onVolumeChange={handleVolumeChange}
       />
 
-      {/* View Controls */}
       <Box sx={{ display: { xs: "none", md: "block" } }}>
         <ViewControls
           displayMode={config.displayMode}
           timelineMode={config.timelineMode}
-          mode={config.mode} // ✅ AJOUTER ICI
+          mode={config.mode}
           fontSize={config.fontSize}
           theme={config.theme}
           isFullscreen={isFullscreen}
@@ -618,14 +640,13 @@ export const HeaderZone: React.FC<HeaderZoneProps> = ({
           onTimelineModeChange={(mode) =>
             onConfigChange({ timelineMode: mode })
           }
-          onModeChange={(mode) => onConfigChange({ mode })} // ✅ DÉJÀ PRÉSENT
+          onModeChange={handleModeChange} // ✅ CORRIGÉ: Utilise la nouvelle fonction
           onFontSizeChange={(size) => onConfigChange({ fontSize: size })}
           onThemeChange={(theme) => onConfigChange({ theme })}
           onFullscreenToggle={handleFullscreenToggle}
         />
       </Box>
 
-      {/* Actions */}
       <Box sx={{ display: { xs: "none", lg: "block" } }}>
         <Actions
           onExport={handleExport}
@@ -634,7 +655,6 @@ export const HeaderZone: React.FC<HeaderZoneProps> = ({
         />
       </Box>
 
-      {/* Mobile responsive menu */}
       <Box
         sx={{
           display: { xs: "flex", md: "none" },

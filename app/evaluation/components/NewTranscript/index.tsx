@@ -1,7 +1,13 @@
 // app/evaluation/components/NewTranscript/index.tsx
-// VERSION AVEC TAGPROVIDER
+// VERSION FINALE CORRIGÉE - Avec synchronisation forcée des tags
 
-import React, { useMemo, useCallback, useEffect, useState } from "react";
+import React, {
+  useMemo,
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+} from "react";
 import { Box, CircularProgress, Alert } from "@mui/material";
 
 import {
@@ -16,8 +22,9 @@ import {
 
 import { useEventManager } from "./core/EventManager";
 import { PostitProvider } from "./core/providers/PostitProvider";
-import { createTagProvider } from "./core/providers/TagProvider"; // ✅ NOUVEAU
+import { createRealTagProvider } from "./core/providers/TagProvider";
 import { useCallData } from "@/context/CallDataContext";
+import { useTaggingData } from "@/context/TaggingDataContext";
 import { useAudio } from "@/context/AudioContext";
 
 // Import SpeakerUtils pour la correction
@@ -25,7 +32,7 @@ import { getSpeakerType, getSpeakerDisplayName } from "@/utils/SpeakerUtils";
 
 // Import des zones
 import HeaderZone from "./components/HeaderZone";
-import TimelineZone from "./components/TimelineZone";
+import TimelineZone from "./components/Timeline";
 import TranscriptZone, {
   useTranscriptSync,
   useTranscriptNavigation,
@@ -51,7 +58,7 @@ const TranscriptSkeleton: React.FC = () => (
 // Fonction pour convertir les transcriptions au format Word[]
 const convertTranscriptionToWords = (transcription: any): Word[] => {
   if (!transcription || !transcription.words) {
-    console.warn("⚠️ Aucune transcription disponible");
+    console.warn("Aucune transcription disponible");
     return [];
   }
 
@@ -72,25 +79,17 @@ const convertTranscriptionToWords = (transcription: any): Word[] => {
       };
     });
 
-    console.log("🔍 DEBUG SPEAKERS APRÈS CONVERSION:");
-    console.log("Total words:", converted.length);
-
-    const speakers = new Set(converted.map((w: Word) => w.speaker));
-    console.log("Unique speakers:", Array.from(speakers));
-
     return converted;
   } catch (error) {
-    console.error("❌ Erreur conversion transcription:", error);
+    console.error("Erreur conversion transcription:", error);
     return [];
   }
 };
 
-// Composant principal NewTranscript avec TagProvider
+// Composant principal NewTranscript - VERSION FINALE CORRIGÉE
 export const NewTranscript: React.FC<NewTranscriptProps> = ({
   callId,
   config: userConfig,
-
-  // Props de compatibilité avec l'ancien système
   hideHeader = false,
   highlightTurnOne,
   transcriptSelectionMode,
@@ -99,20 +98,62 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
   viewMode,
   ...legacyProps
 }) => {
+  // Refs pour éviter les boucles
+  const providersRegisteredRef = useRef(false);
+  const lastCallIdRef = useRef<string | null>(null);
+
+  // Contextes
+  const { appelPostits, addPostit, updatePostit, deletePostit, transcription } =
+    useCallData();
+
   const {
-    appelPostits,
-    addPostit,
-    updatePostit,
-    deletePostit,
-    transcription,
-    selectedCall,
-  } = useCallData();
+    selectedTaggingCall,
+    taggedTurns,
+    tags,
+    addTag,
+    deleteTurnTag,
+    fetchTaggedTurns,
+  } = useTaggingData();
 
   const { currentTime, duration, seekTo } = useAudio();
 
-  console.log("🔄 NewTranscript with TagProvider initializing:", callId);
+  // DEBUG CRITIQUE - Ajout immédiat pour vérifier la synchronisation
+  console.log("🔍 NOUVELLE VERSION DEBUG SYNC:", {
+    newTranscriptCallId: callId,
+    selectedTaggingCallId: selectedTaggingCall?.callid,
+    taggedTurnsInContext: taggedTurns.length,
+    tagsDefinitions: tags.length,
+    areCallIdsSynced: callId === selectedTaggingCall?.callid,
+  });
 
-  // Configuration finale (merge user config + legacy props + defaults)
+  // SYNCHRONISATION FORCÉE - Si pas synchronisé, charger les tags
+  useEffect(() => {
+    if (!callId || callId === "undefined" || callId === "null") return;
+
+    // Si l'appel n'est pas le même que celui du contexte de tagging
+    if (selectedTaggingCall?.callid !== callId) {
+      console.log(
+        `🔄 SYNC FORCÉE - CallId désynchronisé, force le chargement: ${callId}`
+      );
+
+      // Forcer le fetch des tags pour ce callId
+      if (fetchTaggedTurns) {
+        fetchTaggedTurns(callId)
+          .then(() => {
+            console.log(`✅ SYNC FORCÉE - Tags chargés pour callId ${callId}`);
+          })
+          .catch((err) => {
+            console.error(`❌ SYNC FORCÉE - Erreur chargement tags:`, err);
+          });
+      } else {
+        console.error("❌ SYNC FORCÉE - fetchTaggedTurns non disponible");
+      }
+    } else {
+      console.log(`✅ SYNC OK - CallIds synchronisés: ${callId}`);
+    }
+  }, [callId, selectedTaggingCall?.callid, fetchTaggedTurns]);
+
+  // Configuration STABLE
   const config = useMemo((): TranscriptConfig => {
     const legacyConfig = convertLegacyToConfig({
       viewMode,
@@ -129,30 +170,26 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
       audioSrc: userConfig?.audioSrc || "",
     };
   }, [
-    userConfig,
+    userConfig?.mode,
+    userConfig?.audioSrc,
     viewMode,
     transcriptSelectionMode,
     isSpectatorMode,
     highlightTurnOne,
   ]);
 
-  // État pour la configuration dynamique
   const [dynamicConfig, setDynamicConfig] = useState<TranscriptConfig>(config);
 
-  // Event Manager
-  const {
-    eventManager,
-    events,
-    loading,
-    error,
-    createEvent,
-    updateEvent,
-    deleteEvent,
-    refetch,
-  } = useEventManager(callId, dynamicConfig);
+  // Event Manager STABLE
+  const { eventManager, events, loading, error, refetch } = useEventManager(
+    callId,
+    dynamicConfig
+  );
 
-  // ✅ PostitProvider (existant)
+  // PostitProvider STABLE
   const postitProvider = useMemo(() => {
+    console.log("Création PostitProvider (une seule fois)");
+
     return new PostitProvider({
       getAppelPostits: async (cid: string) => {
         const n = Number(cid);
@@ -170,7 +207,20 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
         }));
       },
       createPostit: addPostit
-        ? (p) => addPostit(p.wordid || 0, p.word || "", p.timestamp || 0, p)
+        ? async (p) => {
+            await addPostit(p.wordid || 0, p.word || "", p.timestamp || 0);
+            // Retourner un objet compatible avec PostitProvider
+            return {
+              id: Date.now(), // ID temporaire
+              callid: Number(callId) || 0,
+              wordid: p.wordid || 0,
+              word: p.word || "",
+              text: p.text || "",
+              sujet: p.sujet || "Autre",
+              timestamp: p.timestamp || 0,
+              pratique: p.pratique || "",
+            };
+          }
         : undefined,
       updatePostit: updatePostit
         ? (id, u) => updatePostit(id, u as any)
@@ -190,96 +240,166 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
         return colorMap[s] ?? "#ff6b6b";
       },
     });
-  }, [appelPostits, transcription, addPostit, updatePostit, deletePostit]);
+  }, []);
 
-  // ✅ NOUVEAU: TagProvider
-  const tagProvider = useMemo(() => {
-    return createTagProvider({
-      getTaggedTurns: async (cid: string) => {
-        console.log(`🏷️ Loading tags for call ${cid}`);
+  // TagProvider STABLE - Maintenant avec les données synchronisées
+  const realTagProvider = useMemo(() => {
+    console.log("Création TagProvider (une seule fois)");
 
-        // TODO: Intégrer avec TaggingDataContext quand disponible
-        // Pour l'instant, données de démonstration
-        return [
-          {
-            id: "tag-1",
-            tag: "réclamation",
-            verbatim: "J'ai un problème avec mon compte",
-            start_time: 15,
-            end_time: 18,
-            speaker: "Client",
-            color: "#dc2626",
-          },
-          {
-            id: "tag-2",
-            tag: "positif",
-            verbatim: "Merci beaucoup pour votre aide",
-            start_time: 45,
-            end_time: 47,
-            speaker: "Client",
-            color: "#22c55e",
-          },
-          {
-            id: "tag-3",
-            tag: "technique",
-            verbatim: "Je vais vérifier les paramètres",
-            start_time: 80,
-            end_time: 83,
-            speaker: "Conseiller",
-            color: "#7c3aed",
-          },
-        ];
+    return createRealTagProvider(
+      // Lecture depuis le contexte (synchronisé par useEffect)
+      (targetCallId: string) => {
+        const currentTaggedTurns = taggedTurns || [];
+        const filtered = currentTaggedTurns.filter(
+          (turn) => String(turn.call_id) === String(targetCallId)
+        );
+        console.log(
+          `getTaggedTurns(${targetCallId}): ${filtered.length} turns trouvés`
+        );
+        return filtered;
       },
-    });
-  }, [callId]);
 
-  // ✅ Enregistrement des providers selon le mode
-  // Enregistrement des providers selon le mode
+      () => {
+        const currentTags = tags || [];
+        console.log(`getTags(): ${currentTags.length} définitions de tags`);
+        return currentTags;
+      },
+
+      // CRUD operations
+      addTag
+        ? async (newTag) => {
+            console.log("Création tag via TaggingDataContext:", newTag);
+            return await addTag(newTag);
+          }
+        : undefined,
+
+      undefined, // updateTag
+
+      deleteTurnTag
+        ? async (id) => {
+            console.log("Suppression tag via TaggingDataContext:", id);
+            await deleteTurnTag(String(id));
+          }
+        : undefined
+    );
+  }, [taggedTurns, tags, addTag, deleteTurnTag]); // Dépendances ajoutées pour re-créer quand les données changent
+
+  // Enregistrement des providers - VERSION CORRIGÉE
   useEffect(() => {
-    if (!eventManager) return;
-
-    console.log("🔧 Registering providers for mode:", dynamicConfig.mode);
-
-    // ✅ NETTOYER d'abord tous les providers
-    eventManager.destroy();
-
-    // ✅ Enregistrer SEULEMENT le bon provider selon le mode
-    if (dynamicConfig.mode === "evaluation") {
-      eventManager.registerProvider(postitProvider);
-      console.log("📝 PostitProvider ONLY registered");
-    } else if (dynamicConfig.mode === "tagging") {
-      eventManager.registerProvider(tagProvider);
-      console.log("🏷️ TagProvider ONLY registered");
-    } else if (dynamicConfig.mode === "analysis") {
-      eventManager.registerProvider(postitProvider);
-      eventManager.registerProvider(tagProvider);
-      console.log("📝🏷️ Both providers registered");
-    } else if (dynamicConfig.mode === "spectator") {
-      eventManager.registerProvider(postitProvider);
-      eventManager.registerProvider(tagProvider);
-      console.log("👁️ Both providers registered (read-only)");
+    if (!eventManager) {
+      console.log("EventManager pas encore prêt");
+      return;
     }
 
-    refetch();
-  }, [eventManager, postitProvider, tagProvider, dynamicConfig.mode, refetch]);
+    // VALIDATION STRICTE du callId
+    if (
+      !callId ||
+      callId === "undefined" ||
+      callId === "null" ||
+      !callId.trim()
+    ) {
+      console.log(
+        "CallId invalide, pas d'enregistrement de providers:",
+        callId
+      );
+      // Reset si callId devient invalide
+      if (providersRegisteredRef.current) {
+        eventManager.destroy();
+        providersRegisteredRef.current = false;
+      }
+      return;
+    }
 
-  // Conversion des vraies transcriptions au format Word[]
+    // Éviter re-enregistrement pour le même callId ET même mode
+    const registrationKey = `${callId}-${dynamicConfig.mode}`;
+    if (
+      providersRegisteredRef.current &&
+      lastCallIdRef.current === registrationKey
+    ) {
+      console.log("Providers déjà enregistrés pour ce callId+mode");
+      return;
+    }
+
+    console.log(
+      `Enregistrement providers pour callId: ${callId}, mode: ${dynamicConfig.mode}`
+    );
+
+    // Nettoyer les anciens providers
+    eventManager.destroy();
+
+    // Enregistrer selon le mode
+    if (dynamicConfig.mode === "evaluation") {
+      eventManager.registerProvider(postitProvider);
+      console.log("PostitProvider enregistré (mode evaluation)");
+    } else if (dynamicConfig.mode === "tagging") {
+      eventManager.registerProvider(realTagProvider);
+      console.log("TagProvider enregistré (mode tagging)");
+    } else if (dynamicConfig.mode === "analysis") {
+      eventManager.registerProvider(postitProvider);
+      eventManager.registerProvider(realTagProvider);
+      console.log("PostitProvider + TagProvider enregistrés (mode analysis)");
+    } else if (dynamicConfig.mode === "spectator") {
+      eventManager.registerProvider(postitProvider);
+      eventManager.registerProvider(realTagProvider);
+      console.log("Providers enregistrés (mode spectator)");
+    }
+
+    // Marquer comme enregistré
+    providersRegisteredRef.current = true;
+    lastCallIdRef.current = registrationKey;
+
+    // Charger les événements avec un délai pour permettre la synchronisation
+    console.log("Chargement événements après enregistrement providers...");
+
+    // Petit délai pour permettre à la synchronisation forcée de se terminer
+    setTimeout(() => {
+      refetch()
+        .then(() => {
+          console.log("Événements chargés avec succès");
+        })
+        .catch((err) => {
+          console.error("Erreur chargement événements:", err);
+        });
+    }, 100);
+
+    // Cleanup
+    return () => {
+      console.log("Nettoyage enregistrement providers");
+      providersRegisteredRef.current = false;
+    };
+  }, [
+    eventManager,
+    callId,
+    dynamicConfig.mode,
+    postitProvider,
+    realTagProvider,
+    refetch,
+  ]);
+
+  // Reset providers quand callId change
+  useEffect(() => {
+    const newKey = `${callId}-${dynamicConfig.mode}`;
+    if (lastCallIdRef.current !== newKey) {
+      console.log(`CallId/Mode changé: ${lastCallIdRef.current} → ${newKey}`);
+      providersRegisteredRef.current = false; // Forcer re-enregistrement
+    }
+  }, [callId, dynamicConfig.mode]);
+
+  // Transcription conversion STABLE
   const realTranscription = useMemo(() => {
     return convertTranscriptionToWords(transcription);
   }, [transcription]);
 
-  // Synchronisation transcript-audio avec les vraies données
-  const { currentWordIndex, currentTurnStats, progressPercentage } =
-    useTranscriptSync(realTranscription, currentTime);
-
-  // Navigation dans le transcript avec vraie fonction seekTo
-  const { goToWord, goToNextWord, goToPreviousWord, canGoNext, canGoPrevious } =
-    useTranscriptNavigation(realTranscription, currentWordIndex, seekTo);
+  // Synchronisation transcript-audio
+  const { currentWordIndex, currentTurnStats } = useTranscriptSync(
+    realTranscription,
+    currentTime
+  );
 
   // Handlers des interactions
   const handleEventClick = useCallback(
     (event: TemporalEvent) => {
-      console.log("📍 Event clicked:", event);
+      console.log("Événement cliqué:", event);
       seekTo(event.startTime);
     },
     [seekTo]
@@ -287,19 +407,19 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
 
   const handleWordClick = useCallback(
     (word: Word) => {
-      console.log("📝 Word clicked:", word);
+      console.log("Mot cliqué:", word);
       seekTo(word.start_time);
     },
     [seekTo]
   );
 
   const handleTextSelection = useCallback((selection: TextSelection) => {
-    console.log("📄 Text selected:", selection);
+    console.log("Texte sélectionné:", selection);
   }, []);
 
   const handleTimelineClick = useCallback(
     (time: number) => {
-      console.log("⏰ Timeline clicked at time:", time);
+      console.log("Timeline cliquée au temps:", time);
       seekTo(time);
     },
     [seekTo]
@@ -307,10 +427,15 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
 
   const handleConfigChange = useCallback(
     (newConfig: Partial<TranscriptConfig>) => {
-      console.log("⚙️ Config change:", newConfig);
+      console.log("Changement config:", newConfig);
       setDynamicConfig((prev) => ({ ...prev, ...newConfig }));
+
+      // Si le mode change, forcer re-enregistrement des providers
+      if (newConfig.mode && newConfig.mode !== dynamicConfig.mode) {
+        providersRegisteredRef.current = false;
+      }
     },
-    []
+    [dynamicConfig.mode]
   );
 
   // Gestion des états d'erreur et chargement
@@ -332,15 +457,16 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
     return <TranscriptSkeleton />;
   }
 
-  if (!callId) {
+  // VALIDATION: Pas d'affichage si callId invalide
+  if (!callId || callId === "undefined" || callId === "null") {
     return (
-      <Alert severity="warning" sx={{ margin: 2 }}>
-        CallId requis pour NewTranscript
+      <Alert severity="info" sx={{ margin: 2 }}>
+        <Box sx={{ fontWeight: "bold" }}>Aucun appel sélectionné</Box>
+        <Box>Veuillez sélectionner un appel pour utiliser NewTranscript</Box>
       </Alert>
     );
   }
 
-  // Si pas de transcription, afficher un message informatif
   if (!realTranscription.length) {
     return (
       <Alert severity="info" sx={{ margin: 2 }}>
@@ -363,7 +489,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
         backgroundColor: "background.default",
       }}
     >
-      {/* Zone Header - Contrôles audio et infos */}
+      {/* Zone Header */}
       {!hideHeader && (
         <HeaderZone
           callId={callId}
@@ -373,7 +499,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
         />
       )}
 
-      {/* Zone Timeline - Événements temporels */}
+      {/* Zone Timeline */}
       {dynamicConfig.timelineMode !== "hidden" && (
         <TimelineZone
           events={events}
@@ -385,7 +511,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
         />
       )}
 
-      {/* Zone Transcript - Texte principal avec vraies données */}
+      {/* Zone Transcript */}
       <TranscriptZone
         transcription={realTranscription}
         events={events}
@@ -396,7 +522,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
         onEventClick={handleEventClick}
       />
 
-      {/* Zone Controls - Outils bas */}
+      {/* Zone Controls */}
       {dynamicConfig.layout.showControls && (
         <Box
           sx={{
@@ -412,7 +538,7 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
           }}
         >
           <Box sx={{ display: "flex", gap: 2 }}>
-            <span>🎛️ Mode: {dynamicConfig.mode}</span>
+            <span>Mode: {dynamicConfig.mode}</span>
             {currentTurnStats && (
               <span>
                 {currentTurnStats.speaker} •
@@ -423,17 +549,15 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
 
           <Box sx={{ display: "flex", gap: 2 }}>
             <span>
-              📝 Post-its: {events.filter((e) => e.type === "postit").length}
+              Post-its: {events.filter((e) => e.type === "postit").length}
             </span>
-            <span>
-              🏷️ Tags: {events.filter((e) => e.type === "tag").length}
-            </span>
-            <span>📊 Total: {events.length} événements</span>
+            <span>Tags: {events.filter((e) => e.type === "tag").length}</span>
+            <span>Total: {events.length} événements</span>
           </Box>
         </Box>
       )}
 
-      {/* Debug Panel (développement uniquement) */}
+      {/* Debug Panel amélioré */}
       {process.env.NODE_ENV === "development" && (
         <Box
           sx={{
@@ -445,57 +569,27 @@ export const NewTranscript: React.FC<NewTranscriptProps> = ({
               theme.palette.mode === "dark"
                 ? "rgba(255,255,255,0.1)"
                 : "rgba(0,0,0,0.8)",
-            color: (theme) =>
-              theme.palette.mode === "dark" ? "white" : "white",
+            color: "white",
             borderRadius: 1,
             fontSize: "0.7rem",
             maxWidth: 350,
             zIndex: 9999,
             backdropFilter: "blur(10px)",
-            border: (theme) => `1px solid ${theme.palette.divider}`,
           }}
         >
-          <div>🚀 NewTranscript with TagProvider</div>
+          <div>🚀 NewTranscript FINAL - CallId: {callId || "NONE"}</div>
           <div>Mode: {dynamicConfig.mode}</div>
-          <div>Current Time: {currentTime.toFixed(1)}s</div>
+          <div>Events: {events.length}</div>
+          <div>Providers: {providersRegisteredRef.current ? "✅" : "❌"}</div>
+          <div>TaggedTurns: {taggedTurns.length}</div>
+          <div>Tags definitions: {tags.length}</div>
           <div>
-            Events: {events.length} (
-            {events.filter((e) => e.type === "postit").length} post-its,{" "}
-            {events.filter((e) => e.type === "tag").length} tags)
-          </div>
-          <div>
-            Providers: PostitProvider +{" "}
-            {["tagging", "analysis", "spectator"].includes(dynamicConfig.mode)
-              ? "TagProvider"
-              : "TagProvider (disabled)"}
+            Sync: {callId === selectedTaggingCall?.callid ? "✅" : "❌"}
           </div>
         </Box>
       )}
     </Box>
   );
-};
-
-// Hook utilitaire pour la migration avec TagProvider
-export const useNewTranscriptMigration = (enabled: boolean = false) => {
-  return {
-    isEnabled: enabled,
-    version: "2.0.0-with-tags",
-    migrationPhase: 2,
-    features: {
-      eventManager: true,
-      postitProvider: true,
-      tagProvider: true, // ✅ NOUVEAU
-      headerZone: true,
-      timelineZone: true,
-      transcriptZone: true,
-      controlsZone: false,
-      realTimeSync: true,
-      audioIntegration: true,
-      realTranscriptions: true,
-      speakerDetection: true,
-      multiMode: true, // ✅ Support multiple modes
-    },
-  };
 };
 
 export default NewTranscript;

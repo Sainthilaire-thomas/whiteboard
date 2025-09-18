@@ -1,4 +1,5 @@
-// app/evaluation/Evaluation.tsx - Intégration NewTranscript
+// app/evaluation/Evaluation.tsx - CORRECTION MINIMALE
+// Garde l'architecture existante, évite juste le chargement prématuré
 
 "use client";
 
@@ -116,6 +117,18 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
   } = useAppContext();
 
   const { filteredDomains } = useFilteredDomains(selectedEntreprise);
+
+  // NOUVEAU: Condition pour activer NewTranscript
+  const canUseNewTranscript = useMemo(() => {
+    return (
+      useNewTranscript &&
+      selectedCall &&
+      selectedCall.callid &&
+      String(selectedCall.callid).trim() !== "" &&
+      !isNaN(Number(selectedCall.callid)) &&
+      Number(selectedCall.callid) > 0
+    );
+  }, [useNewTranscript, selectedCall]);
 
   // Fonctions existantes (conservées)
   const toggleHighlightTurnOne = useCallback(() => {
@@ -266,10 +279,11 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
   const validatedTranscriptMode =
     EvaluationHelpers.validateTranscriptSelectionMode(transcriptSelectionMode);
 
-  // NOUVEAU: Configuration pour NewTranscript
+  // NOUVEAU: Configuration pour NewTranscript (seulement si validé)
   const newTranscriptConfig = useMemo(() => {
+    if (!canUseNewTranscript) return null;
+
     return applyConfigPreset("evaluationTurns", {
-      // ✅ Utiliser le preset turns
       audioSrc: selectedCall?.audiourl || "",
       fontSize: fontSize,
       interactions: {
@@ -288,6 +302,7 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
       },
     });
   }, [
+    canUseNewTranscript,
     selectedCall?.audiourl,
     fontSize,
     transcriptSelectionMode,
@@ -297,7 +312,7 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
   // Effects existants (conservés)
   useEffect(() => {
     resetSelectedState();
-  }, []);
+  }, [resetSelectedState]);
 
   useEffect(() => {
     if (selectedCall) {
@@ -334,11 +349,11 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
             top: 10,
             left: 10,
             zIndex: 10000,
-            backgroundColor: theme.palette.background.paper, // ✅ s'adapte au darkMode
+            backgroundColor: theme.palette.background.paper,
             padding: 1,
             borderRadius: 1,
             boxShadow: 2,
-            border: `2px solid ${theme.palette.primary.main}`, // ✅ utilise la couleur du thème
+            border: `2px solid ${theme.palette.primary.main}`,
           }}
         >
           <FormControlLabel
@@ -351,6 +366,17 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
             }
             label={`NewTranscript ${useNewTranscript ? "ON" : "OFF"}`}
           />
+          {/* Debug info */}
+          <Box sx={{ fontSize: "0.7rem", opacity: 0.7, mt: 1 }}>
+            <div>CanUse: {canUseNewTranscript ? "✅" : "❌"}</div>
+            <div>CallId: {selectedCall?.callid || "NONE"}</div>
+            <div>
+              Valid:{" "}
+              {selectedCall?.callid && !isNaN(Number(selectedCall.callid))
+                ? "✅"
+                : "❌"}
+            </div>
+          </Box>
         </Box>
       )}
 
@@ -406,10 +432,10 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
             flexDirection: "column",
           }}
         >
-          {/* Notification du système actif */}
+          {/* NOUVEAU: Notification conditionnelle du système actif */}
           {useNewTranscript && (
             <Alert
-              severity="info"
+              severity={canUseNewTranscript ? "info" : "warning"}
               sx={{ margin: 1 }}
               action={
                 <FormControlLabel
@@ -424,19 +450,21 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
                 />
               }
             >
-              Nouveau système de transcript actif (Beta)
+              {canUseNewTranscript
+                ? "Nouveau système de transcript actif (Beta)"
+                : "NewTranscript activé mais en attente d'un appel valide"}
             </Alert>
           )}
 
-          {/* NOUVEAU: Choix conditionnel entre NewTranscript et EvaluationTranscript */}
-          {useNewTranscript ? (
+          {/* CORRECTION: Choix conditionnel sécurisé */}
+          {canUseNewTranscript && newTranscriptConfig ? (
             <NewTranscript
-              callId={selectedCall?.callid?.toString() || "demo"}
+              callId={selectedCall.callid.toString()}
               config={newTranscriptConfig}
               // Props de compatibilité avec l'ancien système
-              hideHeader={false} // Header géré par UnifiedHeader
+              hideHeader={false} // GARDÉ: Header géré par NewTranscript lui-même
               viewMode={viewMode}
-              transcriptSelectionMode={validatedTranscriptMode}
+              transcriptSelectionMode={transcriptSelectionMode || undefined}
               isSpectatorMode={false}
               highlightTurnOne={highlightTurnOne}
             />
@@ -452,7 +480,7 @@ function EvaluationContent({ darkMode, setDarkMode }: EvaluationProps) {
               hideHeader={true}
               highlightTurnOne={highlightTurnOne}
               highlightSpeakers={highlightSpeakers}
-              transcriptSelectionMode={validatedTranscriptMode}
+              transcriptSelectionMode={transcriptSelectionMode || undefined}
             />
           )}
         </Box>
