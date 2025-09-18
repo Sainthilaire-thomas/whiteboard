@@ -1,15 +1,16 @@
 // app/evaluation/components/NewTranscript/components/Timeline/index.tsx
-// VERSION REFACTORISÉE - Nettoyée et corrigée
+// VERSION REFACTORISÉE avec barres temporelles
 
 import React, { useRef, useState, useCallback } from "react";
 import { Box, Paper } from "@mui/material";
 import { TemporalEvent } from "../../types";
 import { TimelineProfile, EventTypeConfig } from "./types";
 import { getProfile } from "./profiles";
-import { useElementWidth } from "./hooks/useResizeObserver"; // ✅ Hook créé
+import { useElementWidth } from "./hooks/useResizeObserver";
 import { useTimelineSync } from "./hooks/useTimelineSync";
-import { useImpactAnalysis } from "./hooks/useImpactAnalysis"; // ← NOUVEAU
+import { useImpactAnalysis } from "./hooks/useImpactAnalysis";
 import { useTaggingData } from "@/context/TaggingDataContext";
+
 // Import des composants refactorisés
 import { TimelineHeader } from "./Header/TimelineHeader";
 import { ProgressBar } from "./Progress/ProgressBar";
@@ -28,17 +29,17 @@ interface TimelineZoneProps {
   duration: number;
   config: {
     timelineMode: string;
-    eventTypes?: any[]; // ← Utiliser any[] pour éviter le conflit
+    eventTypes?: any[];
     layout?: {
       showControls?: boolean;
     };
   };
-  onEventClick: (event: TemporalEvent) => void;
+  onEventClick: (event: TemporalEvent | any) => void; // ← Élargi pour accepter TaggedTurn
   onTimelineClick: (time: number) => void;
 }
 
 /**
- * TimelineZone refactorisée - Version propre
+ * TimelineZone refactorisée - Version avec barres temporelles
  */
 export function TimelineZone({
   events,
@@ -50,7 +51,7 @@ export function TimelineZone({
 }: TimelineZoneProps) {
   // Refs et state locaux
   const timelineRef = useRef<HTMLDivElement>(null);
-  const width = useElementWidth(timelineRef); // ✅ Utilise le vrai hook
+  const width = useElementWidth(timelineRef);
   const [hoveredEvent, setHoveredEvent] = useState<TemporalEvent | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<
     Record<string, boolean>
@@ -61,23 +62,52 @@ export function TimelineZone({
 
   // Synchronisation avec l'audio
   const syncData = useTimelineSync(events, currentTime);
-  const { tags } = useTaggingData();
-  // Analyse d'impact si mode impact
+
+  // ✅ MODIFICATION PRINCIPALE : Utiliser taggedTurns pour le mode impact
+  const { tags, taggedTurns } = useTaggingData();
   const impactAnalysis = useImpactAnalysis(
-    config.timelineMode === "impact" ? events : [],
+    config.timelineMode === "impact" ? taggedTurns : [],
     tags
   );
-  console.log("🎯 TIMELINE ZONE:", {
+
+  // ✅ LOG DE DÉBOGAGE AMÉLIORÉ
+  console.log("🎯 TIMELINE ZONE (BARS):", {
     mode: config.timelineMode,
     events: events.length,
+    taggedTurns: taggedTurns.length,
     tags: tags.length,
     impactPairs: impactAnalysis.adjacentPairs.length,
+    avgGap: impactAnalysis.metrics.avgTimeDelta.toFixed(1) + "s",
   });
-  // Handlers
+
+  // ✅ HANDLERS MODIFIÉS pour gérer TaggedTurn et TemporalEvent
   const handleEventClick = useCallback(
-    (event: TemporalEvent) => {
-      console.log("Timeline event clicked:", event);
-      onEventClick(event);
+    (eventOrTurn: any) => {
+      // Gérer les clics sur tours taggés (mode impact) ou événements classiques
+      if (eventOrTurn.start_time !== undefined) {
+        // C'est un TaggedTurn, créer un événement temporel compatible
+        const temporalEvent = {
+          id: eventOrTurn.id,
+          type: "turn",
+          startTime: eventOrTurn.start_time,
+          endTime: eventOrTurn.end_time,
+          data: {
+            speaker: eventOrTurn.speaker,
+            transcript: eventOrTurn.transcript,
+            tag: eventOrTurn.tags?.[0]?.tag,
+          },
+          metadata: {
+            speaker: eventOrTurn.speaker,
+          },
+        };
+
+        console.log("Timeline turn clicked:", temporalEvent);
+        onEventClick(temporalEvent);
+      } else {
+        // Événement temporal classique
+        console.log("Timeline event clicked:", eventOrTurn);
+        onEventClick(eventOrTurn);
+      }
     },
     [onEventClick]
   );
@@ -139,8 +169,8 @@ export function TimelineZone({
         return headerHeight + progressHeight + layerBaseHeight * 2;
       case "expanded":
         return headerHeight + progressHeight + layerBaseHeight * 3;
-      case "impact": // ← AJOUTER CETTE LIGNE
-        return 180;
+      case "impact":
+        return 180; // Hauteur fixe pour mode impact avec barres
       default:
         return headerHeight + progressHeight + layerBaseHeight;
     }
@@ -148,13 +178,13 @@ export function TimelineZone({
 
   const totalHeight = calculateTotalHeight();
 
-  // Mode impact - rendu spécialisé
+  // ✅ MODE IMPACT - Rendu spécialisé avec barres temporelles
   if (config.timelineMode === "impact") {
     return (
       <Paper
         ref={timelineRef}
         sx={{
-          height: 180, // Fixe pour le mode impact
+          height: 180,
           borderBottom: "1px solid",
           borderColor: "divider",
           backgroundColor: "background.paper",
@@ -171,7 +201,7 @@ export function TimelineZone({
           onEventClick={handleEventClick}
         />
 
-        {/* Curseur temporel global pour mode impact */}
+        {/* ✅ Curseur temporel global pour mode impact */}
         {duration > 0 && width > 0 && (
           <TimelineCursor
             currentTime={currentTime}
@@ -181,16 +211,26 @@ export function TimelineZone({
           />
         )}
 
-        {/* Zone cliquable pour navigation temporelle */}
+        {/* ✅ Zone cliquable pour navigation temporelle - version améliorée */}
         <Box
           sx={{
             position: "absolute",
             bottom: 0,
             left: 16,
             right: 16,
-            height: 20,
+            height: 24,
             cursor: "pointer",
             zIndex: 5,
+            backgroundColor: "transparent",
+            "&:hover": {
+              backgroundColor: "rgba(0,0,0,0.02)",
+              borderRadius: "4px",
+            },
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "10px",
+            color: "text.disabled",
           }}
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -198,10 +238,13 @@ export function TimelineZone({
             const time = (x / (width - 32)) * duration;
             handleTimelineClick(time);
           }}
-        />
+        >
+          Cliquez pour naviguer dans le temps
+        </Box>
       </Paper>
     );
   }
+
   // Mode minimal - juste la barre de progression
   if (config.timelineMode === "minimal") {
     return (
@@ -308,6 +351,8 @@ export function TimelineZone({
           {config.timelineMode}
           {syncData.hasActiveEvents &&
             ` • ${syncData.activeEvents.length} actifs`}
+          {config.timelineMode === "impact" &&
+            ` • ${impactAnalysis.adjacentPairs.length}P • ${impactAnalysis.metrics.efficiencyRate}%`}
         </Box>
       )}
 
@@ -337,6 +382,12 @@ export function TimelineZone({
               <span>
                 {" "}
                 • Suivant: {Math.round(syncData.timeUntilNext || 0)}s
+              </span>
+            )}
+            {config.timelineMode === "impact" && (
+              <span>
+                {" "}
+                • Gap moy: {impactAnalysis.metrics.avgTimeDelta.toFixed(1)}s
               </span>
             )}
           </Box>

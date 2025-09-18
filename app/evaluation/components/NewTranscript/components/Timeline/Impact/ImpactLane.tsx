@@ -1,9 +1,8 @@
 import React from "react";
 import { Box } from "@mui/material";
 import { AdjacentPair } from "../hooks/useImpactAnalysis";
-import { timeToPosition } from "../utils/time";
-import { ConseillerMarker } from "../Layers/markers/ConseillerMarker";
-import { ClientMarker } from "../Layers/markers/ClientMarker";
+import { calculateTurnMetrics } from "../utils/turnMetrics";
+import { TurnBarMarker } from "../Impact/TurnBarMarker";
 
 interface ImpactLaneProps {
   level: "positive" | "central" | "negative";
@@ -11,7 +10,7 @@ interface ImpactLaneProps {
   pairs: AdjacentPair[];
   width: number;
   duration: number;
-  onEventClick: (event: any) => void;
+  onEventClick: (turn: any) => void;
   backgroundColor?: string;
   showAllConseillers?: boolean;
   label?: string;
@@ -28,6 +27,9 @@ export const ImpactLane: React.FC<ImpactLaneProps> = ({
   showAllConseillers = false,
   label,
 }) => {
+  // Hauteur des barres selon le niveau
+  const barHeight = 30; // Augmenté pour les barres temporelles
+
   // Éviter les doublons de conseillers sur la ligne centrale
   const uniqueConseillers = showAllConseillers
     ? pairs.reduce((acc, pair) => {
@@ -42,30 +44,33 @@ export const ImpactLane: React.FC<ImpactLaneProps> = ({
     <Box
       sx={{
         position: "absolute",
-        top: y - 8,
+        top: y - barHeight / 2,
         left: 16,
         width: width - 32,
-        height: 16,
+        height: barHeight,
         backgroundColor,
         borderRadius: 1,
         border: level !== "central" ? "1px solid rgba(0,0,0,0.05)" : "none",
       }}
     >
-      {/* Afficher les événements conseiller (seulement sur ligne centrale) */}
+      {/* Afficher les tours conseiller (seulement sur ligne centrale) */}
       {(level === "central" || showAllConseillers) &&
         uniqueConseillers.map((pair) => {
-          const x = timeToPosition(
-            pair.conseiller.startTime,
+          const metrics = calculateTurnMetrics(
+            pair.conseiller,
             duration,
             width - 32
           );
+
           return (
-            <ConseillerMarker
+            <TurnBarMarker
               key={`conseiller-${pair.conseiller.id}`}
-              event={pair.conseiller}
+              turn={pair.conseiller}
               strategy={pair.conseillerStrategy}
-              x={x}
-              y={8}
+              x={metrics.x}
+              width={metrics.width}
+              y={barHeight / 2 - 13} // Centrer verticalement
+              height={26}
               onClick={onEventClick}
             />
           );
@@ -82,14 +87,17 @@ export const ImpactLane: React.FC<ImpactLaneProps> = ({
         if (level === "negative" && pair.clientReaction !== "negative")
           return null;
 
-        const x = timeToPosition(pair.client.startTime, duration, width - 32);
+        const metrics = calculateTurnMetrics(pair.client, duration, width - 32);
+
         return (
-          <ClientMarker
+          <TurnBarMarker
             key={`client-${pair.client.id}`}
-            event={pair.client}
+            turn={pair.client}
             reaction={pair.clientReaction}
-            x={x}
-            y={8}
+            x={metrics.x}
+            width={metrics.width}
+            y={barHeight / 2 - 13} // Centrer verticalement
+            height={26}
             onClick={onEventClick}
             isCoherent={pair.isCoherent}
           />
@@ -107,16 +115,36 @@ export const ImpactLane: React.FC<ImpactLaneProps> = ({
             backgroundColor: level === "positive" ? "#12d9c2" : "#e2330d",
             color: "white",
             borderRadius: "50%",
-            width: 16,
-            height: 16,
+            width: 20, // Légèrement plus grand
+            height: 20,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "10px",
+            fontSize: "11px",
             fontWeight: "bold",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
           }}
         >
           {pairs.length}
+        </Box>
+      )}
+
+      {/* Label du niveau (optionnel) */}
+      {label && (
+        <Box
+          sx={{
+            position: "absolute",
+            left: -60,
+            top: "50%",
+            transform: "translateY(-50%)",
+            fontSize: "10px",
+            color: "text.secondary",
+            fontWeight: "bold",
+            writingMode: "vertical-rl",
+            textOrientation: "mixed",
+          }}
+        >
+          {label}
         </Box>
       )}
     </Box>

@@ -1,15 +1,14 @@
 import { useMemo } from "react";
-import { TemporalEvent } from "../../../types";
-import { Tag } from "@/context/TaggingDataContext";
+import { TaggedTurn, Tag } from "@/context/TaggingDataContext";
 
 export interface AdjacentPair {
   id: string;
-  conseiller: TemporalEvent;
-  client: TemporalEvent;
+  conseiller: TaggedTurn;
+  client: TaggedTurn;
   conseillerStrategy: "positive" | "negative" | "neutral";
   clientReaction: "positive" | "negative" | "neutral";
-  isCoherent: boolean; // stratégie positive → réaction positive
-  timeDelta: number;
+  isCoherent: boolean;
+  timeDelta: number; // Gap réel entre fin conseiller et début client
 }
 
 export interface ImpactMetrics {
@@ -18,33 +17,33 @@ export interface ImpactMetrics {
   negativeImpacts: number;
   neutralImpacts: number;
   coherentImpacts: number;
-  efficiencyRate: number; // % impacts cohérents
+  efficiencyRate: number;
   avgTimeDelta: number;
 }
 
 export const useImpactAnalysis = (
-  events: TemporalEvent[],
+  taggedTurns: TaggedTurn[],
   tags: Tag[]
 ): { adjacentPairs: AdjacentPair[]; metrics: ImpactMetrics } => {
   return useMemo(() => {
     console.log(
       "🎯 IMPACT ANALYSIS: Analysing",
-      events.length,
-      "events with",
+      taggedTurns.length,
+      "tagged turns with",
       tags.length,
       "tag definitions"
     );
 
-    // 1. Filtrer événements pertinents (exclure famille AUTRES)
-    const relevantEvents = filterRelevantEvents(events, tags);
+    // 1. Filtrer tours pertinents (avec tags valides)
+    const relevantTurns = filterRelevantTurns(taggedTurns, tags);
     console.log(
       "🎯 IMPACT ANALYSIS: Filtered to",
-      relevantEvents.length,
-      "relevant events"
+      relevantTurns.length,
+      "relevant turns"
     );
 
     // 2. Identifier paires adjacentes conseiller → client
-    const adjacentPairs = findAdjacentPairs(relevantEvents, tags);
+    const adjacentPairs = findAdjacentPairs(relevantTurns, tags);
     console.log(
       "🎯 IMPACT ANALYSIS: Found",
       adjacentPairs.length,
@@ -59,64 +58,77 @@ export const useImpactAnalysis = (
     );
 
     return { adjacentPairs, metrics };
-  }, [events, tags]);
+  }, [taggedTurns, tags]);
 };
 
 // Fonctions utilitaires
-const filterRelevantEvents = (
-  events: TemporalEvent[],
+const filterRelevantTurns = (
+  turns: TaggedTurn[],
   tags: Tag[]
-): TemporalEvent[] => {
-  return events.filter((event) => {
-    const tag = tags.find(
-      (t) => t.label === event.data?.tag || t.tag === event.data?.tag
-    );
-    const isRelevant = tag && tag.family !== "AUTRES";
-    if (!isRelevant && event.data?.tag) {
+): TaggedTurn[] => {
+  return turns.filter((turn) => {
+    // ✅ CORRECTION: Utiliser turn.tag au lieu de turn.tags
+    if (!turn.tag) return false;
+
+    // Vérifier que le tag est pertinent
+    const tagDef = tags.find((t) => t.label === turn.tag || t.tag === turn.tag);
+
+    const isRelevant = tagDef && tagDef.family !== "AUTRES";
+
+    if (!isRelevant && turn.tag) {
       console.log(
         "🔍 FILTERING OUT:",
-        event.data.tag,
+        turn.tag,
         "- family:",
-        tag?.family || "not found"
+        tagDef?.family || "not found"
       );
     }
+
     return isRelevant;
   });
 };
 
-const isConseillerEvent = (event: TemporalEvent, tags: Tag[]): boolean => {
-  const tag = tags.find(
-    (t) => t.label === event.data?.tag || t.tag === event.data?.tag
-  );
+const isConseillerTurn = (turn: TaggedTurn, tags: Tag[]): boolean => {
+  // ✅ CORRECTION: Utiliser turn.tag au lieu de turn.tags
+  if (!turn.tag) return false;
+
+  const tagDef = tags.find((t) => t.label === turn.tag || t.tag === turn.tag);
+
   return (
-    tag?.originespeaker === "conseiller" &&
+    tagDef?.originespeaker === "conseiller" &&
     ["REFLET", "ENGAGEMENT", "OUVERTURE", "EXPLICATION"].includes(
-      tag.family || ""
+      tagDef.family || ""
     )
   );
 };
 
-const isClientEvent = (event: TemporalEvent, tags: Tag[]): boolean => {
-  const tag = tags.find(
-    (t) => t.label === event.data?.tag || t.tag === event.data?.tag
-  );
-  return tag?.originespeaker === "client" && tag.family === "CLIENT";
+const isClientTurn = (turn: TaggedTurn, tags: Tag[]): boolean => {
+  // ✅ CORRECTION: Utiliser turn.tag au lieu de turn.tags
+  if (!turn.tag) return false;
+
+  const tagDef = tags.find((t) => t.label === turn.tag || t.tag === turn.tag);
+
+  return tagDef?.originespeaker === "client" && tagDef.family === "CLIENT";
 };
 
 const findAdjacentPairs = (
-  events: TemporalEvent[],
+  turns: TaggedTurn[],
   tags: Tag[]
 ): AdjacentPair[] => {
-  const sortedEvents = [...events].sort((a, b) => a.startTime - b.startTime);
+  // Trier les tours par temps de début
+  const sortedTurns = [...turns].sort((a, b) => a.start_time - b.start_time);
   const pairs: AdjacentPair[] = [];
 
-  for (let i = 0; i < sortedEvents.length - 1; i++) {
-    const current = sortedEvents[i];
-    const next = sortedEvents[i + 1];
+  for (let i = 0; i < sortedTurns.length - 1; i++) {
+    const current = sortedTurns[i];
+    const next = sortedTurns[i + 1];
 
-    if (isConseillerEvent(current, tags) && isClientEvent(next, tags)) {
+    if (isConseillerTurn(current, tags) && isClientTurn(next, tags)) {
       const conseillerStrategy = classifyConseillerStrategy(current, tags);
       const clientReaction = classifyClientReaction(next);
+
+      // Calculer le gap réel entre fin conseiller et début client
+      const timeDelta = next.start_time - current.end_time;
 
       const pair: AdjacentPair = {
         id: `${current.id}-${next.id}`,
@@ -128,21 +140,22 @@ const findAdjacentPairs = (
           (conseillerStrategy === "positive" &&
             clientReaction === "positive") ||
           (conseillerStrategy === "negative" && clientReaction === "negative"),
-        timeDelta: next.startTime - current.startTime,
+        timeDelta: Math.max(0, timeDelta), // Gap ne peut pas être négatif
       };
 
       pairs.push(pair);
       console.log(
         "📊 PAIR:",
-        current.data?.tag,
+        current.tag, // ✅ CORRECTION: Utiliser current.tag
         "→",
-        next.data?.tag,
+        next.tag, // ✅ CORRECTION: Utiliser next.tag
         "|",
         conseillerStrategy,
         "→",
         clientReaction,
         "|",
-        pair.isCoherent ? "✅" : "❌"
+        pair.isCoherent ? "✅" : "❌",
+        `| gap: ${timeDelta.toFixed(1)}s`
       );
     }
   }
@@ -151,28 +164,35 @@ const findAdjacentPairs = (
 };
 
 const classifyConseillerStrategy = (
-  event: TemporalEvent,
+  turn: TaggedTurn,
   tags: Tag[]
 ): "positive" | "negative" | "neutral" => {
-  const tag = tags.find(
-    (t) => t.label === event.data?.tag || t.tag === event.data?.tag
-  );
-  if (!tag) return "neutral";
+  // ✅ CORRECTION: Utiliser turn.tag au lieu de turn.tags
+  if (!turn.tag) return "neutral";
+
+  const tagDef = tags.find((t) => t.label === turn.tag || t.tag === turn.tag);
+
+  if (!tagDef) return "neutral";
 
   // Règles métier selon spécifications
-  if (tag.family === "EXPLICATION") return "negative";
-  if (event.data?.tag === "REFLET_JE") return "negative";
-  if (["ENGAGEMENT", "OUVERTURE"].includes(tag.family || "")) return "positive";
-  if (event.data?.tag === "REFLET_VOUS") return "positive";
+  if (tagDef.family === "EXPLICATION") return "negative";
+  if (turn.tag === "REFLET_JE") return "negative";
+  if (["ENGAGEMENT", "OUVERTURE"].includes(tagDef.family || ""))
+    return "positive";
+  if (turn.tag === "REFLET_VOUS") return "positive";
 
   return "neutral";
 };
 
 const classifyClientReaction = (
-  event: TemporalEvent
+  turn: TaggedTurn
 ): "positive" | "negative" | "neutral" => {
-  if (event.data?.tag === "CLIENT POSITIF") return "positive";
-  if (event.data?.tag === "CLIENT NEGATIF") return "negative";
+  // ✅ CORRECTION: Utiliser turn.tag au lieu de turn.tags
+  if (!turn.tag) return "neutral";
+
+  if (turn.tag === "CLIENT POSITIF") return "positive";
+  if (turn.tag === "CLIENT NEGATIF") return "negative";
+
   return "neutral";
 };
 

@@ -9,7 +9,7 @@ interface ImpactTimelineProps {
   metrics: ImpactMetrics;
   width: number;
   duration: number;
-  onEventClick: (event: any) => void;
+  onEventClick: (turn: any) => void;
 }
 
 export const ImpactTimeline: React.FC<ImpactTimelineProps> = ({
@@ -30,23 +30,24 @@ export const ImpactTimeline: React.FC<ImpactTimelineProps> = ({
     (p) => p.clientReaction === "neutral"
   );
 
-  console.log("📊 IMPACT TIMELINE:", {
+  console.log("📊 IMPACT TIMELINE (BARS):", {
     total: adjacentPairs.length,
     positive: positivePairs.length,
     negative: negativePairs.length,
     neutral: neutralPairs.length,
     efficiency: metrics.efficiencyRate,
+    avgGap: metrics.avgTimeDelta.toFixed(1) + "s",
   });
 
   return (
     <Box
       sx={{
         position: "relative",
-        height: 140,
+        height: 180, // Hauteur fixe pour le mode impact avec barres
         backgroundColor: "background.paper",
       }}
     >
-      {/* Header avec métriques */}
+      {/* Header avec métriques améliorées */}
       <Box
         sx={{
           display: "flex",
@@ -55,14 +56,16 @@ export const ImpactTimeline: React.FC<ImpactTimelineProps> = ({
           p: 1,
           borderBottom: "1px solid",
           borderColor: "divider",
+          flexWrap: "wrap",
         }}
       >
         <Typography
           variant="subtitle2"
           sx={{ fontWeight: "bold", color: "primary.main" }}
         >
-          Timeline Impact
+          🎯 Timeline Impact
         </Typography>
+
         <Chip
           label={`${metrics.efficiencyRate}% efficace`}
           color={
@@ -75,11 +78,13 @@ export const ImpactTimeline: React.FC<ImpactTimelineProps> = ({
           size="small"
           sx={{ fontWeight: "bold" }}
         />
+
         <Chip
           label={`${metrics.totalPairs} interactions`}
           variant="outlined"
           size="small"
         />
+
         {metrics.totalPairs > 0 && (
           <>
             <Chip
@@ -100,94 +105,159 @@ export const ImpactTimeline: React.FC<ImpactTimelineProps> = ({
                 fontWeight: "bold",
               }}
             />
+
+            {/* Nouveau : temps moyen entre interactions */}
+            <Chip
+              label={`⏱️ ${metrics.avgTimeDelta.toFixed(1)}s moy.`}
+              variant="outlined"
+              size="small"
+              sx={{
+                fontSize: "0.7rem",
+                color: "text.secondary",
+              }}
+            />
           </>
         )}
       </Box>
 
-      {/* Zone principale de la timeline */}
-      <Box sx={{ position: "relative", height: 100, mt: 1 }}>
+      {/* Zone principale de la timeline - Hauteur ajustée pour barres */}
+      <Box sx={{ position: "relative", height: 140, mt: 1 }}>
         {/* Ligne haute : réactions positives */}
         <ImpactLane
           level="positive"
-          y={10}
+          y={25} // Ajusté pour barres plus hautes
           pairs={positivePairs}
           width={width}
           duration={duration}
           onEventClick={onEventClick}
           backgroundColor="rgba(18, 217, 194, 0.08)"
-          label="Réactions Positives"
+          label="✅ Positives"
         />
 
         {/* Ligne centrale : conseillers + réactions neutres */}
         <ImpactLane
           level="central"
-          y={45}
+          y={70} // Position centrale ajustée
           pairs={adjacentPairs} // Tous les conseillers + neutres
           width={width}
           duration={duration}
           onEventClick={onEventClick}
           backgroundColor="rgba(108, 117, 125, 0.03)"
           showAllConseillers={true}
-          label="Stratégies Conseiller"
+          label="📊 Stratégies"
         />
 
         {/* Ligne basse : réactions négatives */}
         <ImpactLane
           level="negative"
-          y={80}
+          y={115} // Ajusté pour barres plus hautes
           pairs={negativePairs}
           width={width}
           duration={duration}
           onEventClick={onEventClick}
           backgroundColor="rgba(226, 51, 13, 0.08)"
-          label="Réactions Négatives"
+          label="❌ Négatives"
         />
 
-        {/* Ondes d'impact */}
+        {/* Ondes d'impact - Z-index ajusté */}
         <svg
           style={{
             position: "absolute",
             top: 0,
-            left: 0,
-            width: "100%",
+            left: 16, // Aligné avec les lanes
+            width: width - 32,
             height: "100%",
             pointerEvents: "none",
-            zIndex: 1,
+            zIndex: 5, // Sous les barres mais visible
           }}
         >
           {adjacentPairs.map((pair) => (
             <ImpactWave
               key={pair.id}
               pair={pair}
-              width={width}
+              width={width - 32}
               duration={duration}
             />
           ))}
         </svg>
 
-        {/* Labels des niveaux */}
+        {/* Légende améliorée avec icônes */}
         <Box
           sx={{
             position: "absolute",
-            left: 4,
-            top: 0,
-            fontSize: "10px",
+            left: 2,
+            top: 10,
+            fontSize: "9px",
             color: "text.secondary",
+            backgroundColor: "rgba(255,255,255,0.9)",
+            padding: "4px 6px",
+            borderRadius: "4px",
+            border: "1px solid rgba(0,0,0,0.1)",
           }}
         >
-          <Typography variant="caption" sx={{ display: "block", mb: 3.5 }}>
-            + Client
+          <Typography
+            variant="caption"
+            sx={{ display: "block", fontSize: "9px", mb: 0.5 }}
+          >
+            😊 Client +
           </Typography>
-          <Typography variant="caption" sx={{ display: "block", mb: 3.5 }}>
-            ≈ Conseil
+          <Typography
+            variant="caption"
+            sx={{ display: "block", fontSize: "9px", mb: 0.5 }}
+          >
+            🎯 Conseiller
           </Typography>
-          <Typography variant="caption" sx={{ display: "block" }}>
-            - Client
+          <Typography
+            variant="caption"
+            sx={{ display: "block", fontSize: "9px" }}
+          >
+            😞 Client -
           </Typography>
         </Box>
+
+        {/* Indicateur de performance globale */}
+        {metrics.totalPairs > 0 && (
+          <Box
+            sx={{
+              position: "absolute",
+              right: 2,
+              top: 10,
+              textAlign: "right",
+              fontSize: "8px",
+              color: "text.secondary",
+              backgroundColor: "rgba(255,255,255,0.9)",
+              padding: "4px 6px",
+              borderRadius: "4px",
+              border: "1px solid rgba(0,0,0,0.1)",
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                display: "block",
+                fontSize: "10px",
+                fontWeight: "bold",
+                color:
+                  metrics.efficiencyRate > 70
+                    ? "#28a745"
+                    : metrics.efficiencyRate > 50
+                      ? "#ffc107"
+                      : "#dc3545",
+              }}
+            >
+              {metrics.efficiencyRate}%
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ display: "block", fontSize: "8px" }}
+            >
+              efficacité
+            </Typography>
+          </Box>
+        )}
       </Box>
 
-      {/* Message si pas de données */}
+      {/* Message si pas de données - Version améliorée */}
       {adjacentPairs.length === 0 && (
         <Box
           sx={{
@@ -197,13 +267,23 @@ export const ImpactTimeline: React.FC<ImpactTimelineProps> = ({
             transform: "translate(-50%, -50%)",
             textAlign: "center",
             color: "text.secondary",
+            backgroundColor: "rgba(255,255,255,0.9)",
+            padding: "20px",
+            borderRadius: "8px",
+            border: "2px dashed rgba(0,0,0,0.1)",
           }}
         >
-          <Typography variant="body2">
-            Aucune interaction conseiller → client détectée
+          <Typography variant="body2" sx={{ fontWeight: "bold", mb: 1 }}>
+            📭 Aucune interaction conseiller → client détectée
           </Typography>
           <Typography variant="caption">
-            Vérifiez que les tags sont correctement assignés
+            Vérifiez que les tours de parole sont correctement taggés
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{ display: "block", mt: 0.5, fontStyle: "italic" }}
+          >
+            Les barres temporelles montreront la durée réelle des interventions
           </Typography>
         </Box>
       )}
